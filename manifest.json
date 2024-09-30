@@ -1,0 +1,12 @@
+{
+    "display_name": "JS-Slash-Runner",
+    "loading_order": 100,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "KAKAA",
+    "version": "0.1.0",
+    "homePage": "https://github.com/Cohee1207/Extension-CodeRunner",
+    "auto_update": false
+}

@@ -1,0 +1,29 @@
+
+<div class="js-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>JS-Slash-Runner</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="extension_block flex-container">
+                <input id="activate_setting" type="checkbox" />
+                <label for="activate_setting">启用扩展</label>
+            </div>
+            <div class="extension_block flex-container">
+                <input id="slash_command_setting" type="checkbox" />
+                <label for="slash_command_setting">启用斜杠命令</label>
+            </div>
+            <div class="extension_block flex-container">
+                <label for="process_depth">
+                    <span>处理深度数</span>
+                    <small>
+                        <span>（0为处理全部楼层）</span>
+                    </small>
+                </label>
+                <input max="999" min="0" class="text_pole" id="process_depth" type="number" value="0" />
+            </div>
+            <hr class="sysHR" />
+        </div>
+    </div>
+</div>
