@@ -6,7 +6,6 @@ import {
 
 import {
   extension_settings,
-  getContext,
   renderExtensionTemplateAsync,
 } from "../../../../scripts/extensions.js";
 
@@ -17,8 +16,6 @@ const events = [
   event_types.MESSAGE_SWIPED,
   event_types.MESSAGE_UPDATED,
 ];
-
-const { executeSlashCommandsWithOptions } = SillyTavern.getContext();
 
 const extensionName = "JS-Slash-Runner";
 const extensionFolderPath = `third-party/${extensionName}`;
@@ -67,6 +64,12 @@ async function renderMessagesInIframes() {
 
     // 遍历每个 <code> 标签
     codeElements.forEach((codeElement, index) => {
+      const existingIframe = document.getElementById(
+        `message-iframe-${messageId}-${index}`
+      );
+      if (existingIframe) {
+        return;
+      }
       const extractedText = extractTextFromCode(codeElement);
 
       // 创建 iframe 并插入提取的内容
@@ -176,9 +179,9 @@ function observeIframeContent(iframe) {
 // 执行斜杠命令
 async function executeCommand(command) {
   console.log(`Executing command: ${command}`);
-
+  const context = SillyTavern.getContext();
   try {
-    const executePromise = executeSlashCommandsWithOptions(
+    const executePromise = context.executeSlashCommandsWithOptions(
       command,
       true,
       null,
@@ -198,11 +201,103 @@ async function handleIframeCommand(event) {
   if (event.data && event.data.command) {
     const command = event.data.command;
     console.log(`Received command from iframe: ${command}`);
-
-    // 调用 executeCommand 来执行传递的命令
+    const context = SillyTavern.getContext();
+    const oldVariables = { ...context.chatMetadata?.variables };
+    const oldBgmUrl = oldVariables["bgmUrl"] || "";
     await executeCommand(command);
+    const newVariables = context.chatMetadata?.variables || {};
+    for (const key in newVariables) {
+      if (oldVariables.hasOwnProperty(key)) {
+        if (oldVariables[key] !== newVariables[key]) {
+          oldVariables[key] = newVariables[key];
+        }
+      } else {
+        oldVariables[key] = newVariables[key];
+      }
+      const newBgmUrl = newVariables["bgmUrl"];
+    if (!newBgmUrl || newBgmUrl.trim() === "") {
+      console.log("No valid bgmUrl provided, skipping playback.");
+      return; // bgmUrl 为空时跳过播放逻辑
+    }
+    // 将旧的 bgmUrl 传递给 injectBGMControlIntoParent
+    injectBGMControlIntoParent(oldBgmUrl);
+    }
+    console.log("合并后的variables:", oldVariables);
   }
 }
+
+function injectBGMControlIntoParent(oldBgmUrl) {
+  try {
+    // 获取 SillyTavern 上下文
+    const context = SillyTavern.getContext();
+
+    // 从 context.chatMetadata?.variables 中获取新的 bgmUrl
+    const newBgmUrl = context.chatMetadata?.variables["bgmUrl"] || "";
+
+    // 如果 newBgmUrl 获取不到，则跳过后续逻辑
+    if (!newBgmUrl || newBgmUrl.trim() === "") {
+      console.log("bgmUrl 未定义或为空，跳过播放逻辑。");
+      return;
+    }
+
+    // 创建音频播放器，注入到父页面
+    let audioPlayer = document.getElementById('global-audio-player');
+
+    // 如果音频播放器不存在，则创建并注入
+    if (!audioPlayer) {
+      audioPlayer = document.createElement('audio');
+      audioPlayer.id = 'global-audio-player';
+      audioPlayer.loop = true;
+      audioPlayer.style.display = 'none'; // 隐藏播放器
+      document.body.appendChild(audioPlayer);
+    }
+
+    // 当前播放的 BGM URL 和播放状态
+    let isPlaying = !audioPlayer.paused;
+
+    // 判断是否需要切换 BGM
+    if (newBgmUrl !== oldBgmUrl) {
+      // 如果 BGM URL 不同，切换到新的音频
+      audioPlayer.src = newBgmUrl;
+      audioPlayer.play();
+      console.log(`切换到新的背景音乐: ${newBgmUrl}`);
+    } else if (!isPlaying) {
+      // 如果 BGM URL 相同，且之前已暂停，继续播放
+      audioPlayer.play();
+      console.log(`继续播放背景音乐: ${newBgmUrl}`);
+    } else {
+      console.log(`背景音乐未更改，保持播放: ${newBgmUrl}`);
+    }
+  } catch (error) {
+    console.error("获取 bgmUrl 时出错，跳过播放逻辑:", error);
+  }
+}
+
+// 注入到父页面中
+injectBGMControlIntoParent();
+
+window.addEventListener("message", (event) => {
+  // 检查消息类型，确保是背景音乐控制命令
+  if (event.data && event.data.bgmUrl && event.data.action) {
+    // 控制背景音乐播放或暂停
+    const { bgmUrl, action } = event.data;
+
+    // 向父页面注入播放器并控制播放/停止
+    injectBGMControlIntoParent();
+
+    // 处理播放和暂停逻辑
+    const audioPlayer = document.getElementById("global-audio-player");
+
+    if (action === "play") {
+      if (audioPlayer.src !== bgmUrl) {
+        audioPlayer.src = bgmUrl;
+      }
+      audioPlayer.play();
+    } else if (action === "pause") {
+      audioPlayer.pause();
+    }
+  }
+});
 
 /**
  * 设置部分
@@ -229,15 +324,14 @@ async function loadSettings() {
 // 实时监听扩展面板的状态
 function onExtensionInput(event) {
   const settingId = event.target.id;
-  const context = getContext();
-
+  const context = SillyTavern.getContext();
   if (settingId === "activate_setting") {
     const isEnabled = Boolean($(event.target).prop("checked"));
     extension_settings[extensionName].activate_setting = isEnabled;
     if (isEnabled) {
       renderMessagesInIframes();
     } else {
-      context.reloadCurrentChat(); 
+      context.reloadCurrentChat();
     }
   } else if (settingId === "slash_command_setting") {
     const isSlashCommandEnabled = Boolean($(event.target).prop("checked"));
