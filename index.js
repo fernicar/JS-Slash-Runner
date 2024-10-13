@@ -7,7 +7,160 @@ import {
 import {
   extension_settings,
   renderExtensionTemplateAsync,
+  getContext,
+  saveMetadataDebounced,
 } from "../../../../scripts/extensions.js";
+
+import { SlashCommandParser } from "../../../../scripts/slash-commands/SlashCommandParser.js";
+import { SlashCommand } from "../../../../scripts/slash-commands/SlashCommand.js";
+import {
+  SlashCommandArgument,
+  SlashCommandNamedArgument,
+  ARGUMENT_TYPE,
+} from "../../../../scripts/slash-commands/SlashCommandArgument.js";
+import {
+  SlashCommandEnumValue,
+  enumTypes,
+} from "../../../../scripts/slash-commands/SlashCommandEnumValue.js";
+import {
+  enumIcons,
+  commonEnumProviders,
+} from "../../../../scripts/slash-commands/SlashCommandCommonEnumsProvider.js";
+
+import { POPUP_TYPE, callGenericPopup } from "../../../../scripts/popup.js";
+
+const DEBUG_PREFIX = "<JS-Slash-Runner> ";
+
+const extensionName = "JS-Slash-Runner";
+const extensionFolderPath = `third-party/${extensionName}`;
+
+const audioCache = {};
+
+let list_BGMS = null;
+let list_ambients = null;
+
+let cooldownBGM = 0;
+
+let bgmEnded = true;
+let ambientEnded = true;
+
+const defaultSettings = {
+  activate_setting: false,
+  audio_setting: false,
+  bgm_enabled: true,
+  ambient_enabled: true,
+  bgm_mode: "repeat",
+  bgm_muted: false,
+  bgm_volume: 50,
+  bgm_selected: null,
+
+  ambient_mode: "stop",
+  ambient_muted: false,
+  ambient_volume: 50,
+  ambient_selected: null,
+
+  bgm_cooldown: 3,
+};
+
+function loadSettings() {
+  if (extension_settings[extensionName].audio === undefined)
+    extension_settings[extensionName].audio = {};
+
+  if (Object.keys(extension_settings[extensionName].audio).length === 0) {
+    Object.assign(extension_settings[extensionName].audio, defaultSettings);
+  }
+  $("#activate_setting").prop(
+    "checked",
+    extension_settings[extensionName].activate_setting
+  );
+  $("#process_depth").val(extension_settings[extensionName].process_depth || 0);
+
+  if (extension_settings[extensionName].activate_setting) {
+    window.addEventListener("message", handleIframeCommand);
+  }
+  $("#audio_enabled").prop(
+    "checked",
+    extension_settings[extensionName].audio_setting
+  );
+
+  $("#enable_bgm").prop(
+    "checked",
+    extension_settings[extensionName].audio.bgm_enabled
+  );
+  if (!extension_settings[extensionName].audio.bgm_enabled) {
+    $("#audio_bgm")[0].pause();
+  }
+
+  $("#enable_ambient").prop(
+    "checked",
+    extension_settings[extensionName].audio.ambient_enabled
+  );
+  if (!extension_settings[extensionName].audio.ambient_enabled) {
+    $("#audio_ambient")[0].pause();
+  }
+
+  $("#audio_bgm_volume").text(
+    extension_settings[extensionName].audio.bgm_volume
+  );
+  $("#audio_ambient_volume").text(
+    extension_settings[extensionName].audio.ambient_volume
+  );
+
+  $("#audio_bgm_volume_slider").val(
+    extension_settings[extensionName].audio.bgm_volume
+  );
+  $("#audio_ambient_volume_slider").val(
+    extension_settings[extensionName].audio.ambient_volume
+  );
+
+  if (extension_settings[extensionName].audio.bgm_muted) {
+    $("#audio_bgm_mute_icon").removeClass("fa-volume-high");
+    $("#audio_bgm_mute_icon").addClass("fa-volume-mute");
+    $("#audio_bgm_mute").addClass("redOverlayGlow");
+    $("#audio_bgm").prop("muted", true);
+  } else {
+    $("#audio_bgm_mute_icon").addClass("fa-volume-high");
+    $("#audio_bgm_mute_icon").removeClass("fa-volume-mute");
+    $("#audio_bgm_mute").removeClass("redOverlayGlow");
+    $("#audio_bgm").prop("muted", false);
+  }
+
+  const bgmMode = extension_settings[extensionName].audio.bgm_mode || "repeat";
+  const modeIconMap = {
+    repeat: "fa-repeat",
+    random: "fa-random",
+    single: "fa-redo-alt",
+    stop: "fa-cancel",
+  };
+
+  $("#audio_bgm_mode_icon")
+    .removeClass("fa-repeat fa-random fa-redo-alt fa-cancel")
+    .addClass("fa " + modeIconMap[bgmMode]);
+
+  const ambientMode =
+    extension_settings[extensionName].audio.ambient_mode || "cancel";
+
+  $("#audio_ambient_mode_icon")
+    .removeClass("fa-repeat fa-random fa-redo-alt fa-cancel")
+    .addClass("fa " + modeIconMap[ambientMode]);
+
+  if (extension_settings[extensionName].audio.ambient_muted) {
+    $("#audio_ambient_mute_icon").removeClass("fa-volume-high");
+    $("#audio_ambient_mute_icon").addClass("fa-volume-mute");
+    $("#audio_ambient_mute").addClass("redOverlayGlow");
+    $("#audio_ambient").prop("muted", true);
+  } else {
+    $("#audio_ambient_mute_icon").addClass("fa-volume-high");
+    $("#audio_ambient_mute_icon").removeClass("fa-volume-mute");
+    $("#audio_ambient_mute").removeClass("redOverlayGlow");
+    $("#audio_ambient").prop("muted", false);
+  }
+
+  $("#audio_bgm_cooldown").val(
+    extension_settings[extensionName].audio.bgm_cooldown
+  );
+  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
+}
 
 const events = [
   event_types.CHARACTER_MESSAGE_RENDERED,
@@ -17,13 +170,6 @@ const events = [
   event_types.MESSAGE_UPDATED,
 ];
 
-const extensionName = "JS-Slash-Runner";
-const extensionFolderPath = `third-party/${extensionName}`;
-const defaultSettings = {
-  activate_setting: false,
-  slash_command_setting: false,
-};
-
 function debounce(fn, delay) {
   let timeout;
   return (...args) => {
@@ -32,21 +178,16 @@ function debounce(fn, delay) {
   };
 }
 
-/**
- * iframe处理
- */
 async function renderMessagesInIframes() {
   const chatContainer = document.getElementById("chat");
+
   const messages = chatContainer.querySelectorAll(".mes");
 
-  // 获取用户输入的处理深度数
   const processDepth = parseInt($("#process_depth").val(), 10);
 
-  // 计算要处理的消息范围，深度为0时，处理全部消息
   const messagesToProcess =
     processDepth > 0 ? [...messages].slice(-processDepth) : messages;
-
-  // 遍历并处理指定范围内的消息
+  const fragment = document.createDocumentFragment();
   messagesToProcess.forEach((message) => {
     const messageId = message.getAttribute("mesid");
     const mesTextContainer = message.querySelector(".mes_text");
@@ -56,30 +197,27 @@ async function renderMessagesInIframes() {
       return;
     }
 
-    // 过滤行内代码块
     const codeElements = mesTextContainer.querySelectorAll("code[class]");
     if (!codeElements.length) {
       return;
     }
 
-    // 遍历每个 <code> 标签
     codeElements.forEach((codeElement, index) => {
       const existingIframe = document.getElementById(
         `message-iframe-${messageId}-${index}`
       );
-      if (existingIframe) {
+      if (existingIframe || codeElement.dataset.processed) {
         return;
       }
+
+      codeElement.dataset.processed = "true";
       const extractedText = extractTextFromCode(codeElement);
 
-      // 创建 iframe 并插入提取的内容
       const iframe = document.createElement("iframe");
-      // 为每个 iframe 生成唯一的 ID，使用 messageId 和 <code> 标签的索引值
       iframe.id = `message-iframe-${messageId}-${index}`;
       iframe.style.width = "100%";
       iframe.style.border = "none";
 
-      // 构建 iframe 内容
       const iframeContent = `
             <html>
                 <head>
@@ -102,13 +240,13 @@ async function renderMessagesInIframes() {
                     function triggerSlash(...commands) {
                         const commandText = commands.join('\\n');
                         window.parent.postMessage({ command: commandText }, '*');
+                        console.log('Sent command to parent:', commandText);
                     }
                     </script>
                 </body>
             </html>
         `;
 
-      // 加载 iframe 内容
       iframe.onload = function () {
         const doc = iframe.contentDocument || iframe.contentWindow.document;
         doc.open();
@@ -119,21 +257,15 @@ async function renderMessagesInIframes() {
           adjustIframeHeight(iframe);
         }, 300);
 
-        // 监听 iframe 内容变化
         observeIframeContent(iframe);
       };
 
-      // 替换 codeElement
-      codeElement.replaceWith(iframe);
+      fragment.appendChild(iframe);
+      codeElement.replaceWith(fragment);
     });
   });
 }
 
-/**
- * 递归提取 <code> 标签及其子标签中的文本内容
- * @param {HTMLElement} codeElement 要提取文本的 <code> 标签元素
- * @returns {string} 提取的文本内容
- */
 function extractTextFromCode(codeElement) {
   let textContent = "";
 
@@ -148,10 +280,6 @@ function extractTextFromCode(codeElement) {
   return textContent;
 }
 
-/**
- * 调整 iframe 的高度
- * @param {HTMLIFrameElement} iframe - 要调整高度的 iframe 元素
- */
 function adjustIframeHeight(iframe) {
   if (iframe.contentWindow.document.body) {
     const height = iframe.contentWindow.document.documentElement.scrollHeight;
@@ -159,10 +287,6 @@ function adjustIframeHeight(iframe) {
   }
 }
 
-/**
- * 监听 iframe 内容的变化，并在变化时调整 iframe 的高度
- * @param {HTMLIFrameElement} iframe - 要监听的 iframe 元素
- */
 function observeIframeContent(iframe) {
   const doc = iframe.contentWindow.document.body;
 
@@ -173,12 +297,14 @@ function observeIframeContent(iframe) {
   resizeObserver.observe(doc);
 }
 
-/**
- * 斜杠命令
- */
-// 执行斜杠命令
+async function handleIframeCommand(event) {
+  if (event.data && event.data.command) {
+    const command = event.data.command;
+    executeCommand(command);
+  }
+}
+
 async function executeCommand(command) {
-  console.log(`Executing command: ${command}`);
   const context = SillyTavern.getContext();
   try {
     const executePromise = context.executeSlashCommandsWithOptions(
@@ -196,164 +322,33 @@ async function executeCommand(command) {
   }
 }
 
-// 定义 handleIframeCommand 用于处理从 iframe 传递过来的消息
-async function handleIframeCommand(event) {
-  if (event.data && event.data.command) {
-    const command = event.data.command;
-    console.log(`Received command from iframe: ${command}`);
-    const context = SillyTavern.getContext();
-    const oldVariables = { ...context.chatMetadata?.variables };
-    const oldBgmUrl = oldVariables["bgmUrl"] || "";
-    await executeCommand(command);
-    const newVariables = context.chatMetadata?.variables || {};
-    for (const key in newVariables) {
-      if (oldVariables.hasOwnProperty(key)) {
-        if (oldVariables[key] !== newVariables[key]) {
-          oldVariables[key] = newVariables[key];
-        }
-      } else {
-        oldVariables[key] = newVariables[key];
-      }
-      const newBgmUrl = newVariables["bgmUrl"];
-    if (!newBgmUrl || newBgmUrl.trim() === "") {
-      console.log("No valid bgmUrl provided, skipping playback.");
-      return; // bgmUrl 为空时跳过播放逻辑
-    }
-    // 将旧的 bgmUrl 传递给 injectBGMControlIntoParent
-    injectBGMControlIntoParent(oldBgmUrl);
-    }
-    console.log("合并后的variables:", oldVariables);
-  }
-}
+async function onExtensionToggle() {
+  const isEnabled = Boolean($("#activate_setting").prop("checked"));
+  extension_settings[extensionName].activate_setting = isEnabled;
 
-function injectBGMControlIntoParent(oldBgmUrl) {
-  try {
-    // 获取 SillyTavern 上下文
-    const context = SillyTavern.getContext();
+  const context = getContext();
 
-    // 从 context.chatMetadata?.variables 中获取新的 bgmUrl
-    const newBgmUrl = context.chatMetadata?.variables["bgmUrl"] || "";
-
-    // 如果 newBgmUrl 获取不到，则跳过后续逻辑
-    if (!newBgmUrl || newBgmUrl.trim() === "") {
-      console.log("bgmUrl 未定义或为空，跳过播放逻辑。");
-      return;
-    }
-
-    // 创建音频播放器，注入到父页面
-    let audioPlayer = document.getElementById('global-audio-player');
-
-    // 如果音频播放器不存在，则创建并注入
-    if (!audioPlayer) {
-      audioPlayer = document.createElement('audio');
-      audioPlayer.id = 'global-audio-player';
-      audioPlayer.loop = true;
-      audioPlayer.style.display = 'none'; // 隐藏播放器
-      document.body.appendChild(audioPlayer);
-    }
-
-    // 当前播放的 BGM URL 和播放状态
-    let isPlaying = !audioPlayer.paused;
-
-    // 判断是否需要切换 BGM
-    if (newBgmUrl !== oldBgmUrl) {
-      // 如果 BGM URL 不同，切换到新的音频
-      audioPlayer.src = newBgmUrl;
-      audioPlayer.play();
-      console.log(`切换到新的背景音乐: ${newBgmUrl}`);
-    } else if (!isPlaying) {
-      // 如果 BGM URL 相同，且之前已暂停，继续播放
-      audioPlayer.play();
-      console.log(`继续播放背景音乐: ${newBgmUrl}`);
-    } else {
-      console.log(`背景音乐未更改，保持播放: ${newBgmUrl}`);
-    }
-  } catch (error) {
-    console.error("获取 bgmUrl 时出错，跳过播放逻辑:", error);
-  }
-}
-
-// 注入到父页面中
-injectBGMControlIntoParent();
-
-window.addEventListener("message", (event) => {
-  // 检查消息类型，确保是背景音乐控制命令
-  if (event.data && event.data.bgmUrl && event.data.action) {
-    // 控制背景音乐播放或暂停
-    const { bgmUrl, action } = event.data;
-
-    // 向父页面注入播放器并控制播放/停止
-    injectBGMControlIntoParent();
-
-    // 处理播放和暂停逻辑
-    const audioPlayer = document.getElementById("global-audio-player");
-
-    if (action === "play") {
-      if (audioPlayer.src !== bgmUrl) {
-        audioPlayer.src = bgmUrl;
-      }
-      audioPlayer.play();
-    } else if (action === "pause") {
-      audioPlayer.pause();
-    }
-  }
-});
-
-/**
- * 设置部分
- */
-// 加载扩展设置
-async function loadSettings() {
-  extension_settings[extensionName] = extension_settings[extensionName] || {};
-  if (Object.keys(extension_settings[extensionName]).length === 0) {
-    Object.assign(extension_settings[extensionName], defaultSettings);
-  }
-
-  $("#activate_setting, #slash_command_setting").each(function () {
-    const settingId = this.id;
-    $(this).prop("checked", extension_settings[extensionName][settingId]);
-  });
-
-  $("#process_depth").val(extension_settings[extensionName].process_depth || 0);
-
-  if (extension_settings[extensionName].slash_command_setting) {
+  if (isEnabled) {
+    renderMessagesInIframes();
     window.addEventListener("message", handleIframeCommand);
-  }
-}
-
-// 实时监听扩展面板的状态
-function onExtensionInput(event) {
-  const settingId = event.target.id;
-  const context = SillyTavern.getContext();
-  if (settingId === "activate_setting") {
-    const isEnabled = Boolean($(event.target).prop("checked"));
-    extension_settings[extensionName].activate_setting = isEnabled;
-    if (isEnabled) {
-      renderMessagesInIframes();
-    } else {
-      context.reloadCurrentChat();
-    }
-  } else if (settingId === "slash_command_setting") {
-    const isSlashCommandEnabled = Boolean($(event.target).prop("checked"));
-    extension_settings[extensionName].slash_command_setting =
-      isSlashCommandEnabled;
-
-    if (isSlashCommandEnabled) {
-      window.addEventListener("message", handleIframeCommand);
-    } else {
-      window.removeEventListener("message", handleIframeCommand);
-    }
-  } else if (settingId === "process_depth") {
-    const processDepth = parseInt($(event.target).val(), 10);
-    extension_settings[extensionName].process_depth = processDepth;
+  } else {
+    window.removeEventListener("message", handleIframeCommand);
     context.reloadCurrentChat();
   }
 
-  // 保存设置
   saveSettingsDebounced();
 }
 
-// 监听事件
+async function onDepthInput() {
+  const processDepth = parseInt($("#process_depth").val(), 10);
+  extension_settings[extensionName].process_depth = processDepth;
+
+  const context = getContext();
+  context.reloadCurrentChat();
+
+  saveSettingsDebounced();
+}
+
 const debouncedHandleEvent = debounce(handleEvent, 100);
 
 function handleEvent() {
@@ -362,22 +357,1204 @@ function handleEvent() {
     renderMessagesInIframes();
   }
 }
+eventSource.on(event_types.CHAT_CHANGED, async () => {
+  const bgmPlayer = document.getElementById("audio_bgm");
+  const ambientPlayer = document.getElementById("audio_ambient");
+
+  if (bgmPlayer && !bgmPlayer.paused) {
+    bgmPlayer.pause();
+  }
+
+  if (ambientPlayer && !ambientPlayer.paused) {
+    ambientPlayer.pause();
+  }
+  await refreshAudioResources();
+});
 
 events.forEach((eventType) => {
   eventSource.on(eventType, debouncedHandleEvent);
 });
 
-// 界面加载
+async function onEnabledClick() {
+  const isEnabled = Boolean($("#audio_enabled").prop("checked"));
+  extension_settings[extensionName].audio_setting = isEnabled;
+
+  if (isEnabled) {
+    enableAudioControls();
+    if ($("#audio_bgm").attr("src") != "") $("#audio_bgm")[0].play();
+    if ($("#audio_ambient").attr("src") != "") $("#audio_ambient")[0].play();
+  } else {
+    $("#audio_bgm")[0].pause();
+    $("#audio_ambient")[0].pause();
+    disableAudioControls();
+  }
+
+  saveSettingsDebounced();
+}
+
+function disableAudioControls() {
+  $("#audio_bgm_play_pause").prop("disabled", true);
+  $("#audio_ambient_play_pause").prop("disabled", true);
+
+  $("#audio_bgm_volume_slider").prop("disabled", true);
+  $("#audio_ambient_volume_slider").prop("disabled", true);
+}
+
+function enableAudioControls() {
+  $("#audio_bgm_play_pause").prop("disabled", false);
+  $("#audio_ambient_play_pause").prop("disabled", false);
+
+  $("#audio_bgm_volume_slider").prop("disabled", false);
+  $("#audio_ambient_volume_slider").prop("disabled", false);
+}
+
+async function getBgmUrl() {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const context = getContext();
+  const variables = context.chatMetadata?.variables || {};
+  for (const key of Object.keys(variables)) {
+    if (key.toLowerCase() === "bgmurl") {
+      let bgmUrlValue = variables[key];
+      bgmUrlValue = JSON.parse(bgmUrlValue);
+      bgmUrlValue = bgmUrlValue.filter((url) => url !== null);
+      return bgmUrlValue;
+    }
+  }
+  return null;
+}
+
+async function getAmbientUrl() {
+  const context = getContext();
+  const variables = context.chatMetadata?.variables || {};
+  for (const key of Object.keys(variables)) {
+    if (key.toLowerCase() === "ambienturl") {
+      let ambientUrlValue = variables[key];
+      ambientUrlValue = JSON.parse(ambientUrlValue);
+      ambientUrlValue = ambientUrlValue.filter((url) => url !== null);
+      return ambientUrlValue;
+    }
+  }
+  return null;
+}
+
+async function onBGMEnabledClick() {
+  extension_settings[extensionName].audio.bgm_enabled =
+    $("#enable_bgm").is(":checked");
+
+  if (extension_settings[extensionName].audio.bgm_enabled) {
+    if ($("#audio_bgm").attr("src") != "") {
+      $("#audio_bgm")[0].play();
+    }
+  } else {
+    $("#audio_bgm")[0].pause();
+  }
+
+  saveSettingsDebounced();
+}
+
+async function onAmbientEnabledClick() {
+  extension_settings[extensionName].audio.ambient_enabled =
+    $("#enable_ambient").is(":checked");
+
+  if (extension_settings[extensionName].audio.ambient_enabled) {
+    if ($("#audio_ambient").attr("src") != "") {
+      $("#audio_ambient")[0].play();
+    }
+  } else {
+    $("#audio_ambient")[0].pause();
+  }
+
+  saveSettingsDebounced();
+}
+
+async function onBGMModeClick() {
+  const modes = [
+    { mode: "repeat", icon: "fa-repeat" },
+    { mode: "random", icon: "fa-random" },
+    { mode: "single", icon: "fa-redo-alt" },
+    { mode: "stop", icon: "fa-cancel" },
+  ];
+
+  const currentModeIndex = modes.findIndex(
+    (m) => m.mode === extension_settings[extensionName].audio.bgm_mode
+  );
+
+  const nextModeIndex = (currentModeIndex + 1) % modes.length;
+
+  extension_settings[extensionName].audio.bgm_mode = modes[nextModeIndex].mode;
+
+  $("#audio_bgm_mode_icon").removeClass(
+    "fa-repeat fa-random fa-redo-alt fa-cancel"
+  );
+
+  $("#audio_bgm_mode_icon").addClass(modes[nextModeIndex].icon);
+
+  saveSettingsDebounced();
+}
+
+async function onBGMRandomClick() {
+  var select = document.getElementById("audio_bgm_select");
+  var items = select.getElementsByTagName("option");
+
+  if (items.length < 2) return;
+
+  var index;
+  do {
+    index = Math.floor(Math.random() * items.length);
+  } while (index == select.selectedIndex);
+
+  select.selectedIndex = index;
+  onBGMSelectChange();
+}
+
+async function onBGMMuteClick() {
+  extension_settings[extensionName].audio.bgm_muted =
+    !extension_settings[extensionName].audio.bgm_muted;
+  $("#audio_bgm_mute_icon").toggleClass("fa-volume-high");
+  $("#audio_bgm_mute_icon").toggleClass("fa-volume-mute");
+  $("#audio_bgm").prop("muted", !$("#audio_bgm").prop("muted"));
+  $("#audio_bgm_mute").toggleClass("redOverlayGlow");
+  saveSettingsDebounced();
+}
+
+async function onAmbientModeClick() {
+  const modes = [
+    { mode: "repeat", icon: "fa-repeat" },
+    { mode: "random", icon: "fa-random" },
+    { mode: "single", icon: "fa-redo-alt" },
+    { mode: "stop", icon: "fa-cancel" },
+  ];
+
+  const currentModeIndex = modes.findIndex(
+    (m) => m.mode === extension_settings[extensionName].audio.ambient_mode
+  );
+
+  const nextModeIndex = (currentModeIndex + 1) % modes.length;
+
+  extension_settings[extensionName].audio.ambient_mode =
+    modes[nextModeIndex].mode;
+
+  $("#audio_ambient_mode_icon").removeClass(
+    "fa-repeat fa-random fa-redo-alt fa-cancel"
+  );
+  $("#audio_ambient_mode_icon").addClass(modes[nextModeIndex].icon);
+
+  saveSettingsDebounced();
+}
+
+async function onAmbientMuteClick() {
+  extension_settings[extensionName].audio.ambient_muted =
+    !extension_settings[extensionName].audio.ambient_muted;
+  $("#audio_ambient_mute_icon").toggleClass("fa-volume-high");
+  $("#audio_ambient_mute_icon").toggleClass("fa-volume-mute");
+  $("#audio_ambient").prop("muted", !$("#audio_ambient").prop("muted"));
+  $("#audio_ambient_mute").toggleClass("redOverlayGlow");
+  saveSettingsDebounced();
+}
+
+async function onBGMVolumeChange() {
+  extension_settings[extensionName].audio.bgm_volume = ~~$(
+    "#audio_bgm_volume_slider"
+  ).val();
+  $("#audio_bgm").prop(
+    "volume",
+    extension_settings[extensionName].audio.bgm_volume * 0.01
+  );
+  $("#audio_bgm_volume").text(
+    extension_settings[extensionName].audio.bgm_volume
+  );
+  saveSettingsDebounced();
+}
+
+async function onAmbientVolumeChange() {
+  extension_settings[extensionName].audio.ambient_volume = ~~$(
+    "#audio_ambient_volume_slider"
+  ).val();
+  $("#audio_ambient").prop(
+    "volume",
+    extension_settings[extensionName].audio.ambient_volume * 0.01
+  );
+  $("#audio_ambient_volume").text(
+    extension_settings[extensionName].audio.ambient_volume
+  );
+  saveSettingsDebounced();
+}
+
+async function onBGMSelectChange() {
+  extension_settings[extensionName].audio.bgm_selected =
+    $("#audio_bgm_select").val();
+  updateBGM(true);
+  saveSettingsDebounced();
+}
+
+async function onAmbientSelectChange() {
+  extension_settings[extensionName].audio.ambient_selected = $(
+    "#audio_ambient_select"
+  ).val();
+  updateAmbient(true);
+  saveSettingsDebounced();
+}
+
+async function onBGMCooldownInput() {
+  extension_settings[extensionName].audio.bgm_cooldown = ~~$(
+    "#audio_bgm_cooldown"
+  ).val();
+  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
+  saveSettingsDebounced();
+}
+
+async function playAudio(type) {
+  const audioElement = $(`#audio_${type}`)[0];
+  const playPauseIcon = $(`#audio_${type}_play_pause_icon`);
+
+  if (audioElement.error && audioElement.error.code === 4) {
+    console.warn(
+      `The ${type} element has no supported sources. Trying to reload selected audio from dropdown...`
+    );
+    const selectedAudio = $(`#audio_${type}_select`).val();
+
+    if (!selectedAudio) {
+      console.error(`No audio selected in ${type} dropdown.`);
+      return;
+    }
+
+    audioElement.src = selectedAudio;
+  }
+
+  try {
+    await audioElement.play();
+    playPauseIcon.removeClass("fa-play");
+    playPauseIcon.addClass("fa-pause");
+  } catch (error) {
+    console.error(`Failed to play ${type} audio:`, error);
+  }
+}
+
+async function togglePlayPause(type) {
+  if (!extension_settings[extensionName].audio_setting) {
+    return;
+  }
+  const audioElement = $(`#audio_${type}`)[0];
+  const playPauseIcon = $(`#audio_${type}_play_pause_icon`);
+
+  if (audioElement.paused) {
+    await playAudio(type);
+  } else {
+    audioElement.pause();
+    playPauseIcon.removeClass("fa-pause");
+    playPauseIcon.addClass("fa-play");
+  }
+}
+
+async function handleUrlImportClick(type) {
+  const context = getContext();
+
+  if (!context.chatMetadata.variables) {
+    context.chatMetadata.variables = {};
+  }
+
+  const existingUrls = context.chatMetadata.variables[type]
+    ? JSON.parse(context.chatMetadata.variables[type])
+    : [];
+
+  const newUrls = await openUrlImportPopup();
+
+  if (!newUrls) {
+    console.debug(`${type} URL导入已取消`);
+    return;
+  }
+
+  const mergedUrls = [...new Set([...newUrls, ...existingUrls])];
+
+  context.chatMetadata.variables[type] = JSON.stringify(mergedUrls);
+  saveMetadataDebounced();
+  if (type === "bgmurl") {
+    list_BGMS = await getBgmUrl();
+    updateBGM(true);
+  } else if (type === "ambienturl") {
+    list_ambients = await getAmbientUrl();
+    updateAmbient(true);
+  }
+}
+
+async function openUrlImportPopup() {
+  const html = await renderExtensionTemplateAsync(
+    `${extensionFolderPath}`,
+    "importurl"
+  );
+
+  const input = await callGenericPopup(html, POPUP_TYPE.INPUT, "");
+
+  if (!input) {
+    console.debug("URL import cancelled");
+    return null;
+  }
+
+  const urlArray = input
+    .trim()
+    .split("\n")
+    .map((url) => url.trim())
+    .filter((url) => url !== "");
+
+  return Array.from(new Set(urlArray));
+}
+
+async function refreshAudioResources() {
+  list_BGMS = await getBgmUrl();
+  list_ambients = await getAmbientUrl();
+
+  updateBGMSelect();
+
+  updateAmbientSelect();
+}
+
+function updateBGMSelect() {
+  const bgmSelect = $("#audio_bgm_select");
+  bgmSelect.empty();
+
+  if (list_BGMS && list_BGMS.length > 0) {
+    if (
+      !list_BGMS.includes(extension_settings[extensionName].audio.bgm_selected)
+    ) {
+      extension_settings[extensionName].audio.bgm_selected = list_BGMS[0];
+    }
+
+    list_BGMS.forEach((file) => {
+      const fileLabel = file.replace(/^.*[\\\/]/, "").replace(/\.[^/.]+$/, "");
+      bgmSelect.append(new Option(fileLabel, file));
+    });
+
+    bgmSelect.val(extension_settings[extensionName].audio.bgm_selected);
+  } else {
+    console.warn("No BGM assets detected.");
+  }
+}
+
+function updateAmbientSelect() {
+  const ambientSelect = $("#audio_ambient_select");
+  ambientSelect.empty();
+
+  if (list_ambients && list_ambients.length > 0) {
+    if (
+      !list_ambients.includes(
+        extension_settings[extensionName].audio.ambient_selected
+      )
+    ) {
+      extension_settings[extensionName].audio.ambient_selected =
+        list_ambients[0];
+    }
+
+    list_ambients.forEach((file) => {
+      const fileLabel = file.replace(/^.*[\\\/]/, "").replace(/\.[^/.]+$/, "");
+      ambientSelect.append(new Option(fileLabel, file));
+    });
+
+    ambientSelect.val(extension_settings[extensionName].audio.ambient_selected);
+  } else {
+    console.warn("No Ambient assets detected.");
+  }
+}
+async function updateBGM(isUserInput = false, newChat = false) {
+  if (!extension_settings[extensionName].audio_setting) {
+    return;
+  }
+  if (!extension_settings[extensionName].audio.bgm_enabled) {
+    return;
+  }
+
+  if (cooldownBGM > 0) {
+    await new Promise((resolve) => setTimeout(resolve, cooldownBGM));
+    cooldownBGM = 0;
+  }
+
+  if (
+    !isUserInput &&
+    $("#audio_bgm").attr("src") != "" &&
+    !bgmEnded &&
+    !newChat
+  ) {
+    return;
+  }
+
+  let audio_url = "";
+  const playlist = list_BGMS || [];
+
+  if (isUserInput) {
+    audio_url =
+      extension_settings[extensionName].audio.bgm_selected || playlist[0];
+  } else {
+    audio_url = getNextFileByMode(
+      extension_settings[extensionName].audio.bgm_mode,
+      playlist,
+      extension_settings[extensionName].audio.bgm_selected
+    );
+  }
+
+  if (!audio_url) {
+    return;
+  }
+
+  const audio = $("#audio_bgm")[0];
+
+  if (audio.src === audio_url && !bgmEnded) {
+    return;
+  }
+
+  let fade_time = 2000;
+  bgmEnded = false;
+
+  if (audioCache[audio_url]) {
+    $(audio).animate({ volume: 0.0 }, fade_time, function () {
+      audio.src = audioCache[audio_url];
+      audio.play();
+      $(audio).animate(
+        { volume: extension_settings[extensionName].audio.bgm_volume * 0.01 },
+        fade_time
+      );
+    });
+  } else {
+    $(audio).animate({ volume: 0.0 }, fade_time, function () {
+      audio.src = audio_url;
+      audio.play();
+      audioCache[audio_url] = audio_url;
+      $(audio).animate(
+        { volume: extension_settings[extensionName].audio.bgm_volume * 0.01 },
+        fade_time
+      );
+    });
+  }
+
+  extension_settings[extensionName].audio.bgm_selected = audio_url;
+
+  const bgmSelect = $("#audio_bgm_select");
+  if (bgmSelect.val() !== audio_url) {
+    bgmSelect.val(audio_url);
+  }
+
+  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
+
+  saveSettingsDebounced();
+}
+
+async function updateAmbient(isUserInput = false) {
+  if (!extension_settings[extensionName].audio_setting) {
+    return;
+  }
+  if (!extension_settings[extensionName].audio.ambient_enabled) {
+    return;
+  }
+  if (cooldownBGM > 0) {
+    await new Promise((resolve) => setTimeout(resolve, cooldownBGM));
+    cooldownBGM = 0;
+  }
+  if (
+    !isUserInput &&
+    $("#audio_ambient").attr("src") != "" &&
+    !ambientEnded &&
+    !newChat
+  ) {
+    return;
+  }
+
+  let audio_url = "";
+  const playlist = list_ambients || [];
+
+  if (isUserInput) {
+    audio_url =
+      extension_settings[extensionName].audio.ambient_selected || playlist[0];
+  } else {
+    audio_url = getNextFileByMode(
+      extension_settings[extensionName].audio.ambient_mode,
+      playlist,
+      extension_settings[extensionName].audio.ambient_selected
+    );
+  }
+
+  if (!audio_url) {
+    return;
+  }
+
+  const audio = $("#audio_ambient")[0];
+  if (audio.src === audio_url && !ambientEnded) {
+    return;
+  }
+  let fade_time = 2000;
+  ambientEnded = false;
+
+  if (audioCache[audio_url]) {
+    $(audio).animate({ volume: 0.0 }, fade_time, function () {
+      audio.src = audioCache[audio_url];
+      audio.play();
+
+      $(audio).animate(
+        {
+          volume: extension_settings[extensionName].audio.ambient_volume * 0.01,
+        },
+        fade_time
+      );
+    });
+  } else {
+    $(audio).animate({ volume: 0.0 }, fade_time, function () {
+      audio.src = audio_url;
+      audio.play();
+
+      audioCache[audio_url] = audio_url;
+
+      $(audio).animate(
+        {
+          volume: extension_settings[extensionName].audio.ambient_volume * 0.01,
+        },
+        fade_time
+      );
+    });
+  }
+
+  extension_settings[extensionName].audio.ambient_selected = audio_url;
+  const ambientSelect = $("#audio_ambient_select");
+  if (ambientSelect.val() !== audio_url) {
+    ambientSelect.val(audio_url);
+  }
+  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
+  saveSettingsDebounced();
+}
+
+function getNextFileByMode(mode, playlist, currentFile) {
+  if (!playlist || playlist.length === 0) {
+    console.warn("播放列表为空");
+    return null;
+  }
+
+  let nextFile = null;
+
+  switch (mode) {
+    case "repeat":
+      const currentIndex = playlist.indexOf(currentFile);
+      if (currentIndex === -1 || currentIndex === playlist.length - 1) {
+        nextFile = playlist[0];
+      } else {
+        nextFile = playlist[currentIndex + 1];
+      }
+      break;
+
+    case "random":
+      nextFile = playlist[Math.floor(Math.random() * playlist.length)];
+      break;
+
+    case "single":
+      nextFile = currentFile;
+      break;
+
+    case "stop":
+      nextFile = null;
+      break;
+
+    default:
+      console.warn(`未知的播放模式: ${mode}`);
+      break;
+  }
+
+  return nextFile;
+}
+
+function onVolumeSliderWheelEvent(e) {
+  const slider = $(this);
+  e.preventDefault();
+  e.stopPropagation();
+
+  const delta = e.deltaY / 20;
+  const sliderVal = Number(slider.val());
+
+  let newVal = sliderVal - delta;
+  if (newVal < 0) {
+    newVal = 0;
+  } else if (newVal > 100) {
+    newVal = 100;
+  }
+
+  slider.val(newVal).trigger("input");
+}
+
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function handleLongPress(volumeControlId, iconId) {
+  const volumeControl = document.getElementById(volumeControlId);
+  const icon = document.getElementById(iconId);
+  let pressTimer;
+
+  if (isMobileDevice()) {
+    icon.addEventListener("touchstart", (e) => {
+      pressTimer = setTimeout(() => {
+        volumeControl.style.display = "block";
+      }, 500);
+    });
+
+    icon.addEventListener("touchend", (e) => {
+      clearTimeout(pressTimer);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (
+        !icon.contains(event.target) &&
+        !volumeControl.contains(event.target)
+      ) {
+        volumeControl.style.display = "none";
+      }
+    });
+  }
+}
+
+function initializeProgressBar(type) {
+  const audioElement = $(`#audio_${type}`)[0];
+  const progressSlider = $(`#audio_${type}_progress_slider`);
+
+  audioElement.addEventListener("timeupdate", () => {
+    if (!isNaN(audioElement.duration)) {
+      const progressPercent =
+        (audioElement.currentTime / audioElement.duration) * 100;
+      progressSlider.val(progressPercent);
+    }
+  });
+
+  audioElement.addEventListener("loadedmetadata", () => {
+    if (!isNaN(audioElement.duration)) {
+      progressSlider.attr("max", 100);
+    }
+  });
+
+  progressSlider.on("input", () => {
+    const value = progressSlider.val();
+    if (!isNaN(audioElement.duration)) {
+      audioElement.currentTime = (value / 100) * audioElement.duration;
+    }
+  });
+}
+
 jQuery(async () => {
-  const settingsHtml = await renderExtensionTemplateAsync(
+  const getContainer = () =>
+    $(
+      document.getElementById("audio_container") ??
+        document.getElementById("extensions_settings")
+    );
+  const windowHtml = await renderExtensionTemplateAsync(
     `${extensionFolderPath}`,
     "settings"
   );
-  $("#extensions_settings").append(settingsHtml);
-  $("#activate_setting").on("input", onExtensionInput);
-  $("#slash_command_setting").on("input", onExtensionInput);
-  $("#process_depth").on("input", onExtensionInput);
-
-  // 加载设置并初始化
+  getContainer().append(windowHtml);
   loadSettings();
+
+  $("#activate_setting").on("click", onExtensionToggle);
+  $("#process_depth").on("input", onDepthInput);
+
+  $("#audio_enabled").on("click", onEnabledClick);
+
+  $("#enable_bgm").on("click", onBGMEnabledClick);
+  $("#enable_ambient").on("click", onAmbientEnabledClick);
+  $("#audio_bgm").hide();
+  $("#audio_bgm_mode").on("click", onBGMModeClick);
+  $("#audio_bgm_mute").on("click", onBGMMuteClick);
+  $("#audio_bgm_volume_slider").on("input", onBGMVolumeChange);
+  $("#audio_bgm_random").on("click", onBGMRandomClick);
+  $("#audio_ambient").hide();
+  $("#audio_ambient_mode").on("click", onAmbientModeClick);
+  $("#audio_ambient_mute").on("click", onAmbientMuteClick);
+  $("#audio_ambient_volume_slider").on("input", onAmbientVolumeChange);
+
+  document
+    .getElementById("audio_ambient_volume_slider")
+    .addEventListener("wheel", onVolumeSliderWheelEvent, { passive: false });
+  document
+    .getElementById("audio_bgm_volume_slider")
+    .addEventListener("wheel", onVolumeSliderWheelEvent, { passive: false });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    handleLongPress("volume-control", "audio_bgm_mute_icon");
+    handleLongPress("ambient-volume-control", "audio_ambient_mute_icon");
+  });
+
+  $("#audio_bgm_cooldown").on("input", onBGMCooldownInput);
+
+  $("#audio_refresh_assets").on("click", function () {
+    list_BGMS = null;
+    list_ambients = null;
+    getBgmUrl();
+    getAmbientUrl();
+  });
+
+  $("#audio_bgm_select").on("change", onBGMSelectChange);
+  $("#audio_ambient_select").on("change", onAmbientSelectChange);
+
+  $("#audio_bgm").on("ended", function () {
+    bgmEnded = true;
+    if (cooldownBGM > 0) {
+      setTimeout(() => {
+        updateBGM();
+      }, cooldownBGM);
+    } else {
+      updateBGM();
+    }
+  });
+
+  $("#audio_ambient").on("ended", function () {
+    ambientEnded = true;
+    if (cooldownBGM > 0) {
+      setTimeout(() => {
+        updateAmbient();
+      }, cooldownBGM);
+    } else {
+      updateAmbient();
+    }
+  });
+
+  $("#bgm_import_button").on("click", async () => {
+    await handleUrlImportClick("bgmurl");
+    await refreshAudioResources();
+  });
+
+  $("#ambient_import_button").on("click", async () => {
+    await handleUrlImportClick("ambienturl");
+    await refreshAudioResources();
+  });
+
+  $("#audio_refresh_assets").on("click", async () => {
+    await refreshAudioResources();
+  });
+
+  $("#bgm_import_button").on("click", () => {
+    handleUrlImportClick("bgmurl");
+  });
+
+  $("#ambient_import_button").on("click", async function () {
+    await handleUrlImportClick("ambienturl");
+  });
+
+  $("#audio_bgm_play_pause").on("click", async () => {
+    await togglePlayPause("bgm");
+  });
+
+  $("#audio_ambient_play_pause").on("click", async () => {
+    await togglePlayPause("ambient");
+  });
+
+  $("#audio_bgm").on("play", function () {
+    $("#audio_bgm_play_pause_icon").removeClass("fa-play").addClass("fa-pause");
+  });
+
+  $("#audio_bgm").on("pause", function () {
+    $("#audio_bgm_play_pause_icon").removeClass("fa-pause").addClass("fa-play");
+  });
+
+  $("#audio_bgm").on("error", function () {
+    $("#audio_bgm_play_pause").prop("disabled", true);
+  });
+
+  $("#audio_ambient").on("play", function () {
+    $("#audio_ambient_play_pause_icon")
+      .removeClass("fa-play")
+      .addClass("fa-pause");
+  });
+
+  $("#audio_ambient").on("pause", function () {
+    $("#audio_ambient_play_pause_icon")
+      .removeClass("fa-pause")
+      .addClass("fa-play");
+  });
+
+  $("#audio_ambient").on("error", function () {
+    $("#audio_ambient_play_pause").prop("disabled", true);
+  });
+
+  $("#audio_bgm_select").on("change", function () {
+    const selectedBGM = $(this).val();
+    extension_settings[extensionName].audio.bgm_selected = selectedBGM;
+    updateBGM(true);
+  });
+
+  initializeProgressBar("bgm");
+  initializeProgressBar("ambient");
+
+  SlashCommandParser.addCommandObject(
+    SlashCommand.fromProps({
+      name: "audioselect",
+      callback: handleAudioSelectCommand,
+      namedArgumentList: [
+        SlashCommandNamedArgument.fromProps({
+          name: "type",
+          description: "选择播放器类型 (bgm 或 ambient)",
+          typeList: [ARGUMENT_TYPE.STRING],
+          enumList: [
+            new SlashCommandEnumValue(
+              "bgm",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+            new SlashCommandEnumValue(
+              "ambient",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+          ],
+          isRequired: true,
+        }),
+      ],
+      unnamedArgumentList: [
+        new SlashCommandArgument("url", [ARGUMENT_TYPE.STRING], true),
+      ],
+      helpString: `
+        <div>
+            选择并播放音频。如果音频链接不存在，则先导入再播放。
+        </div>
+        <div>
+            <strong>Example:</strong>
+            <ul>
+                <li>
+                    <pre><code>/audioselect type=bgm https://example.com/song.mp3</code></pre>
+                    选择并播放指定的音乐。
+                </li>
+                <li>
+                    <pre><code>/audioselect type=ambient https://example.com/sound.mp3</code></pre>
+                    选择并播放指定的音效。
+                </li>
+            </ul>
+        </div>
+      `,
+    })
+  );
+  SlashCommandParser.addCommandObject(
+    SlashCommand.fromProps({
+      name: "audioimport",
+      callback: handleAudioImportCommand,
+      namedArgumentList: [
+        SlashCommandNamedArgument.fromProps({
+          name: "type",
+          description: "选择导入类型 (bgm 或 ambient)",
+          typeList: [ARGUMENT_TYPE.STRING],
+          enumList: [
+            new SlashCommandEnumValue(
+              "bgm",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+            new SlashCommandEnumValue(
+              "ambient",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+          ],
+          isRequired: true,
+        }),
+        SlashCommandNamedArgument.fromProps({
+          name: "play",
+          description: "导入后是否立即播放第一个链接",
+          typeList: [ARGUMENT_TYPE.BOOLEAN],
+          defaultValue: "true",
+          isRequired: false,
+        }),
+      ],
+      unnamedArgumentList: [
+        new SlashCommandArgument("url", [ARGUMENT_TYPE.STRING], true),
+      ],
+      helpString: `
+        <div>
+            导入音频或音乐链接，并决定是否立即播放，默认为自动播放。可批量导入链接，使用英文逗号分隔。
+        </div>
+        <div>
+            <strong>Example:</strong>
+            <ul>
+                <li>
+                    <pre><code>/audioimport type=bgm https://example.com/song1.mp3,https://example.com/song2.mp3</code></pre>
+                    导入 BGM 音乐并立即播放第一个链接。
+                </li>
+                <li>
+                    <pre><code>/audioimport type=ambient play=false url=https://example.com/sound1.mp3,https://example.com/sound2.mp3 </code></pre>
+                    导入音效链接 (不自动播放)。
+                </li>
+            </ul>
+        </div>
+      `,
+    })
+  );
+
+  SlashCommandParser.addCommandObject(
+    SlashCommand.fromProps({
+      name: "audioplay",
+      callback: togglePlayPauseCommand,
+      namedArgumentList: [
+        SlashCommandNamedArgument.fromProps({
+          name: "type",
+          description: "选择控制的播放器 (bgm 或 ambient)",
+          typeList: [ARGUMENT_TYPE.STRING],
+          enumList: [
+            new SlashCommandEnumValue(
+              "bgm",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+            new SlashCommandEnumValue(
+              "ambient",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+          ],
+          isRequired: true,
+        }),
+        new SlashCommandNamedArgument(
+          "play",
+          "播放或暂停",
+          [ARGUMENT_TYPE.STRING],
+          true,
+          false,
+          "true",
+          commonEnumProviders.boolean("trueFalse")()
+        ),
+      ],
+      helpString: `
+        <div>
+            控制音乐播放器或音效播放器的播放与暂停。
+        </div>
+        <div>
+            <strong>Example:</strong>
+            <ul>
+                <li>
+                    <pre><code>/audioplay type=bgm</code></pre>
+                    播放当前音乐。
+                </li>
+                <li>
+                    <pre><code>/audioplay type=ambient play=false</code></pre>
+                    暂停当前音效。
+                </li>
+            </ul>
+        </div>
+      `,
+    })
+  );
+  SlashCommandParser.addCommandObject(
+    SlashCommand.fromProps({
+      name: "audioenable",
+      callback: togglePlayer,
+      namedArgumentList: [
+        SlashCommandNamedArgument.fromProps({
+          name: "type",
+          description: "选择控制的播放器 (bgm 或 ambient)",
+          typeList: [ARGUMENT_TYPE.STRING],
+          enumList: [
+            new SlashCommandEnumValue(
+              "bgm",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+            new SlashCommandEnumValue(
+              "ambient",
+              null,
+              enumTypes.enum,
+              enumIcons.file
+            ),
+          ],
+          isRequired: true,
+        }),
+        new SlashCommandNamedArgument(
+          "state",
+          "打开或关闭播放器",
+          [ARGUMENT_TYPE.STRING],
+          false,
+          false,
+          "true",
+          commonEnumProviders.boolean("trueFalse")()
+        ),
+      ],
+      helpString: `
+        <div>
+            控制音乐播放器或音效播放器的开启与关闭。
+        </div>
+        <div>
+            <strong>Example:</strong>
+            <ul>
+                <li>
+                    <pre><code>/audioenable type=bgm state=true</code></pre>
+                    打开音乐播放器。
+                </li>
+                <li>
+                    <pre><code>/audioenable type=ambient state=false</code></pre>
+                    关闭音效播放器。
+                </li>
+            </ul>
+        </div>
+    `,
+    })
+  );
 });
+
+async function togglePlayer(args, value) {
+  const state = args.state ? args.state.toLowerCase() : "true";
+
+  if (!args?.type) {
+    console.warn("WARN: Missing arguments for /audioenable command");
+    return "";
+  }
+
+  const type = args.type.toLowerCase();
+
+  if (type === "bgm") {
+    if (state === "true") {
+      $("#enable_bgm").prop("checked", true);
+      await onBGMEnabledClick();
+    } else if (state === "false") {
+      $("#enable_bgm").prop("checked", false);
+      await onBGMEnabledClick();
+    }
+  } else if (type === "ambient") {
+    if (state === "true") {
+      $("#enable_ambient").prop("checked", true);
+      await onAmbientEnabledClick();
+    } else if (state === "false") {
+      $("#enable_ambient").prop("checked", false);
+      await onAmbientEnabledClick();
+    }
+  }
+
+  return "";
+}
+
+async function togglePlayPauseCommand(args, value) {
+  if (!args?.type || !args?.action) {
+    console.warn("WARN: Missing arguments for /audioplaypause command");
+    return "";
+  }
+
+  const type = args.type.toLowerCase();
+  const play = args.action.toLowerCase();
+
+  if (type === "bgm") {
+    if (play === "true") {
+      await playAudio("bgm");
+    } else if (play === "false") {
+      $("#audio_bgm")[0].pause();
+    }
+  } else if (type === "ambient") {
+    if (play === "true") {
+      await playAudio("ambient");
+    } else if (play === "false") {
+      $("#audio_ambient")[0].pause();
+    }
+  }
+
+  return "";
+}
+
+async function handleAudioImportCommand(args, text) {
+  if (!args?.type || !text) {
+    console.warn("WARN: Missing arguments for /audioimport command");
+    return "";
+  }
+
+  const type = args.type.toLowerCase();
+
+  const urlArray = text
+    .split(",")
+    .map((url) => url.trim())
+    .filter((url) => url !== "")
+    .filter((url, index, self) => self.indexOf(url) === index);
+
+  if (urlArray.length === 0) {
+    console.warn("WARN: Invalid or empty URLs provided.");
+    return "";
+  }
+
+  const context = getContext();
+
+  if (!context.chatMetadata.variables) {
+    context.chatMetadata.variables = {};
+  }
+
+  const typeKey = type === "bgm" ? "bgmurl" : "ambienturl";
+  const existingUrls = context.chatMetadata.variables[typeKey]
+    ? JSON.parse(context.chatMetadata.variables[typeKey])
+    : [];
+
+  const mergedUrls = [...new Set([...urlArray, ...existingUrls])];
+
+  context.chatMetadata.variables[typeKey] = JSON.stringify(mergedUrls);
+  saveMetadataDebounced();
+
+  if (type === "bgm") {
+    list_BGMS = mergedUrls;
+    updateBGMSelect();
+  } else if (type === "ambient") {
+    list_ambients = mergedUrls;
+    updateAmbientSelect();
+  }
+
+  if (args.play && urlArray[0]) {
+    const selectedUrl = urlArray[0];
+    if (type === "bgm") {
+      extension_settings[extensionName].audio.bgm_selected = selectedUrl;
+      await updateBGM(true);
+    } else if (type === "ambient") {
+      extension_settings[extensionName].audio.ambient_selected = selectedUrl;
+      await updateAmbient(true);
+    }
+  }
+
+  return "";
+}
+
+async function handleAudioSelectCommand(args, text) {
+  if (!text) {
+    console.warn("WARN: Missing URL for /audioselect command");
+    return "";
+  }
+
+  const type = args.type.toLowerCase();
+  const url = text.trim();
+
+  const context = getContext();
+
+  if (!context.chatMetadata.variables) {
+    context.chatMetadata.variables = {};
+  }
+
+  let playlist = type === "bgm" ? list_BGMS : list_ambients;
+  const typeKey = type === "bgm" ? "bgmurl" : "ambienturl";
+
+  if (playlist && playlist.includes(url)) {
+    if (type === "bgm") {
+      extension_settings[extensionName].audio.bgm_selected = url;
+      await updateBGM(true);
+    } else if (type === "ambient") {
+      extension_settings[extensionName].audio.ambient_selected = url;
+      await updateAmbient(true);
+    }
+    return "";
+  }
+
+  const existingUrls = context.chatMetadata.variables[typeKey]
+    ? JSON.parse(context.chatMetadata.variables[typeKey])
+    : [];
+
+  const mergedUrls = [...new Set([url, ...existingUrls])];
+
+  context.chatMetadata.variables[typeKey] = JSON.stringify(mergedUrls);
+  saveMetadataDebounced();
+
+  if (type === "bgm") {
+    list_BGMS = mergedUrls;
+    updateBGMSelect();
+    extension_settings[extensionName].audio.bgm_selected = url;
+    await updateBGM(true);
+  } else if (type === "ambient") {
+    list_ambients = mergedUrls;
+    updateAmbientSelect();
+    extension_settings[extensionName].audio.ambient_selected = url;
+    await updateAmbient(true);
+  }
+
+  return "";
+}
