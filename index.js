@@ -29,8 +29,6 @@ import {
 
 import { POPUP_TYPE, callGenericPopup } from "../../../../scripts/popup.js";
 
-const DEBUG_PREFIX = "<JS-Slash-Runner> ";
-
 const extensionName = "JS-Slash-Runner";
 const extensionFolderPath = `third-party/${extensionName}`;
 
@@ -159,7 +157,6 @@ function loadSettings() {
   $("#audio_bgm_cooldown").val(
     extension_settings[extensionName].audio.bgm_cooldown
   );
-  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
 }
 
 const events = [
@@ -599,7 +596,6 @@ async function onBGMCooldownInput() {
   extension_settings[extensionName].audio.bgm_cooldown = ~~$(
     "#audio_bgm_cooldown"
   ).val();
-  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
   saveSettingsDebounced();
 }
 
@@ -762,11 +758,6 @@ async function updateBGM(isUserInput = false, newChat = false) {
     return;
   }
 
-  if (cooldownBGM > 0) {
-    await new Promise((resolve) => setTimeout(resolve, cooldownBGM));
-    cooldownBGM = 0;
-  }
-
   if (
     !isUserInput &&
     $("#audio_bgm").attr("src") != "" &&
@@ -799,29 +790,15 @@ async function updateBGM(isUserInput = false, newChat = false) {
   if (audio.src === audio_url && !bgmEnded) {
     return;
   }
-
-  let fade_time = 2000;
   bgmEnded = false;
 
   if (audioCache[audio_url]) {
-    $(audio).animate({ volume: 0.0 }, fade_time, function () {
-      audio.src = audioCache[audio_url];
-      audio.play();
-      $(audio).animate(
-        { volume: extension_settings[extensionName].audio.bgm_volume * 0.01 },
-        fade_time
-      );
-    });
+    audio.src = audioCache[audio_url];
+    audio.play();
   } else {
-    $(audio).animate({ volume: 0.0 }, fade_time, function () {
-      audio.src = audio_url;
-      audio.play();
-      audioCache[audio_url] = audio_url;
-      $(audio).animate(
-        { volume: extension_settings[extensionName].audio.bgm_volume * 0.01 },
-        fade_time
-      );
-    });
+    audio.src = audio_url;
+    audio.play();
+    audioCache[audio_url] = audio_url;
   }
 
   extension_settings[extensionName].audio.bgm_selected = audio_url;
@@ -830,8 +807,6 @@ async function updateBGM(isUserInput = false, newChat = false) {
   if (bgmSelect.val() !== audio_url) {
     bgmSelect.val(audio_url);
   }
-
-  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
 
   saveSettingsDebounced();
 }
@@ -843,10 +818,7 @@ async function updateAmbient(isUserInput = false) {
   if (!extension_settings[extensionName].audio.ambient_enabled) {
     return;
   }
-  if (cooldownBGM > 0) {
-    await new Promise((resolve) => setTimeout(resolve, cooldownBGM));
-    cooldownBGM = 0;
-  }
+
   if (
     !isUserInput &&
     $("#audio_ambient").attr("src") != "" &&
@@ -878,35 +850,15 @@ async function updateAmbient(isUserInput = false) {
   if (audio.src === audio_url && !ambientEnded) {
     return;
   }
-  let fade_time = 2000;
+
   ambientEnded = false;
-
   if (audioCache[audio_url]) {
-    $(audio).animate({ volume: 0.0 }, fade_time, function () {
-      audio.src = audioCache[audio_url];
-      audio.play();
-
-      $(audio).animate(
-        {
-          volume: extension_settings[extensionName].audio.ambient_volume * 0.01,
-        },
-        fade_time
-      );
-    });
+    audio.src = audioCache[audio_url];
+    audio.play();
   } else {
-    $(audio).animate({ volume: 0.0 }, fade_time, function () {
-      audio.src = audio_url;
-      audio.play();
-
-      audioCache[audio_url] = audio_url;
-
-      $(audio).animate(
-        {
-          volume: extension_settings[extensionName].audio.ambient_volume * 0.01,
-        },
-        fade_time
-      );
-    });
+    audio.src = audio_url;
+    audio.play();
+    audioCache[audio_url] = audio_url;
   }
 
   extension_settings[extensionName].audio.ambient_selected = audio_url;
@@ -914,7 +866,7 @@ async function updateAmbient(isUserInput = false) {
   if (ambientSelect.val() !== audio_url) {
     ambientSelect.val(audio_url);
   }
-  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown * 1000;
+
   saveSettingsDebounced();
 }
 
@@ -1006,6 +958,7 @@ function handleLongPress(volumeControlId, iconId) {
 }
 
 function initializeProgressBar(type) {
+  cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
   const audioElement = $(`#audio_${type}`)[0];
   const progressSlider = $(`#audio_${type}_progress_slider`);
 
@@ -1015,6 +968,40 @@ function initializeProgressBar(type) {
         (audioElement.currentTime / audioElement.duration) * 100;
       progressSlider.val(progressPercent);
     }
+    const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
+    const remainingTime = audioElement.duration - audioElement.currentTime;
+    if (remainingTime <= cooldownBGM && !audioElement.isFadingOut) {
+
+      const initialVolume = audioElement.volume;
+      const fadeStep = initialVolume / (cooldownBGM * 10);
+      audioElement.isFadingOut = true;
+
+      const fadeOutInterval = setInterval(() => {
+        if (audioElement.volume > 0) {
+          audioElement.volume = Math.max(0, audioElement.volume - fadeStep);
+        } else {
+          clearInterval(fadeOutInterval);
+          audioElement.isFadingOut = false;
+        }
+      }, 100);
+    }
+  });
+
+  audioElement.addEventListener("play", () => {
+    audioElement.volume = 0;
+    const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
+    const targetVolume = $(`#audio_${type}_volume_slider`).val() / 100;
+    const fadeStep = targetVolume / (cooldownBGM * 10);
+    let fadeInInterval = setInterval(() => {
+      if (audioElement.volume < targetVolume) {
+        audioElement.volume = Math.min(
+          targetVolume,
+          audioElement.volume + fadeStep
+        );
+      } else {
+        clearInterval(fadeInInterval);
+      }
+    }, 100);
   });
 
   audioElement.addEventListener("loadedmetadata", () => {
@@ -1087,24 +1074,12 @@ jQuery(async () => {
 
   $("#audio_bgm").on("ended", function () {
     bgmEnded = true;
-    if (cooldownBGM > 0) {
-      setTimeout(() => {
-        updateBGM();
-      }, cooldownBGM);
-    } else {
-      updateBGM();
-    }
+    updateBGM();
   });
 
   $("#audio_ambient").on("ended", function () {
     ambientEnded = true;
-    if (cooldownBGM > 0) {
-      setTimeout(() => {
-        updateAmbient();
-      }, cooldownBGM);
-    } else {
-      updateAmbient();
-    }
+    updateAmbient();
   });
 
   $("#bgm_import_button").on("click", async () => {
