@@ -2,6 +2,8 @@ import {
   eventSource,
   event_types,
   saveSettingsDebounced,
+  chat_metadata,
+  updateMessageBlock,
 } from "../../../../script.js";
 
 import {
@@ -36,11 +38,17 @@ const audioCache = {};
 
 let list_BGMS = null;
 let list_ambients = null;
-
-let cooldownBGM = 0;
-
 let bgmEnded = true;
 let ambientEnded = true;
+let cooldownBGM = 0;
+
+const events = [
+  event_types.CHARACTER_MESSAGE_RENDERED,
+  event_types.USER_MESSAGE_RENDERED,
+  event_types.CHAT_CHANGED,
+  event_types.MESSAGE_SWIPED,
+  event_types.MESSAGE_UPDATED,
+];
 
 const defaultSettings = {
   activate_setting: false,
@@ -73,9 +81,6 @@ function loadSettings() {
   );
   $("#process_depth").val(extension_settings[extensionName].process_depth || 0);
 
-  if (extension_settings[extensionName].activate_setting) {
-    window.addEventListener("message", handleIframeCommand);
-  }
   $("#audio_enabled").prop(
     "checked",
     extension_settings[extensionName].audio_setting
@@ -159,31 +164,30 @@ function loadSettings() {
   );
 }
 
-const events = [
-  event_types.CHARACTER_MESSAGE_RENDERED,
-  event_types.USER_MESSAGE_RENDERED,
-  event_types.CHAT_CHANGED,
-  event_types.MESSAGE_SWIPED,
-  event_types.MESSAGE_UPDATED,
-];
-
-function debounce(fn, delay) {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fn(...args), delay);
-  };
-}
-
 async function renderMessagesInIframes() {
   const chatContainer = document.getElementById("chat");
 
   const messages = chatContainer.querySelectorAll(".mes");
-
+  const context = getContext();
+  const totalMessages = context.chat.length;
   const processDepth = parseInt($("#process_depth").val(), 10);
-
   const messagesToProcess =
     processDepth > 0 ? [...messages].slice(-processDepth) : messages;
+  const messagesToCancel = totalMessages - processDepth;
+  for (let i = 0; i < messagesToCancel; i++) {
+    const message = context.chat[i];
+    const messageId = i;
+    const iframes = document.querySelectorAll(
+      `[id^="message-iframe-${messageId}-"]`
+    );
+
+    if (iframes.length > 0) {
+      iframes.forEach((iframe) => {
+        iframe.remove();
+      });
+      updateMessageBlock(messageId, message);
+    }
+  }
   const fragment = document.createDocumentFragment();
   messagesToProcess.forEach((message) => {
     const messageId = message.getAttribute("mesid");
@@ -234,10 +238,19 @@ async function renderMessagesInIframes() {
                         });
                     </script>
                     <script>
-                    function triggerSlash(...commands) {
-                        const commandText = commands.join('\\n');
-                        window.parent.postMessage({ command: commandText }, '*');
-                        console.log('Sent command to parent:', commandText);
+                    function triggerSlash(commandText) {
+                      window.parent.postMessage({ request: 'command', commandText: commandText }, '*');
+                      console.log('Sent command to parent:', commandText);
+                    }
+                    function getVariables() {
+                      window.parent.postMessage({ request: 'getVariables' }, '*');
+                    }
+                    function setVariables(newVariables) {
+                      if (typeof newVariables === 'object' && newVariables !== null) {
+                        window.parent.postMessage({ request: 'setVariables', data: newVariables }, '*');
+                      } else {
+                        console.error("setVariables expects an object");
+                      }
                     }
                     </script>
                 </body>
@@ -295,14 +308,41 @@ function observeIframeContent(iframe) {
 }
 
 async function handleIframeCommand(event) {
-  if (event.data && event.data.command) {
-    const command = event.data.command;
-    executeCommand(command);
+  if (event.data) {
+    if (event.data.request === "command") {
+      const commandText = event.data.commandText;
+      executeCommand(commandText);
+    } else if (event.data.request === "getVariables") {
+      if (!chat_metadata.variables) {
+        chat_metadata.variables = {};
+      }
+      const variables = chat_metadata?.variables || {};
+
+      event.source.postMessage({ variables: variables }, "*");
+    } else if (event.data.request === "setVariables") {
+      const newVariables = event.data.data;
+
+      if (!chat_metadata.variables) {
+        chat_metadata.variables = {};
+      }
+
+      const currentVariables = chat_metadata.variables;
+
+
+      for (let key in newVariables) {
+        if (newVariables.hasOwnProperty(key)) {
+          currentVariables[key] = newVariables[key];
+        }
+      }
+
+      chat_metadata.variables = currentVariables;
+      saveMetadataDebounced();
+    }
   }
 }
 
 async function executeCommand(command) {
-  const context = SillyTavern.getContext();
+  const context = getContext();
   try {
     const executePromise = context.executeSlashCommandsWithOptions(
       command,
@@ -324,7 +364,6 @@ async function onExtensionToggle() {
   extension_settings[extensionName].activate_setting = isEnabled;
 
   const context = getContext();
-
   if (isEnabled) {
     renderMessagesInIframes();
     window.addEventListener("message", handleIframeCommand);
@@ -339,21 +378,10 @@ async function onExtensionToggle() {
 async function onDepthInput() {
   const processDepth = parseInt($("#process_depth").val(), 10);
   extension_settings[extensionName].process_depth = processDepth;
-
-  const context = getContext();
-  context.reloadCurrentChat();
-
+  renderMessagesInIframes();
   saveSettingsDebounced();
 }
 
-const debouncedHandleEvent = debounce(handleEvent, 100);
-
-function handleEvent() {
-  const isChecked = $("#activate_setting").prop("checked");
-  if (isChecked) {
-    renderMessagesInIframes();
-  }
-}
 eventSource.on(event_types.CHAT_CHANGED, async () => {
   const bgmPlayer = document.getElementById("audio_bgm");
   const ambientPlayer = document.getElementById("audio_ambient");
@@ -369,10 +397,15 @@ eventSource.on(event_types.CHAT_CHANGED, async () => {
 });
 
 events.forEach((eventType) => {
-  eventSource.on(eventType, debouncedHandleEvent);
+  eventSource.on(eventType, () => {
+    setTimeout(() => {
+      renderMessagesInIframes();
+    }, 500);
+  });
 });
 
 async function onEnabledClick() {
+  const context = getContext();
   const isEnabled = Boolean($("#audio_enabled").prop("checked"));
   extension_settings[extensionName].audio_setting = isEnabled;
 
@@ -407,8 +440,7 @@ function enableAudioControls() {
 
 async function getBgmUrl() {
   await new Promise((resolve) => setTimeout(resolve, 3000));
-  const context = getContext();
-  const variables = context.chatMetadata?.variables || {};
+  const variables = chat_metadata?.variables || {};
   for (const key of Object.keys(variables)) {
     if (key.toLowerCase() === "bgmurl") {
       let bgmUrlValue = variables[key];
@@ -421,8 +453,7 @@ async function getBgmUrl() {
 }
 
 async function getAmbientUrl() {
-  const context = getContext();
-  const variables = context.chatMetadata?.variables || {};
+  const variables = chat_metadata?.variables || {};
   for (const key of Object.keys(variables)) {
     if (key.toLowerCase() === "ambienturl") {
       let ambientUrlValue = variables[key];
@@ -643,14 +674,12 @@ async function togglePlayPause(type) {
 }
 
 async function handleUrlImportClick(type) {
-  const context = getContext();
-
-  if (!context.chatMetadata.variables) {
-    context.chatMetadata.variables = {};
+  if (!chat_metadata.variables) {
+    chat_metadata.variables = {};
   }
 
-  const existingUrls = context.chatMetadata.variables[type]
-    ? JSON.parse(context.chatMetadata.variables[type])
+  const existingUrls = chat_metadata.variables[type]
+    ? JSON.parse(chat_metadata.variables[type])
     : [];
 
   const newUrls = await openUrlImportPopup();
@@ -662,7 +691,7 @@ async function handleUrlImportClick(type) {
 
   const mergedUrls = [...new Set([...newUrls, ...existingUrls])];
 
-  context.chatMetadata.variables[type] = JSON.stringify(mergedUrls);
+  chat_metadata.variables[type] = JSON.stringify(mergedUrls);
   saveMetadataDebounced();
   if (type === "bgmurl") {
     list_BGMS = await getBgmUrl();
@@ -971,7 +1000,6 @@ function initializeProgressBar(type) {
     const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
     const remainingTime = audioElement.duration - audioElement.currentTime;
     if (remainingTime <= cooldownBGM && !audioElement.isFadingOut) {
-
       const initialVolume = audioElement.volume;
       const fadeStep = initialVolume / (cooldownBGM * 10);
       audioElement.isFadingOut = true;
@@ -1032,6 +1060,10 @@ jQuery(async () => {
   loadSettings();
 
   $("#activate_setting").on("click", onExtensionToggle);
+  if ($("#activate_setting").prop("checked")) {
+    onExtensionToggle();
+  }
+
   $("#process_depth").on("input", onDepthInput);
 
   $("#audio_enabled").on("click", onEnabledClick);
@@ -1443,20 +1475,18 @@ async function handleAudioImportCommand(args, text) {
     return "";
   }
 
-  const context = getContext();
-
-  if (!context.chatMetadata.variables) {
-    context.chatMetadata.variables = {};
+  if (!chat_metadata.variables) {
+    chat_metadata.variables = {};
   }
 
   const typeKey = type === "bgm" ? "bgmurl" : "ambienturl";
-  const existingUrls = context.chatMetadata.variables[typeKey]
-    ? JSON.parse(context.chatMetadata.variables[typeKey])
+  const existingUrls = chat_metadata.variables[typeKey]
+    ? JSON.parse(chat_metadata.variables[typeKey])
     : [];
 
   const mergedUrls = [...new Set([...urlArray, ...existingUrls])];
 
-  context.chatMetadata.variables[typeKey] = JSON.stringify(mergedUrls);
+  chat_metadata.variables[typeKey] = JSON.stringify(mergedUrls);
   saveMetadataDebounced();
 
   if (type === "bgm") {
@@ -1490,10 +1520,8 @@ async function handleAudioSelectCommand(args, text) {
   const type = args.type.toLowerCase();
   const url = text.trim();
 
-  const context = getContext();
-
-  if (!context.chatMetadata.variables) {
-    context.chatMetadata.variables = {};
+  if (!chat_metadata.variables) {
+    chat_metadata.variables = {};
   }
 
   let playlist = type === "bgm" ? list_BGMS : list_ambients;
@@ -1510,13 +1538,13 @@ async function handleAudioSelectCommand(args, text) {
     return "";
   }
 
-  const existingUrls = context.chatMetadata.variables[typeKey]
-    ? JSON.parse(context.chatMetadata.variables[typeKey])
+  const existingUrls = chat_metadata.variables[typeKey]
+    ? JSON.parse(chat_metadata.variables[typeKey])
     : [];
 
   const mergedUrls = [...new Set([url, ...existingUrls])];
 
-  context.chatMetadata.variables[typeKey] = JSON.stringify(mergedUrls);
+  chat_metadata.variables[typeKey] = JSON.stringify(mergedUrls);
   saveMetadataDebounced();
 
   if (type === "bgm") {
