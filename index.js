@@ -242,8 +242,21 @@ async function renderMessagesInIframes() {
                       window.parent.postMessage({ request: 'command', commandText: commandText }, '*');
                       console.log('Sent command to parent:', commandText);
                     }
-                    function getVariables() {
-                      window.parent.postMessage({ request: 'getVariables' }, '*');
+                    function requestVariables() {
+                      return new Promise((resolve, reject) => {
+                        function handleMessage(event) {
+                          if (event.data && event.data.variables) {
+                            window.removeEventListener('message', handleMessage);
+                            resolve(event.data.variables);
+                          }
+                        }
+                        window.addEventListener('message', handleMessage);
+                        window.parent.postMessage({ request: 'getVariables' }, '*');
+                      });
+                    }
+                    async function getVariables() {
+                        const variables = await requestVariables();
+                        return variables;
                     }
                     function setVariables(newVariables) {
                       if (typeof newVariables === 'object' && newVariables !== null) {
