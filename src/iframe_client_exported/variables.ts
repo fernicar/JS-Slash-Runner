@@ -83,7 +83,7 @@ async function updateVariablesWith(updater, option = {}) {
         type: option.type ?? 'chat',
     };
     let variables = await getVariables(option);
-    variables = updater(variables);
+    variables = await updater(variables);
     await replaceVariables(variables, option);
     console.info(\`[Chat Message][updateVariablesWith](\${getIframeName()}) 用函数对\${option.type === 'chat' ? \`聊天\` : \`全局\`}变量表进行更新, 结果: \${JSON.stringify(variables)}, 使用的函数:\\n\\n \${JSON.stringify(detail.format_function_to_string(updater))}\`);
     return variables;
