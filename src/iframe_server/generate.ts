@@ -1,4 +1,3 @@
-// TODO: 黑奴给我修报错
 // @ts-nocheck
 import {
   getRegexedString,
@@ -11,6 +10,7 @@ import {
 } from "../../../../../world-info.js";
 import { shouldWIAddPrompt, NOTE_MODULE_NAME, metadata_keys } from "../../../../../authors-note.js";
 import {
+  setupChatCompletionPromptManager,
   prepareOpenAIMessages,
   setOpenAIMessageExamples,
   setOpenAIMessages,
@@ -19,11 +19,10 @@ import {
   ChatCompletion,
   Message,
   MessageCollection,
-  promptManager
 } from "../../../../../openai.js";
 import {
   chat,
-  extension_prompts,
+  saveChatConditional,
   getCharacterCardFields,
   setExtensionPrompt,
   getExtensionPromptRoleByName,
@@ -48,7 +47,7 @@ import {
   countOccurrences,
   saveSettingsDebounced
 } from "../../../../../../script.js";
-import { extension_settings } from "../../../../../extensions.js";
+import { extension_settings, getContext } from "../../../../../extensions.js";
 import { Prompt, PromptCollection } from "../../../../../PromptManager.js";
 import {
   power_user,
@@ -184,6 +183,7 @@ namespace detail {
 let this_max_context = oai_settings.openai_max_tokens;
 let abortController = new AbortController();
 let is_send_press = false;
+let extension_prompts = getContext().extensionPrompts;
 const signal = abortController.signal;
 const type = "quiet";
 const dryRun = false;
@@ -261,6 +261,7 @@ class StreamingProcessor {
     }
     this.isStopped = true;
     unblockGeneration();
+    saveChatConditional();
   }
 
   async *nullStreamingGeneration(): AsyncGenerator<{ text: string }, void, void> {
@@ -296,6 +297,7 @@ class StreamingProcessor {
 
     } catch (err) {
       if (!this.isFinished) {
+        this.onErrorStreaming();
         throw new Error(`Generate method error: ${err}`);
       }
       this.messageBuffer = '';
@@ -344,7 +346,7 @@ async function iframeGenerate({
       inject,
       order,
     }, processedUserInput);
-  // console.log("generate_data", generate_data);
+  console.log("[Generate:发送提示词]", generate_data);
   // 4. 根据 stream 参数决定生成方式
   return await generateResponse(generate_data, stream);
 }
@@ -1098,7 +1100,7 @@ async function processChatHistoryAndInject(
     prompt.content = substituteParams(prompt.content);
 
     const chatMessage = await Message.fromPromptAsync(prompt);
-
+    const promptManager = setupChatCompletionPromptManager();
     if (
       promptManager.serviceSettings.names_behavior ===
       character_names_behavior.COMPLETION &&
@@ -1269,6 +1271,7 @@ async function generateResponse(
     if (!is_send_press) {
       unblockGeneration();
     }
+    await saveChatConditional();
   }
   return result;
 }
@@ -1298,14 +1301,15 @@ function unblockGeneration() {
   setGenerationProgress(0);
   flushEphemeralStoppingStrings();
   //清理深度注入
-  for (const key of Object.keys(extension_prompts)) {
+  let extension_prompts_clear = getContext().extensionPrompts;
+  for (const key of Object.keys(extension_prompts_clear)) {
     if (key.startsWith("customDepthWI")) {
-      delete extension_prompts[key];
+      delete extension_prompts_clear[key];
     }
   }
-  for (const key of Object.keys(extension_prompts)) {
+  for (const key of Object.keys(extension_prompts_clear)) {
     if (key.startsWith("INJECTION")) {
-      delete extension_prompts[key];
+      delete extension_prompts_clear[key];
     }
   }
 }
