@@ -51,7 +51,7 @@ function fromTavernRegex(tavern_regex) {
             ...(tavern_regex.source.slash_command ? [regex_placement.SLASH_COMMAND] : []),
             ...(tavern_regex.source.world_info ? [regex_placement.WORLD_INFO] : []),
         ],
-        substituteRegex: false, // TODO: handle this?
+        substituteRegex: 0, // TODO: handle this?
         // @ts-ignore
         minDepth: tavern_regex.min_depth,
         // @ts-ignore
