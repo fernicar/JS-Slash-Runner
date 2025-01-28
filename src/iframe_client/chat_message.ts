@@ -28,13 +28,11 @@ interface GetChatMessagesOption {
  * @returns 一个数组, 数组的元素是每楼的消息 `ChatMessage`. 该数组依据按 message_id 从低到高排序.
  *
  * @example
- * // 仅获取第 10 楼会被 ai 使用的消息页
+ * // 获取第 10 楼的所有消息页
  * const messages = await getChatMessages(10);
  * const messages = await getChatMessages("10");
- * // 获取第 10 楼的所有消息页
- * const messages = await getChatMessages(10, {swipe: true});
  * // 获取所有楼层的所有消息页
- * const messages = await getChatMessages("0-{{lastMessageId}}", {swipe: true});
+ * const messages = await getChatMessages("0-{{lastMessageId}}");
  */
 async function getChatMessages(range: string | number, option: GetChatMessagesOption = {}): Promise<ChatMessage[]> {
   /** @todo @deprecated 在未来移除它 */

@@ -579,11 +579,8 @@ async function getChatMessages(range: string | number, option: GetChatMessagesOp
 const messages = await getChatMessages(10);
 const messages = await getChatMessages("10");
 
-// 获取第 10 楼的所有消息页
-const messages = await getChatMessages(10, {swipe: true});
-
 // 获取所有楼层的所有消息页
-const messages = await getChatMessages("0-{{lastMessageId}}", {swipe: true});
+const messages = await getChatMessages("0-{{lastMessageId}}");
 ```
 
 #### 修改楼层消息
