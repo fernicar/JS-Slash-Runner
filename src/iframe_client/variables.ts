@@ -66,6 +66,10 @@ async function replaceVariables(variables: Record<string, any>, option: Variable
   });
 }
 
+type VariablesUpdater =
+  | ((variables: Record<string, any>) => Record<string, any>)
+  | ((variables: Record<string, any>) => Promise<Record<string, any>>);
+
 /**
  * 用 `updater` 函数更新变量表
  *
@@ -83,12 +87,12 @@ async function replaceVariables(variables: Record<string, any>, option: Variable
  * // 更新 "爱城华恋.好感度" 为原来的 2 倍, 如果该变量不存在则设置为 0
  * await updateVariablesWith(variables => _.update(variables, "爱城华恋.好感度", value => value ? value * 2 : 0));
  */
-async function updateVariablesWith(updater: (variables: Record<string, any>) => Record<string, any>, option: VariableOption = {}): Promise<Record<string, any>> {
+async function updateVariablesWith(updater: VariablesUpdater, option: VariableOption = {}): Promise<Record<string, any>> {
   option = {
     type: option.type ?? 'chat',
   } as Required<VariableOption>;
   let variables = await getVariables(option);
-  variables = updater(variables);
+  variables = await updater(variables);
   await replaceVariables(variables, option);
 
   console.info(`[Chat Message][updateVariablesWith](${getIframeName()}) 用函数对${option.type === 'chat' ? `聊天` : `全局`}变量表进行更新, 结果: ${JSON.stringify(variables)}, 使用的函数:\n\n ${JSON.stringify(detail.format_function_to_string(updater))}`);

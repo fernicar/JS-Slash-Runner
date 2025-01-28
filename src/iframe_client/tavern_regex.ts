@@ -107,6 +107,10 @@ async function replaceTavernRegexes(regexes: TavernRegex[], option: ReplaceTaver
   });
 }
 
+type TavernRegexUpdater =
+  | ((regexes: TavernRegex[]) => TavernRegex[])
+  | ((regexes: TavernRegex[]) => Promise<TavernRegex[]>);
+
 /**
  * 用 `updater` 函数更新酒馆正则
  *
@@ -127,12 +131,12 @@ async function replaceTavernRegexes(regexes: TavernRegex[], option: ReplaceTaver
  *   return regexes;
  * });
  */
-async function updateTavernRegexesWith(updater: (variables: TavernRegex[]) => TavernRegex[], option: ReplaceTavernRegexesOption = {}): Promise<TavernRegex[]> {
+async function updateTavernRegexesWith(updater: TavernRegexUpdater, option: ReplaceTavernRegexesOption = {}): Promise<TavernRegex[]> {
   const defaulted_option: Required<ReplaceTavernRegexesOption> = {
     scope: option.scope ?? 'all',
   } as Required<ReplaceTavernRegexesOption>;
   let regexes = await getTavernRegexes(defaulted_option);
-  regexes = updater(regexes);
+  regexes = await updater(regexes);
   await replaceTavernRegexes(regexes, defaulted_option);
 
   console.info(`[Chat Message][updateVariablesWith](${getIframeName()}) 用函数对${{ all: '全部', global: '全局', character: '局部' }[defaulted_option.scope]}变量表进行更新, 结果: ${JSON.stringify(regexes)}, 使用的函数:\n\n ${JSON.stringify(detail.format_function_to_string(updater))}`);
