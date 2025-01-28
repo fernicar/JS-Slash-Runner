@@ -45,10 +45,10 @@ export function registerIframeChatMessageHandler() {
                 console.debug(`${getLogPrefix(event)}筛去了第 ${message_id} 楼的消息因为它${option.hide_state === 'hidden' ? `` : `没`} 被隐藏`);
                 return null;
             }
-            const data = chat_message?.data ?? {};
             const swipe_id = chat_message?.swipe_id ?? 0;
             const swipes = chat_message?.swipes ?? [chat_message.mes];
-            const swipes_data = chat_message?.swipe_info?.map((info) => info?.data) ?? [data];
+            const swipes_data = chat_message?.variables ?? [];
+            const data = swipes_data[swipe_id] ?? {};
             return {
                 message_id: message_id,
                 name: chat_message.name,
@@ -92,7 +92,7 @@ export function registerIframeChatMessageHandler() {
             }
             // swipe_id 对应的消息页存在
             if (option.swipe_id == 0 || (chat_message.swipes && option.swipe_id < chat_message.swipes.length)) {
-                return false;
+                return true;
             }
             if (!chat_message.swipes) {
                 chat_message.swipe_id = 0;
@@ -111,18 +111,17 @@ export function registerIframeChatMessageHandler() {
         const message = field_values.message ?? chat_message.swipes[swipe_id_to_set_index] ?? chat_message.mes;
         const update_chat_message = () => {
             const message_demacroed = substituteParamsExtended(message);
+            if (field_values.data) {
+                if (!chat_message.variables) {
+                    chat_message.variables = [];
+                }
+                chat_message.variables[swipe_id_to_set_index] = field_values.data;
+            }
             if (chat_message.swipes) {
                 chat_message.swipes[swipe_id_to_set_index] = message_demacroed;
-                if (field_values.data) {
-                    const swipe_info = chat_message.swipe_info[swipe_id_to_set_index];
-                    Object.assign(swipe_info, { data: field_values.data });
-                }
                 chat_message.swipe_id = swipe_id_to_use_index;
             }
             if (swipe_id_to_use_index === swipe_id_to_set_index) {
-                if (field_values.data) {
-                    chat_message.data = field_values.data;
-                }
                 chat_message.mes = message_demacroed;
             }
         };
