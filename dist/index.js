@@ -1,4 +1,3 @@
-// @ts-nocheck
 // TODO: 拆分消息 iframe 到 message_iframe.ts 中
 // TODO: 拆分 triggerSlash triggerSlashWithResult getVariables setVariables 到对应于 src/iframe_client/... 的 src/iframe_server/... 文件中
 // TODO: 拆分音视频相关 slash command 到 slash_command 文件夹中

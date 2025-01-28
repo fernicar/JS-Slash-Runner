@@ -17,14 +17,14 @@
  * text == "<p>少女歌剧 speaks in 5</p>";
  */
 async function formatAsDisplayedMessage(text, option = {}) {
-  option = {
-    message_id: option.message_id ?? 'last',
-  };
-  return detail.make_iframe_promise({
-    request: '[DisplayedMessage][formatAsDisplayedMessage]',
-    text: text,
-    option: option,
-  });
+    option = {
+        message_id: option.message_id ?? 'last',
+    };
+    return detail.make_iframe_promise({
+        request: '[DisplayedMessage][formatAsDisplayedMessage]',
+        text: text,
+        option: option,
+    });
 }
 /**
  * 获取消息楼层号对应的消息内容 JQuery
@@ -47,6 +47,6 @@ async function formatAsDisplayedMessage(text, option = {}) {
  * retrieveDisplayedMessage(0).append(formatAsDisplayedMessage("{{char}} speaks in {{lastMessageId}}"));
  */
 function retrieveDisplayedMessage(message_id) {
-  return $(`div.mes[mesid = "${message_id}"]`, window.parent.document).find(`div.mes_text`);
+    return $(`div.mes[mesid = "${message_id}"]`, window.parent.document).find(`div.mes_text`);
 }
 //# sourceMappingURL=displayed_message.js.map
