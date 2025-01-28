@@ -79,7 +79,7 @@ function fromTavernRegex(tavern_regex: TavernRegex): RegexScriptData {
       ...(tavern_regex.source.world_info ? [regex_placement.WORLD_INFO] : []),
     ],
 
-    substituteRegex: false,  // TODO: handle this?
+    substituteRegex: 0,  // TODO: handle this?
 
     // @ts-ignore
     minDepth: tavern_regex.min_depth,

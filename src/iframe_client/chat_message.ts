@@ -98,11 +98,11 @@ interface SetChatMessageOption {
  * // 为楼层 5 当前消息页绑定数据
  * await setChatMessage({data: {神乐光好感度: 5}}, 5);
  */
-async function setChatMessage(field_values: ChatMessageToSet, message_id: number, option: SetChatMessageOption): Promise<void>;
+async function setChatMessage(field_values: ChatMessageToSet, message_id: number, option?: SetChatMessageOption): Promise<void>;
 /**
  * @deprecated 已弃用. 请使用 `setChatMessage({message: text}, ...)` 而非 `setChatMessage(text, ...)`;
  */
-async function setChatMessage(message: string, message_id: number, option: SetChatMessageOption): Promise<void>;
+async function setChatMessage(message: string, message_id: number, option?: SetChatMessageOption): Promise<void>;
 async function setChatMessage(field_values: string | ChatMessageToSet, message_id: number, option: SetChatMessageOption = {}): Promise<void> {
   const required_option: Required<SetChatMessageOption> = {
     swipe_id: option.swipe_id ?? 'current',

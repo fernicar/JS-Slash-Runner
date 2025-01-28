@@ -618,7 +618,7 @@ interface SetChatMessageOption {
  *   - `swipe_id?:'current'|number`: 要替换的消息页 (`'current'` 来替换当前使用的消息页, 或从 0 开始的序号来替换对应消息页), 如果消息中还没有该消息页, 则会创建该页; 默认为 `'current'`
  *   - `refresh?:'none'|'display_current'|'display_and_render_current'|'all'`: 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`
  */
-async function setChatMessage(field_values: ChatMessageToSet, message_id: number, option: SetChatMessageOption): Promise<void>
+async function setChatMessage(field_values: ChatMessageToSet, message_id: number, option: SetChatMessageOption = {}): Promise<void>
 ```
 
 示例:
