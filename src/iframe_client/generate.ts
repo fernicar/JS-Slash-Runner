@@ -74,7 +74,7 @@ interface GenerateRawConfig {
   /**
    * 用户输入.
    *
-   * 如果设置, 则无论 ordered_prompts 中是否有 'user_input' 都会加入该用户输入提示词; 默认加入在末尾.
+   * 如果设置, 则无论 ordered_prompts 中是否有 'user_input' 都会加入该用户输入提示词; 默认加入在 'chat_history' 末尾.
    */
   user_input?: string;
 
