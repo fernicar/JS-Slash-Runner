@@ -3,10 +3,11 @@ interface ChatMessage {
   name: string;
   role: 'system' | 'assistant' | 'user';
   is_hidden: boolean;
-  message: string;
-  data: Record<string, any>;
 
-  swipe_id: number;
+  swipe_id: number;           // 当前被使用的消息页页号
+  message: string;            // 当前被使用的消息页文本
+  data: Record<string, any>;  // 当前被使用的消息页所绑定的数据
+
   swipes: string[];
   swipes_data: Record<string, any>[];
 }
