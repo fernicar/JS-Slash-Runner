@@ -39,7 +39,7 @@ async function formatAsDisplayedMessage(text: string, option: FormatAsDisplayedM
  *
  * @example
  * // 获取第 0 楼的消息内容文本
- * const text = retrieveMessageTextHtml(0).text();
+ * const text = retrieveDisplayedMessage(0).text();
  *
  * @example
  * // 修改第 0 楼的消息内容文本
