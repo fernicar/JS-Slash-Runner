@@ -1614,6 +1614,7 @@ eventOn("随便什么名字", (data1, data2) => { console.info(data1, data2); })
  * @param config 提示词和生成方式设置
  *   - `user_input?:string`: 用户输入
  *   - `should_stream?:boolean`: 是否启用流式传输; 默认为 'false'
+ *   - `image?:File|string`: 图片输入
  *   - `overrides?:Overrides`: 覆盖选项. 若设置, 则 `overrides` 中给出的字段将会覆盖对应的提示词. 如 `overrides.char_description = '覆盖的角色描述';` 将会覆盖角色描述
  *   - `injects?:InjectionPrompt[]`: 要额外注入的提示词
  *   - `max_chat_history?:'all'|number`: 最多使用多少条聊天历史
@@ -1642,9 +1643,18 @@ interface GenerateConfig {
   should_stream?: boolean;
 
   /**
+   * 图片输入，支持以下格式：
+   * - File 对象：通过 input[type="file"] 获取的文件对象
+   * - Base64 字符串：图片的 base64 编码
+   * - URL 字符串：图片的在线地址
+   */
+  image?: File | string;
+
+  /**
    * 覆盖选项. 若设置, 则 `overrides` 中给出的字段将会覆盖对应的提示词.
    *   如 `overrides.char_description = '覆盖的角色描述';` 将会覆盖角色描述.
    */
+
   overrides?: Overrides;
 
   /** 要额外注入的提示词 */
@@ -1663,7 +1673,13 @@ const result = await generate({ user_input: '你好', should_stream: true });
 ```
 
 ```typescript
+// 图片输入
+const result = await generate({ user_input: '你好', image: 'https://example.com/image.jpg' });
+```
+
+```typescript
 // 注入、覆盖提示词
+
 const result = await generate({
   user_input: '你好',
   injects: [{ role: 'system', content: '思维链...', position: 'in_chat', depth: 0, should_scan: true, }]
@@ -1692,8 +1708,10 @@ const result = await generate({
  * @param config 提示词和生成方式设置
  *   - `user_input?:string`: 用户输入
  *   - `should_stream?:boolean`: 是否启用流式传输; 默认为 'false'
+ *   - `image?:File|string`: 图片输入
  *   - `overrides?:Overrides`: 覆盖选项. 若设置, 则 `overrides` 中给出的字段将会覆盖对应的提示词. 如 `overrides.char_description = '覆盖的角色描述';` 将会覆盖角色描述
  *   - `injects?:InjectionPrompt[]`: 要额外注入的提示词
+
  *   - `ordered_prompts?:(BuiltinPrompt|RolePrompt)[]`: 一个提示词数组, 数组元素将会按顺序发给 ai, 因而相当于自定义预设
  * @returns 生成的最终文本
  */
@@ -1723,6 +1741,14 @@ interface GenerateRawConfig {
    */
   should_stream?: boolean;
 
+  /**
+   * 图片输入，支持以下格式：
+   * - File 对象：通过 input[type="file"] 获取的文件对象
+   * - Base64 字符串：图片的 base64 编码
+   * - URL 字符串：图片的在线地址
+   */
+  image?: File | string;
+  
   /**
    * 覆盖选项. 若设置, 则 `overrides` 中给出的字段将会覆盖对应的提示词.
    *   如 `overrides.char_description = '覆盖的角色描述';` 将会覆盖提示词

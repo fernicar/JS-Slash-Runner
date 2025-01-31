@@ -3,6 +3,14 @@ interface GenerateConfig {
   user_input?: string;
 
   /**
+   * 图片输入，支持以下格式：
+   * - File 对象：通过 input[type="file"] 获取的文件对象
+   * - Base64 字符串：图片的 base64 编码
+   * - URL 字符串：图片的在线地址
+   */
+  image?: File | string;
+
+  /**
    * 是否启用流式传输; 默认为 `false`.
    *
    * 若启用流式传输, 每次得到流式传输结果时, 函数将会发送事件:
@@ -79,7 +87,16 @@ interface GenerateRawConfig {
   user_input?: string;
 
   /**
+   * 图片输入，支持以下格式：
+   * - File 对象：通过 input[type="file"] 获取的文件对象
+   * - Base64 字符串：图片的 base64 编码
+   * - URL 字符串：图片的在线地址
+   */
+  image?: File | string;
+
+  /**
    * 是否启用流式传输; 默认为 `false`.
+
    *
    * 若启用流式传输, 每次得到流式传输结果时, 函数将会发送事件:
    * - `ifraem_events.STREAM_TOKEN_RECEIVED_FULLY`: 监听它可以得到流式传输的当前完整文本 ("这是", "这是一条", "这是一条流式传输")

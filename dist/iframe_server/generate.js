@@ -2,13 +2,13 @@
 import { getRegexedString, regex_placement, } from "../../../../../extensions/regex/engine.js";
 import { getWorldInfoPrompt, wi_anchor_position, world_info_include_names } from "../../../../../world-info.js";
 import { shouldWIAddPrompt, NOTE_MODULE_NAME, metadata_keys } from "../../../../../authors-note.js";
-import { setupChatCompletionPromptManager, prepareOpenAIMessages, setOpenAIMessageExamples, setOpenAIMessages, sendOpenAIRequest, oai_settings, ChatCompletion, Message, MessageCollection, } from "../../../../../openai.js";
+import { setupChatCompletionPromptManager, prepareOpenAIMessages, setOpenAIMessageExamples, setOpenAIMessages, sendOpenAIRequest, oai_settings, ChatCompletion, Message, MessageCollection, isImageInliningSupported, } from "../../../../../openai.js";
 import { chat, saveChatConditional, getCharacterCardFields, setExtensionPrompt, getExtensionPromptRoleByName, extension_prompt_roles, extension_prompt_types, baseChatReplace, name1, name2, activateSendButtons, showSwipeButtons, setGenerationProgress, eventSource, getBiasStrings, substituteParams, chat_metadata, this_chid, characters, deactivateSendButtons, MAX_INJECTION_DEPTH, cleanUpMessage, isOdd, countOccurrences, saveSettingsDebounced } from "../../../../../../script.js";
 import { extension_settings, getContext } from "../../../../../extensions.js";
 import { Prompt, PromptCollection } from "../../../../../PromptManager.js";
 import { power_user, persona_description_positions, flushEphemeralStoppingStrings, } from "../../../../../power-user.js";
 import { getIframeName, getLogPrefix, registerIframeHandler } from "./index.js";
-import { Stopwatch } from "../../../../../utils.js";
+import { Stopwatch, getBase64Async } from "../../../../../utils.js";
 function fromOverrides(overrides) {
     return {
         world_info_before: overrides.world_info_before,
@@ -42,6 +42,7 @@ function fromGenerateConfig(config) {
     return {
         user_input: config.user_input,
         use_preset: true,
+        image: config.image,
         stream: config.should_stream ?? false,
         overrides: config.overrides !== undefined ? fromOverrides(config.overrides) : undefined,
         inject: config.injects !== undefined ? config.injects.map(fromInjectionPrompt) : undefined,
@@ -52,6 +53,7 @@ function fromGenerateRawConfig(config) {
     return {
         user_input: config.user_input,
         use_preset: false,
+        image: config.image,
         stream: config.should_stream ?? false,
         overrides: config.overrides ? fromOverrides(config.overrides) : undefined,
         inject: config.injects ? config.injects.map(fromInjectionPrompt) : undefined,
@@ -167,7 +169,7 @@ class StreamingProcessor {
         return this.result;
     }
 }
-async function iframeGenerate({ user_input = "", use_preset = true, overrides = undefined, max_chat_history = undefined, inject = [], order = undefined, stream = false, } = {}) {
+async function iframeGenerate({ user_input = "", use_preset = true, image = null, overrides = undefined, max_chat_history = undefined, inject = [], order = undefined, stream = false, } = {}) {
     const processedUserInput = processUserInput(substituteParams(user_input), oai_settings) || "";
     // 1. 初始化
     await initializeGeneration();
@@ -181,12 +183,14 @@ async function iframeGenerate({ user_input = "", use_preset = true, overrides = 
     // 3. 根据 use_preset 分流处理
     const generate_data = use_preset
         ? await handlePresetPath(baseData, processedUserInput, {
+            image,
             overrides,
             max_chat_history,
             inject,
             order,
         })
         : await handleCustomPath(baseData, {
+            image,
             overrides,
             max_chat_history,
             inject,
@@ -472,10 +476,14 @@ async function handlePresetPath(baseData, processedUserInput, config) {
             characters[this_chid].scenario = scenarioOverride;
         }
         // 添加user消息(一次性)
-        baseData.chatContext.oaiMessages.unshift({
+        const userMessageTemp = {
             role: "user",
             content: processedUserInput,
-        });
+        };
+        if (config.image) {
+            userMessageTemp.image = await convertFileToBase64(config.image);
+        }
+        baseData.chatContext.oaiMessages.unshift(userMessageTemp);
         const messageData = {
             name2,
             char_description: baseData.characterInfo.description,
@@ -675,7 +683,6 @@ async function handleCustomPath(baseData, config, processedUserInput) {
 }
 async function processChatHistoryAndInject(baseData, promptConfig, chatCompletion, processedUserInput) {
     const orderArray = promptConfig.order || default_order;
-    // 获取chat_history和user_input在order中的实际位置
     const chatHistoryIndex = orderArray.findIndex(item => typeof item === 'string' && item.toLowerCase() === 'chat_history');
     const userInputIndex = orderArray.findIndex(item => typeof item === 'string' && item.toLowerCase() === 'user_input');
     const hasUserInput = userInputIndex !== -1;
@@ -683,18 +690,17 @@ async function processChatHistoryAndInject(baseData, promptConfig, chatCompletio
     const isChatHistoryFiltered = isPromptFiltered('chat_history', promptConfig);
     // 创建用户输入消息
     const userMessage = await Message.createAsync("user", processedUserInput, "user_input");
+    // 仅在需要时添加图像
+    if (promptConfig.image && hasUserInput) {
+        await userMessage.addImage(await convertFileToBase64(promptConfig.image));
+    }
     // 如果聊天记录被过滤或不在order中，只处理用户输入
     if (isChatHistoryFiltered || !hasChatHistory) {
-        if (hasUserInput) {
-            chatCompletion.add(new MessageCollection("user_input", userMessage), userInputIndex);
-        }
-        else {
-            // 如果order中没有指定user_input位置,添加到最后
-            chatCompletion.add(new MessageCollection("user_input", userMessage), orderArray.length);
-        }
+        const insertIndex = hasUserInput ? userInputIndex : orderArray.length;
+        chatCompletion.add(new MessageCollection("user_input", userMessage), insertIndex);
         return;
     }
-    // 处理聊天记录在order中的情况
+    // 处理聊天记录
     const chatCollection = new MessageCollection("chat_history");
     // 为新聊天指示预留token
     const newChat = oai_settings.new_chat_prompt;
@@ -711,16 +717,19 @@ async function processChatHistoryAndInject(baseData, promptConfig, chatCompletio
         chatCompletion.canAfford(emptyMessage)) {
         chatCollection.add(emptyMessage);
     }
-    // 将用户输入添加到聊天记录
+    // 将用户消息添加到消息数组中准备处理注入
     if (!hasUserInput) {
-        baseData.chatContext.oaiMessages.unshift({
+        const userPrompt = {
             role: "user",
             content: processedUserInput,
-            identifier: "user_input"
-        });
+            identifier: "user_input",
+            image: promptConfig.image ? await convertFileToBase64(promptConfig.image) : undefined
+        };
+        baseData.chatContext.oaiMessages.unshift(userPrompt);
     }
-    // 处理注入
+    // 处理注入和添加消息
     const messages = (await populationInjectionPrompts(baseData, promptConfig.inject)).reverse();
+    const imageInlining = isImageInliningSupported();
     // 添加聊天记录
     const chatPool = [...messages];
     for (const chatPrompt of chatPool) {
@@ -736,6 +745,9 @@ async function processChatHistoryAndInject(baseData, promptConfig, chatCompletio
                 ? prompt.name
                 : promptManager.sanitizeName(prompt.name);
             await chatMessage.setName(messageName);
+        }
+        if (imageInlining && chatPrompt.image) {
+            await chatMessage.addImage(chatPrompt.image);
         }
         if (chatCompletion.canAfford(chatMessage)) {
             chatCollection.add(chatMessage);
@@ -915,6 +927,12 @@ function extractMessageFromData(data) {
         data?.message?.content?.[0]?.text ??
         data?.message?.tool_plan ??
         "");
+}
+async function convertFileToBase64(image) {
+    if (image instanceof File) {
+        return await getBase64Async(image);
+    }
+    return image;
 }
 function addTemporaryUserMessage(userContent) {
     setExtensionPrompt('TEMP_USER_MESSAGE', userContent, extension_prompt_types.IN_PROMPT, 0, true, 1);
