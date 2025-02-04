@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           rm -rf github_docs/build
-          sphinx-build main/doc github_docs/build
+          sphinx-build -b dirhtml main/doc github_docs/build
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9.1.3

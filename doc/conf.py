@@ -43,16 +43,14 @@ togglebutton_hint_hide = "点击隐藏"
 templates_path = ['_templates']
 exclude_patterns = ['README.md']
 
-rst_prolog = '\n'.join(
-    list(
-        map(
-            lambda filename: open(f'_static/{filename}', 'r', encoding="utf8").read(),
-            ['links.rst']))) + '\n'
-
 language = 'zh_CN'
 
 html_copy_source = False
 html_show_sourcelink = False
+
+myst_enable_extensions = ["colon_fence", "deflist", "dollarmath"]
+myst_heading_anchors = 2
+myst_highlight_code_blocks = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -80,7 +78,7 @@ html_static_path = ['_static', '_theme']
 html_search_language = 'zh'
 html_last_updated_fmt = '%Y-%m-%d %H:%M:%S'
 git_last_updated_timezone = 'Asia/Shanghai'
-html_baseurl = 'TODO'
+html_baseurl = 'https://n0vi028.github.io/JS-Slash-Runner/'
 sitemap_filename = 'sitemapindex.xml'
 sitemap_url_scheme = '{link}'
 html_extra_path = [
