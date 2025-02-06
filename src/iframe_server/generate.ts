@@ -79,7 +79,7 @@ function fromOverrides(overrides: Overrides): detail.OverrideConfig {
     world_info_after: overrides.world_info_after,
     dialogue_examples: overrides.dialogue_examples,
 
-    world_info_depth: overrides.chat_history?.with_depth_entries === false ? '' : undefined,
+    with_depth_entries: overrides.chat_history?.with_depth_entries,
     author_note: overrides.chat_history?.author_note,
     chat_history: overrides.chat_history?.prompts,
   };
@@ -119,6 +119,7 @@ function fromGenerateRawConfig(config: GenerateRawConfig): detail.GenerateParams
     use_preset: false,
     image: config.image,
     stream: config.should_stream ?? false,
+    max_chat_history: typeof config.max_chat_history === 'number' ? config.max_chat_history : undefined,
     overrides: config.overrides ? fromOverrides(config.overrides) : undefined,
     inject: config.injects ? config.injects.map(fromInjectionPrompt) : undefined,
     order: config.ordered_prompts,
@@ -154,7 +155,7 @@ namespace detail {
     world_info_after?: string;     // 世界书（角色定义之后的部分）
     dialogue_examples?: string;    // 角色高级定义-对话示例
 
-    world_info_depth?: string;     // 世界书深度
+    with_depth_entries?: boolean;     // 世界书深度
     author_note?: string;          // 作者注释
     chat_history?: RolePrompt[];   // 聊天历史
   }
@@ -187,7 +188,6 @@ namespace detail {
 let this_max_context = oai_settings.openai_max_tokens;
 let abortController = new AbortController();
 let is_send_press = false;
-let extension_prompts = getContext().extensionPrompts;
 const signal = abortController.signal;
 const type = "quiet";
 const dryRun = false;
@@ -447,12 +447,10 @@ async function prepareAndOverrideData(config: Omit<detail.GenerateParams, 'user_
 
   // 添加临时消息用于激活世界书
   addTemporaryUserMessage(processedUserInput);
-
   // 8. 处理世界信息
   const worldInfo = await processWorldInfo(
     oaiMessages,
-    (id) => isPromptFiltered(id, config),
-    getOverrideContent
+    config,
   );
 
   // 移除临时消息
@@ -547,7 +545,7 @@ function setPersonaDescriptionExtensionPrompt() {
     promptPositions.includes(power_user.persona_description_position) &&
     shouldWIAddPrompt
   ) {
-    const originalAN = extension_prompts[NOTE_MODULE_NAME].value;
+    const originalAN = getContext().extensionPrompts[NOTE_MODULE_NAME].value;
     const ANWithDesc =
       power_user.persona_description_position ===
         persona_description_positions.TOP_AN
@@ -640,8 +638,7 @@ async function processChatHistory(chat: any[]) {
 // 处理世界书
 async function processWorldInfo(
   oaiMessages: detail.RolePrompt[],
-  shouldExcludePrompt: (id: string) => boolean,
-  getOverrideContent: (identifier: string) => string | detail.RolePrompt[] | undefined
+  config: Omit<detail.GenerateParams, 'user_input' | 'use_preset'>,
 ) {
   const chatForWI = oaiMessages
     .filter((x) => x.role !== "system")
@@ -659,35 +656,35 @@ async function processWorldInfo(
     worldInfoDepth,
   } = await getWorldInfoPrompt(chatForWI, this_max_context, dryRun);
 
-  const world_info_before = !shouldExcludePrompt("world_info_before")
-    ? getOverrideContent("world_info_before") ?? rawWorldInfoBefore
-    : "";
-  const world_info_after = !shouldExcludePrompt("world_info_after")
-    ? getOverrideContent("world_info_after") ?? rawWorldInfoAfter
-    : "";
+  // 只有当提示词未被过滤时才获取内容
+  const world_info_before = isPromptFiltered("world_info_before", config)
+    ? ""
+    : config.overrides?.world_info_before ?? rawWorldInfoBefore;
 
-  // 只有当 override 内容为空字符串时才跳过处理
-  const world_info_depth_override = getOverrideContent("world_info_depth");
-  const world_info_depth = world_info_depth_override === "" ? null : (world_info_depth_override ?? worldInfoDepth);
+  const world_info_after = isPromptFiltered("world_info_after", config)
+    ? ""
+    : config.overrides?.world_info_after ?? rawWorldInfoAfter;
 
-  if (world_info_depth !== null) {
-    processWorldInfoDepth(world_info_depth);
+  if (isPromptFiltered("with_depth_entries", config)) {
+    const prompts = getContext().extensionPrompts;
+    Object.keys(prompts)
+      .filter(key => key.startsWith("customDepthWI"))
+      .forEach(key => delete prompts[key]);
   }
-
   return {
     worldInfoString,
     world_info_before,
     world_info_after,
     worldInfoExamples,
-    worldInfoDepth: world_info_depth,
+    worldInfoDepth: !isPromptFiltered("with_depth_entries", config) ? worldInfoDepth : null,
   };
 }
 // 处理世界信息深度部分
 function processWorldInfoDepth(worldInfoDepth: any[]) {
   // 清除现有的深度世界信息提示词防止重复注入
-  for (const key of Object.keys(extension_prompts)) {
+  for (const key of Object.keys(getContext().extensionPrompts)) {
     if (key.startsWith("customDepthWI")) {
-      delete extension_prompts[key];
+      delete getContext().extensionPrompts[key];
     }
   }
 
@@ -784,7 +781,7 @@ async function handlePresetPath(
       Scenario: baseData.characterInfo.scenario,
       worldInfoBefore: baseData.worldInfo.world_info_before,
       worldInfoAfter: baseData.worldInfo.world_info_after,
-      extensionPrompts: extension_prompts,
+      extensionPrompts: getContext().extensionPrompts,
       bias: baseData.chatContext.promptBias,
       type: "normal",
       quietPrompt: "",
@@ -1101,7 +1098,10 @@ async function processChatHistoryAndInject(
   }
 
   // 处理注入和添加消息
-  const messages = (await populationInjectionPrompts(baseData, promptConfig.inject)).reverse();
+  const messages = (await populationInjectionPrompts(
+    baseData.chatContext.oaiMessages,
+    promptConfig.inject
+  )).reverse();
   const imageInlining = isImageInliningSupported();
   // 添加聊天记录
   const chatPool = [...messages];
@@ -1148,13 +1148,15 @@ async function processChatHistoryAndInject(
   }
 }
 async function populationInjectionPrompts(
-  baseData: any,
+  messages: detail.RolePrompt[],
   customInjects: detail.InjectionPrompt[] = []
 ) {
+
+  let processedMessages = [...messages];
   let totalInsertedMessages = 0;
   const injectionPrompts = [];
 
-  const authorsNote = extension_prompts[NOTE_MODULE_NAME];
+  const authorsNote = getContext().extensionPrompts[NOTE_MODULE_NAME];
   if (authorsNote && authorsNote.value) {
     injectionPrompts.push({
       role: getPromptRole(authorsNote.role),
@@ -1219,12 +1221,12 @@ async function populationInjectionPrompts(
 
     if (roleMessages.length) {
       const injectIdx = i + totalInsertedMessages;
-      baseData.chatContext.oaiMessages.splice(injectIdx, 0, ...roleMessages);
+      processedMessages.splice(injectIdx, 0, ...roleMessages);
       totalInsertedMessages += roleMessages.length;
     }
   }
 
-  return baseData.chatContext.oaiMessages;
+  return processedMessages;
 }
 
 function getPromptRole(role: number) {
@@ -1251,6 +1253,13 @@ async function generateResponse(
     // @ts-ignore
     $("#mes_stop").css({ display: "flex" });
 
+    // 清理注入
+    const prompts = getContext().extensionPrompts;
+    Object.keys(prompts)
+      .filter(key => key.startsWith("customDepthWI") || key.startsWith("INJECTION"))
+      .forEach(key => delete prompts[key]);
+
+    await saveChatConditional();
     if (useStream) {
       let originalStreamSetting = oai_settings.stream_openai;
       if (!originalStreamSetting) {
@@ -1284,7 +1293,6 @@ async function generateResponse(
     if (!is_send_press) {
       unblockGeneration();
     }
-    await saveChatConditional();
   }
   return result;
 }
@@ -1313,18 +1321,6 @@ function unblockGeneration() {
   showSwipeButtons();
   setGenerationProgress(0);
   flushEphemeralStoppingStrings();
-  //清理深度注入
-  let extension_prompts_clear = getContext().extensionPrompts;
-  for (const key of Object.keys(extension_prompts_clear)) {
-    if (key.startsWith("customDepthWI")) {
-      delete extension_prompts_clear[key];
-    }
-  }
-  for (const key of Object.keys(extension_prompts_clear)) {
-    if (key.startsWith("INJECTION")) {
-      delete extension_prompts_clear[key];
-    }
-  }
 }
 function extractMessageFromData(data: any) {
   if (typeof data === "string") {
@@ -1361,8 +1357,19 @@ function isPromptFiltered(promptId: string, config: { overrides?: detail.Overrid
     return false;
   }
 
-  const override = config.overrides[promptId as keyof detail.OverrideConfig];
-  return override === "";
+  if (promptId === 'with_depth_entries') {
+    return config.overrides.with_depth_entries === false;
+  }
+
+  // 特殊处理 chat_history
+  if (promptId === 'chat_history') {
+    const prompts = config.overrides.chat_history;
+    return prompts !== undefined && (prompts.length === 0);
+  }
+
+  // 对于普通提示词，只有当它在 overrides 中存在且为空字符串时才被过滤
+  const override = config.overrides[promptId as keyof Omit<detail.OverrideConfig, 'chat_history'>];
+  return override !== undefined && override === '';
 }
 
 export function registerIframeGenerateHandler() {
