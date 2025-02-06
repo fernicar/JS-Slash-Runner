@@ -1711,7 +1711,7 @@ const result = await generate({
  *   - `image?:File|string`: 图片输入
  *   - `overrides?:Overrides`: 覆盖选项. 若设置, 则 `overrides` 中给出的字段将会覆盖对应的提示词. 如 `overrides.char_description = '覆盖的角色描述';` 将会覆盖角色描述
  *   - `injects?:InjectionPrompt[]`: 要额外注入的提示词
-
+ *   - `max_chat_history?:'all'|number`: 最多使用多少条聊天历史
  *   - `ordered_prompts?:(BuiltinPrompt|RolePrompt)[]`: 一个提示词数组, 数组元素将会按顺序发给 ai, 因而相当于自定义预设
  * @returns 生成的最终文本
  */
@@ -1757,6 +1757,9 @@ interface GenerateRawConfig {
 
   /* 要注入的提示词 */
   injects?: InjectionRawPrompt[];
+
+  /** 最多使用多少条聊天历史; 默认为 'all' */
+  max_chat_history?: 'all' | number;
 
   /**
    * 一个提示词数组, 数组元素将会按顺序发给 ai, 因而相当于自定义预设. 该数组允许存放两种类型:
