@@ -650,9 +650,11 @@ async function onExtensionToggle() {
         script_url.set(iframe_client);
         script_url.set(viewport_adjust_script);
         script_url.set(tampermonkey_script);
+        initializeLibraries();
         library_load_events.forEach((eventType) => {
             eventSource.on(eventType, initializeLibraries);
         });
+        initializeScripts();
         script_load_events.forEach((eventType) => {
             eventSource.on(eventType, initializeScripts);
         });
