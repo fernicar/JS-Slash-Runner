@@ -6,7 +6,7 @@
 
 ---
 
-:alert: **切勿在未经审查的情况下执行来自不明来源的 JavaScript 代码**
+⚠ **切勿在未经审查的情况下执行来自不明来源的 JavaScript 代码**
 
 ---
 
@@ -17,3 +17,4 @@
 - [角色卡作者如何使用本插件?](README_usage.md)
 - [常见问答](README_faq.md)
 - [参与贡献](README_contribution.md)
+- [文档（施工中）](https://n0vi028.github.io/JS-Slash-Runner-Doc/)
