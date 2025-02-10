@@ -31,7 +31,6 @@ async function getVariables(option: VariableOption = {}): Promise<Record<string,
     request: "[Variables][getVariables]",
     option: option,
   });
-
 }
 
 /**

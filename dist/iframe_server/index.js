@@ -1,6 +1,7 @@
 import { registerIframeChatMessageHandler } from "./chat_message.js";
 import { registerIframeDisplayedMessageHandler } from "./displayed_message.js";
 import { registerIframeEventHandler } from "./event.js";
+import { registerIframeFrontendVersionHandler } from "./frontend_version.js";
 import { registerIframeGenerateHandler } from "./generate.js";
 import { registerIframeLorebookHandler } from "./lorebook.js";
 import { registerIframeLorebookEntryHandler } from "./lorebook_entry.js";
@@ -45,8 +46,9 @@ export async function handleIframe(event) {
 }
 registerIframeChatMessageHandler();
 registerIframeDisplayedMessageHandler();
-registerIframeGenerateHandler();
 registerIframeEventHandler();
+registerIframeFrontendVersionHandler();
+registerIframeGenerateHandler();
 registerIframeLorebookEntryHandler();
 registerIframeLorebookHandler();
 registerIframeSlashHandler();

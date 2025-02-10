@@ -319,6 +319,31 @@ saveAs("https://gitgud.io/SmilingFace/tavern_resource/-/raw/main/角色卡/妹�
 
 ## 脚本代码功能
 
+### 前端助手版本操作
+
+#### 检查前端助手版本
+
+```typescript
+/**
+ * 获取前端助手版本号
+ */
+function getFrontendVersion(): string {
+  return $(".js-settings", window.parent.document).find('.extension_info.flex-container.spaceBetween > small').text().replace('Ver ', '');
+}
+```
+
+自然地, 旧版本前端助手并没有这个函数. 为了让该功能在旧版本下正常使用, 你可以直接使用该函数内部的实现:
+
+```typescript
+const version = $(".js-settings", window.parent.document).find('.extension_info.flex-container.spaceBetween > small').text().replace('Ver ', '');
+```
+
+#### 尝试主动更新前端助手
+
+```typescript
+async function updateFrontendVersion(): Promise<boolean>
+```
+
 ### Quick Reply 触发
 
 我们可以在嵌入的 iframe 中执行 SillyTavern 内部的 Slash 命令 (斜杠命令), 如 `/run`、`/echo` 等.
