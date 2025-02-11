@@ -743,7 +743,7 @@ function processUserInput(user_input: string, oai_settings: any) {
   if (user_input === "") {
     user_input = oai_settings.send_if_empty.trim();
   }
-  return getRegexedString(user_input, regex_placement.USER_INPUT);
+  return getRegexedString(user_input, regex_placement.USER_INPUT, { isPrompt: true, depth: 0 });
 }
 //使用预设
 async function handlePresetPath(
