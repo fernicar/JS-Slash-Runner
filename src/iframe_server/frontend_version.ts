@@ -1,18 +1,10 @@
 import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
 import { getRequestHeaders } from '../../../../../../script.js';
-import { extensionTypes } from '../../../../../extensions.js';
 import { t } from '../../../../../i18n.js';
 
 interface IframeUpdateFrontendVersion extends IframeMessage {
   request: '[FrontendVersion][updateFrontendVersion]';
   text: string;
-}
-
-function getExtensionType(extension_id: string): string {
-  const id = Object.keys(extensionTypes).find(
-    id => id === extension_id || (id.startsWith('third-party') && id.endsWith(extension_id)),
-  );
-  return id ? extensionTypes[id] : '';
 }
 
 export function registerIframeFrontendVersionHandler() {
@@ -24,10 +16,7 @@ export function registerIframeFrontendVersionHandler() {
       const response = await fetch('/api/extensions/update', {
         method: 'POST',
         headers: getRequestHeaders(),
-        body: JSON.stringify({
-          extensionName: extension_name,
-          global: getExtensionType(extension_name) === 'global',
-        }),
+        body: JSON.stringify({ extensionName: extension_name }),
       });
 
       if (!response.ok) {
