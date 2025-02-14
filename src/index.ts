@@ -1314,27 +1314,27 @@ async function togglePlayPause(type) {
   }
 }
 
-async function handleUrlManagerClick(type) {
+async function handleUrlManagerClick(typeKey) {
   if (!chat_metadata.variables) {
     chat_metadata.variables = {};
   }
-  const existingUrls = chat_metadata.variables[type] || [];
+  const existingUrls = chat_metadata.variables[typeKey] || [];
 
-  const newUrls = await openUrlManagerPopup(type);
+  const newUrls = await openUrlManagerPopup(typeKey);
 
   if (!newUrls) {
-    console.debug(`${type} URL导入已取消`);
+    console.debug(`${typeKey} URL导入已取消`);
     return;
   }
 
   const mergedUrls = [...new Set([...newUrls, ...existingUrls])];
 
-  chat_metadata.variables[type] = JSON.stringify(mergedUrls);
+  chat_metadata.variables[typeKey] = JSON.stringify(mergedUrls);
   saveMetadataDebounced();
-  if (type === "bgmurl") {
+  if (typeKey === "bgmurl") {
     list_BGMS = await getBgmUrl();
     updateBGM(true);
-  } else if (type === "ambienturl") {
+  } else if (typeKey === "ambienturl") {
     list_ambients = await getAmbientUrl();
     updateAmbient(true);
   }
@@ -2564,7 +2564,7 @@ async function handleAudioImportCommand(args, text) {
   }
 
   const typeKey = type === "bgm" ? "bgmurl" : "ambienturl";
-  const existingUrls = chat_metadata.variables[type] || [];
+  const existingUrls = chat_metadata.variables[typeKey] || [];
   const mergedUrls = [...new Set([...urlArray, ...existingUrls])];
 
   chat_metadata.variables[typeKey] = mergedUrls;
@@ -2619,7 +2619,7 @@ async function handleAudioSelectCommand(args, text) {
     return "";
   }
 
-  const existingUrls = chat_metadata.variables[type] || [];
+  const existingUrls = chat_metadata.variables[typeKey] || [];
 
   const mergedUrls = [...new Set([url, ...existingUrls])];
   chat_metadata.variables[typeKey] = mergedUrls;
