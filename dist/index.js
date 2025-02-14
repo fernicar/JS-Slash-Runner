@@ -22,6 +22,7 @@ import { libraries_text, library_load_events, initializeLibraries, clearLibrarie
 import { script_load_events, initializeScripts, destroyScriptsIfInitialized, } from "./script_iframe.js";
 import { script_url } from "./script_url.js";
 import { third_party } from "./third_party.js";
+import { destroyMacro, initializeMacro } from "./macro.js";
 const extensionName = "JS-Slash-Runner";
 const extensionFolderPath = `third-party/${extensionName}`;
 const audioCache = {};
@@ -658,6 +659,7 @@ async function onExtensionToggle() {
         script_load_events.forEach((eventType) => {
             eventSource.on(eventType, initializeScripts);
         });
+        initializeMacro();
         window.addEventListener("message", handleIframe);
         fullRenderEvents.forEach((eventType) => {
             eventSource.on(eventType, handleFullRender);
@@ -690,6 +692,7 @@ async function onExtensionToggle() {
             eventSource.removeListener(eventType, initializeScripts);
         });
         destroyScriptsIfInitialized();
+        destroyMacro();
         window.removeEventListener("message", handleIframe);
         fullRenderEvents.forEach((eventType) => {
             eventSource.removeListener(eventType, handleFullRender);

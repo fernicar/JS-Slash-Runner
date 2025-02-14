@@ -552,6 +552,32 @@ async function deleteVariable(variable_path: string, option: VariableOption = {}
 }
 ```
 
+##### 在提示词中获取全局、聊天和消息楼层变量
+
+对于变量:
+
+```typescript
+const 全局变量 = {
+  神乐光: {
+    好感度: 50,
+  },
+};
+
+const 聊天变量 = {
+  商品: [{ 内容: '...' }, { 内容: '...' }],
+};
+
+const 消息楼层变量 = {
+  当前剧情阶段: '...',
+};
+```
+
+你可以通过以下格式在提示词中获取他们:
+
+- 全局变量: `{{get_global_variable::神乐光.好感度}}`
+- 聊天变量: `{{get_chat_variable::商品.1.内容}}`
+- 消息楼层变量 (通过 `setChatMessage` 设置), 将会获取到最新绑定的消息楼层变量: `{{get_message_variable::当前剧情阶段}}`
+
 ### 楼层消息操作
 
 #### 获取楼层消息

@@ -108,7 +108,7 @@ export function registerIframeChatMessageHandler() {
         const swipe_id_previous_index = chat_message.swipe_id ?? 0;
         const swipe_id_to_set_index = option.swipe_id == 'current' ? swipe_id_previous_index : option.swipe_id;
         const swipe_id_to_use_index = option.refresh != 'none' ? swipe_id_to_set_index : swipe_id_previous_index;
-        const message = field_values.message ?? chat_message.swipes[swipe_id_to_set_index] ?? chat_message.mes;
+        const message = field_values.message ?? (chat_message.swipes ? chat_message.swipes[swipe_id_to_set_index] : undefined) ?? chat_message.mes;
         const update_chat_message = () => {
             const message_demacroed = substituteParamsExtended(message);
             if (field_values.data) {
