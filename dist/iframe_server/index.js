@@ -26,9 +26,10 @@ export async function handleIframe(event) {
     let result = undefined;
     try {
         const handler = iframe_handlers[event.data.request];
-        if (handler) {
-            result = await handler(event);
+        if (!handler) {
+            return;
         }
+        result = await handler(event);
     }
     catch (err) {
         const error = err;
