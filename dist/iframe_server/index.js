@@ -23,12 +23,12 @@ export function registerIframeHandler(request, handler) {
 export async function handleIframe(event) {
     if (!event.data)
         return;
+    const handler = iframe_handlers[event.data.request];
+    if (!handler) {
+        return;
+    }
     let result = undefined;
     try {
-        const handler = iframe_handlers[event.data.request];
-        if (!handler) {
-            return;
-        }
         result = await handler(event);
     }
     catch (err) {
