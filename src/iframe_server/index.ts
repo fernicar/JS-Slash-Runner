@@ -37,12 +37,13 @@ export function registerIframeHandler<T extends IframeMessage>(request: string, 
 export async function handleIframe(event: MessageEvent<IframeMessage>): Promise<void> {
   if (!event.data) return;
 
+  const handler = iframe_handlers[event.data.request];
+  if (!handler) {
+    return;
+  }
+
   let result: any = undefined;
   try {
-    const handler = iframe_handlers[event.data.request];
-    if (!handler) {
-      return;
-    }
     result = await handler(event);
   } catch (err) {
     const error = err as Error;
