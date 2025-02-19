@@ -20,7 +20,7 @@ function demacro(event_data: { chat: { role: string; content: string }[]; dryRun
   };
   event_data.chat.forEach(chat => {
     chat.content = chat.content.replaceAll(/\{\{(get_global_variable|get_chat_variable|get_message_variable)::(.*?)\}\}/g, (_substring, type: keyof typeof map, path: string) => {
-      return String(get_property_from_path(map[type], path, null));
+      return JSON.stringify(get_property_from_path(map[type], path, null));
     });
   });
   saveMetadataDebounced();

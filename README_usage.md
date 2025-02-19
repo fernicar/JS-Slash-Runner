@@ -578,6 +578,12 @@ const 消息楼层变量 = {
 - 聊天变量: `{{get_chat_variable::商品.1.内容}}`
 - 消息楼层变量 (通过 `setChatMessage` 设置), 将会获取到最新绑定的消息楼层变量: `{{get_message_variable::当前剧情阶段}}`
 
+获取到的结果与 `JSON.stringify(变量)` 一致, 例如:
+
+- `{{get_global_variable::神乐光.好感度}}`: `'50'`;
+- `{{get_global_variable::神乐光}}`: `'{"好感度":50}'`;
+- `{{get_chat_variable::商品}}`: `'[{"内容":"..."},{"内容":"..."}]'`;
+
 ### 楼层消息操作
 
 #### 获取楼层消息
