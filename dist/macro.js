@@ -19,7 +19,7 @@ function demacro(event_data) {
     };
     event_data.chat.forEach(chat => {
         chat.content = chat.content.replaceAll(/\{\{(get_global_variable|get_chat_variable|get_message_variable)::(.*?)\}\}/g, (_substring, type, path) => {
-            return String(get_property_from_path(map[type], path, null));
+            return JSON.stringify(get_property_from_path(map[type], path, null));
         });
     });
     saveMetadataDebounced();
