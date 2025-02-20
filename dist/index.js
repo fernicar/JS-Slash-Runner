@@ -340,7 +340,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
           <style>
           ${hasMinVh ? `:root{--viewport-height:${window.innerHeight}px;}` : ``}
           html,body{margin:0;padding:0;overflow:hidden;max-width:100%!important;box-sizing:border-box}
-          .user_avatar{background-image:url('${avatarPath}')}
+          .user_avatar,.user-avatar{background-image:url('${avatarPath}')}
           </style>
           ${third_party}
           <script src="${script_url.get(iframe_client)}"></script>
