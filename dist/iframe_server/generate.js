@@ -1,14 +1,16 @@
 // @ts-nocheck
 import { getRegexedString, regex_placement, } from "../../../../../extensions/regex/engine.js";
-import { getWorldInfoPrompt, wi_anchor_position, world_info_include_names } from "../../../../../world-info.js";
-import { shouldWIAddPrompt, NOTE_MODULE_NAME, metadata_keys } from "../../../../../authors-note.js";
+import { getWorldInfoPrompt, wi_anchor_position, world_info_include_names, } from "../../../../../world-info.js";
+import { shouldWIAddPrompt, NOTE_MODULE_NAME, metadata_keys, } from "../../../../../authors-note.js";
 import { setupChatCompletionPromptManager, prepareOpenAIMessages, setOpenAIMessageExamples, setOpenAIMessages, sendOpenAIRequest, oai_settings, ChatCompletion, Message, MessageCollection, isImageInliningSupported, } from "../../../../../openai.js";
-import { chat, saveChatConditional, getCharacterCardFields, setExtensionPrompt, getExtensionPromptRoleByName, extension_prompt_roles, extension_prompt_types, baseChatReplace, name1, name2, activateSendButtons, showSwipeButtons, setGenerationProgress, eventSource, getBiasStrings, substituteParams, chat_metadata, this_chid, characters, deactivateSendButtons, MAX_INJECTION_DEPTH, cleanUpMessage, isOdd, countOccurrences, saveSettingsDebounced } from "../../../../../../script.js";
+import { chat, saveChatConditional, getCharacterCardFields, setExtensionPrompt, getExtensionPromptRoleByName, extension_prompt_roles, extension_prompt_types, baseChatReplace, name1, name2, activateSendButtons, showSwipeButtons, setGenerationProgress, eventSource, getBiasStrings, substituteParams, chat_metadata, this_chid, characters, deactivateSendButtons, MAX_INJECTION_DEPTH, cleanUpMessage, isOdd, countOccurrences, saveSettingsDebounced, stopGeneration, } from "../../../../../../script.js";
 import { extension_settings, getContext } from "../../../../../extensions.js";
 import { Prompt, PromptCollection } from "../../../../../PromptManager.js";
 import { power_user, persona_description_positions, flushEphemeralStoppingStrings, } from "../../../../../power-user.js";
-import { getIframeName, getLogPrefix, registerIframeHandler } from "./index.js";
-import { Stopwatch, getBase64Async } from "../../../../../utils.js";
+import { getIframeName, getLogPrefix, registerIframeHandler, } from "./index.js";
+import { Stopwatch, getBase64Async, } from "../../../../../utils.js";
+// 在文件顶部添加 abortController 声明
+let abortController = new AbortController();
 function fromOverrides(overrides) {
     return {
         world_info_before: overrides.world_info_before,
@@ -25,10 +27,10 @@ function fromOverrides(overrides) {
 }
 function fromInjectionPrompt(inject) {
     const position_map = {
-        before_prompt: 'BEFORE_PROMPT',
-        in_chat: 'IN_CHAT',
-        after_prompt: 'IN_PROMPT',
-        none: 'NONE',
+        before_prompt: "BEFORE_PROMPT",
+        in_chat: "IN_CHAT",
+        after_prompt: "IN_PROMPT",
+        none: "NONE",
     };
     return {
         role: inject.role,
@@ -44,9 +46,15 @@ function fromGenerateConfig(config) {
         use_preset: true,
         image: config.image,
         stream: config.should_stream ?? false,
-        overrides: config.overrides !== undefined ? fromOverrides(config.overrides) : undefined,
-        inject: config.injects !== undefined ? config.injects.map(fromInjectionPrompt) : undefined,
-        max_chat_history: typeof config.max_chat_history === 'number' ? config.max_chat_history : undefined,
+        overrides: config.overrides !== undefined
+            ? fromOverrides(config.overrides)
+            : undefined,
+        inject: config.injects !== undefined
+            ? config.injects.map(fromInjectionPrompt)
+            : undefined,
+        max_chat_history: typeof config.max_chat_history === "number"
+            ? config.max_chat_history
+            : undefined,
     };
 }
 function fromGenerateRawConfig(config) {
@@ -55,16 +63,17 @@ function fromGenerateRawConfig(config) {
         use_preset: false,
         image: config.image,
         stream: config.should_stream ?? false,
-        max_chat_history: typeof config.max_chat_history === 'number' ? config.max_chat_history : undefined,
+        max_chat_history: typeof config.max_chat_history === "number"
+            ? config.max_chat_history
+            : undefined,
         overrides: config.overrides ? fromOverrides(config.overrides) : undefined,
-        inject: config.injects ? config.injects.map(fromInjectionPrompt) : undefined,
+        inject: config.injects
+            ? config.injects.map(fromInjectionPrompt)
+            : undefined,
         order: config.ordered_prompts,
     };
 }
 let this_max_context = oai_settings.openai_max_tokens;
-let abortController = new AbortController();
-let is_send_press = false;
-const signal = abortController.signal;
 const type = "quiet";
 const dryRun = false;
 const character_names_behavior = {
@@ -98,8 +107,8 @@ class StreamingProcessor {
     abortController;
     messageBuffer;
     constructor() {
-        this.result = '';
-        this.messageBuffer = '';
+        this.result = "";
+        this.messageBuffer = "";
         this.isStopped = false;
         this.isFinished = false;
         this.generator = this.nullStreamingGeneration;
@@ -110,10 +119,10 @@ class StreamingProcessor {
         const newText = text.slice(this.messageBuffer.length);
         this.messageBuffer = text;
         let processedText = cleanUpMessage(newText, false, false, !isFinal, this.stoppingStrings);
-        const charsToBalance = ['*', '"', '```'];
+        const charsToBalance = ["*", '"', "```"];
         for (const char of charsToBalance) {
             if (!isFinal && isOdd(countOccurrences(processedText, char))) {
-                const separator = char.length > 1 ? '\n' : '';
+                const separator = char.length > 1 ? "\n" : "";
                 processedText = processedText.trimEnd() + separator + char;
             }
         }
@@ -142,7 +151,7 @@ class StreamingProcessor {
             for await (const { text } of this.generator()) {
                 timestamps.push(Date.now());
                 if (this.isStopped) {
-                    this.messageBuffer = '';
+                    this.messageBuffer = "";
                     return;
                 }
                 this.result = text;
@@ -152,7 +161,7 @@ class StreamingProcessor {
                 this.onProgressStreaming(this.result, true);
             }
             else {
-                this.messageBuffer = '';
+                this.messageBuffer = "";
             }
             const seconds = (timestamps[timestamps.length - 1] - timestamps[0]) / 1000;
             console.warn(`Stream stats: ${timestamps.length} tokens, ${seconds.toFixed(2)} seconds, rate: ${Number(timestamps.length / seconds).toFixed(2)} TPS`);
@@ -162,7 +171,7 @@ class StreamingProcessor {
                 this.onErrorStreaming();
                 throw new Error(`Generate method error: ${err}`);
             }
-            this.messageBuffer = '';
+            this.messageBuffer = "";
             return this.result;
         }
         this.isFinished = true;
@@ -170,9 +179,9 @@ class StreamingProcessor {
     }
 }
 async function iframeGenerate({ user_input = "", use_preset = true, image = null, overrides = undefined, max_chat_history = undefined, inject = [], order = undefined, stream = false, } = {}) {
+    abortController = new AbortController();
+    // 1. 处理用户输入（正则，宏）
     const processedUserInput = processUserInput(substituteParams(user_input), oai_settings) || "";
-    // 1. 初始化
-    await initializeGeneration();
     // 2. 准备过滤后的基础数据
     const baseData = await prepareAndOverrideData({
         overrides,
@@ -200,16 +209,6 @@ async function iframeGenerate({ user_input = "", use_preset = true, image = null
     // 4. 根据 stream 参数决定生成方式
     return await generateResponse(generate_data, stream);
 }
-async function initializeGeneration() {
-    // 初始化中断控制器
-    if (!(abortController && signal)) {
-        abortController = new AbortController();
-    }
-    return {
-        abortController,
-        signal: abortController.signal,
-    };
-}
 async function prepareAndOverrideData(config, processedUserInput) {
     const getOverrideContent = (identifier) => {
         if (!config.overrides)
@@ -217,15 +216,17 @@ async function prepareAndOverrideData(config, processedUserInput) {
         return config.overrides[identifier];
     };
     // 1. 处理角色卡高级定义角色备注 - 仅在chat_history未被过滤时执行
-    if (!isPromptFiltered('chat_history', config)) {
+    if (!isPromptFiltered("chat_history", config)) {
         handleCharDepthPrompt();
     }
     // 2. 设置作者注释 - 仅在chat_history未被过滤时执行
-    if (!isPromptFiltered('chat_history', config) && !isPromptFiltered('author_note', config)) {
+    if (!isPromptFiltered("chat_history", config) &&
+        !isPromptFiltered("author_note", config)) {
         setAuthorNotePrompt(config);
     }
     // 3. 处理user角色描述 - 仅在chat_history和persona_description都未被过滤时执行
-    if (!isPromptFiltered('chat_history', config) && !isPromptFiltered('persona_description', config)) {
+    if (!isPromptFiltered("chat_history", config) &&
+        !isPromptFiltered("persona_description", config)) {
         setPersonaDescriptionExtensionPrompt();
     }
     // 4. 获取角色卡基础字段
@@ -296,17 +297,15 @@ async function prepareAndOverrideData(config, processedUserInput) {
 //处理角色卡中的深度提示词
 function handleCharDepthPrompt() {
     const depthPromptText = baseChatReplace(characters[this_chid]?.data?.extensions?.depth_prompt?.prompt?.trim(), name1, name2) || "";
-    const depthPromptDepth = characters[this_chid]?.data?.extensions?.depth_prompt?.depth ??
-        "4";
-    const depthPromptRole = getExtensionPromptRoleByName(characters[this_chid]?.data?.extensions?.depth_prompt?.role ??
-        "system");
+    const depthPromptDepth = characters[this_chid]?.data?.extensions?.depth_prompt?.depth ?? "4";
+    const depthPromptRole = getExtensionPromptRoleByName(characters[this_chid]?.data?.extensions?.depth_prompt?.role ?? "system");
     setExtensionPrompt("DEPTH_PROMPT", depthPromptText, extension_prompt_types.IN_CHAT, depthPromptDepth, extension_settings.note.allowWIScan, depthPromptRole);
 }
 //处理作者注释
 function setAuthorNotePrompt(config) {
     const authorNoteOverride = config?.overrides?.author_note;
     // @ts-ignore
-    let prompt = authorNoteOverride ?? $('#extension_floating_prompt').val();
+    let prompt = authorNoteOverride ?? $("#extension_floating_prompt").val();
     setExtensionPrompt(NOTE_MODULE_NAME, prompt, chat_metadata[metadata_keys.position], chat_metadata[metadata_keys.depth], extension_settings.note.allowWIScan, chat_metadata[metadata_keys.role]);
 }
 //用户角色描述提示词设置为提示词管理器之外的选项的情况
@@ -355,7 +354,8 @@ async function handleInjectedPrompts(promptConfig) {
             content: inject.content || "",
             depth: Number(inject.depth) || 0,
             scan: Boolean(inject.scan) || true,
-            position: positionMap[inject.position] ?? extension_prompt_types.IN_CHAT,
+            position: positionMap[inject.position] ??
+                extension_prompt_types.IN_CHAT,
         };
         // 设置用户自定义注入提示词
         setExtensionPrompt(`INJECTION-${inject.depth}-${inject.role}`, validatedInject.content, validatedInject.position, validatedInject.depth, validatedInject.scan, validatedInject.role);
@@ -400,15 +400,17 @@ async function processWorldInfo(oaiMessages, config) {
     if (isPromptFiltered("with_depth_entries", config)) {
         const prompts = getContext().extensionPrompts;
         Object.keys(prompts)
-            .filter(key => key.startsWith("customDepthWI"))
-            .forEach(key => delete prompts[key]);
+            .filter((key) => key.startsWith("customDepthWI"))
+            .forEach((key) => delete prompts[key]);
     }
     return {
         worldInfoString,
         world_info_before,
         world_info_after,
         worldInfoExamples,
-        worldInfoDepth: !isPromptFiltered("with_depth_entries", config) ? worldInfoDepth : null,
+        worldInfoDepth: !isPromptFiltered("with_depth_entries", config)
+            ? worldInfoDepth
+            : null,
     };
 }
 // 处理世界信息深度部分
@@ -463,7 +465,10 @@ function processUserInput(user_input, oai_settings) {
     if (user_input === "") {
         user_input = oai_settings.send_if_empty.trim();
     }
-    return getRegexedString(user_input, regex_placement.USER_INPUT, { isPrompt: true, depth: 0 });
+    return getRegexedString(user_input, regex_placement.USER_INPUT, {
+        isPrompt: true,
+        depth: 0,
+    });
 }
 //使用预设
 async function handlePresetPath(baseData, processedUserInput, config) {
@@ -520,7 +525,7 @@ async function convertSystemPromptsToCollection(baseData, promptConfig) {
     // 处理自定义注入
     const customPrompts = (promptConfig.order || default_order)
         .map((item, index) => {
-        if (typeof item === 'object' && item.role && item.content) {
+        if (typeof item === "object" && item.role && item.content) {
             const identifier = `custom_prompt_${index}`;
             return {
                 identifier,
@@ -536,7 +541,7 @@ async function convertSystemPromptsToCollection(baseData, promptConfig) {
             identifier: prompt.identifier,
             role: prompt.role,
             content: prompt.content,
-            system_prompt: prompt.role === 'system',
+            system_prompt: prompt.role === "system",
         }));
     }
     // 处理角色信息
@@ -555,7 +560,7 @@ async function convertSystemPromptsToCollection(baseData, promptConfig) {
             id: "scenario",
             content: baseData.characterInfo.scenario,
             role: "system",
-        }
+        },
     ];
     // 添加角色相关提示词
     characterPrompts.forEach((prompt) => {
@@ -627,10 +632,10 @@ async function handleCustomPath(baseData, config, processedUserInput) {
     chatCompletion.reserveBudget(3);
     const orderArray = config.order || default_order;
     const positionMap = orderArray.reduce((acc, item, index) => {
-        if (typeof item === 'string') {
+        if (typeof item === "string") {
             acc[item.toLowerCase()] = index;
         }
-        else if (typeof item === 'object') {
+        else if (typeof item === "object") {
             acc[`custom_prompt_${index}`] = index;
         }
         return acc;
@@ -638,7 +643,7 @@ async function handleCustomPath(baseData, config, processedUserInput) {
     //转换为集合
     const { systemPrompts, dialogue_examples } = await convertSystemPromptsToCollection(baseData, config);
     const addToChatCompletionInOrder = async (source, index) => {
-        if (typeof source === 'object') {
+        if (typeof source === "object") {
             // 处理自定义注入
             const collection = new MessageCollection(`custom_prompt_${index}`);
             const message = await Message.createAsync(source.role, source.content, `custom_prompt_${index}`);
@@ -656,18 +661,19 @@ async function handleCustomPath(baseData, config, processedUserInput) {
     };
     // 处理所有类型的提示词
     for (const [index, item] of orderArray.entries()) {
-        if (typeof item === 'string') {
+        if (typeof item === "string") {
             // 使用 isPromptFiltered 替代 promptFilter 判断
             if (!isPromptFiltered(item, config)) {
                 await addToChatCompletionInOrder(item, index);
             }
         }
-        else if (typeof item === 'object' && item.role && item.content) {
+        else if (typeof item === "object" && item.role && item.content) {
             await addToChatCompletionInOrder(item, index);
         }
     }
-    const dialogue_examplesIndex = orderArray.findIndex(item => typeof item === 'string' && item.toLowerCase() === 'dialogue_examples');
-    if (dialogue_examplesIndex !== -1 && !isPromptFiltered('dialogue_examples', config)) {
+    const dialogue_examplesIndex = orderArray.findIndex((item) => typeof item === "string" && item.toLowerCase() === "dialogue_examples");
+    if (dialogue_examplesIndex !== -1 &&
+        !isPromptFiltered("dialogue_examples", config)) {
         chatCompletion.add(dialogue_examples, dialogue_examplesIndex);
     }
     //给user输入预留token
@@ -684,11 +690,11 @@ async function handleCustomPath(baseData, config, processedUserInput) {
 }
 async function processChatHistoryAndInject(baseData, promptConfig, chatCompletion, processedUserInput) {
     const orderArray = promptConfig.order || default_order;
-    const chatHistoryIndex = orderArray.findIndex(item => typeof item === 'string' && item.toLowerCase() === 'chat_history');
-    const userInputIndex = orderArray.findIndex(item => typeof item === 'string' && item.toLowerCase() === 'user_input');
+    const chatHistoryIndex = orderArray.findIndex((item) => typeof item === "string" && item.toLowerCase() === "chat_history");
+    const userInputIndex = orderArray.findIndex((item) => typeof item === "string" && item.toLowerCase() === "user_input");
     const hasUserInput = userInputIndex !== -1;
     const hasChatHistory = chatHistoryIndex !== -1;
-    const isChatHistoryFiltered = isPromptFiltered('chat_history', promptConfig);
+    const isChatHistoryFiltered = isPromptFiltered("chat_history", promptConfig);
     // 创建用户输入消息
     const userMessage = await Message.createAsync("user", processedUserInput, "user_input");
     // 仅在需要时添加图像
@@ -724,7 +730,9 @@ async function processChatHistoryAndInject(baseData, promptConfig, chatCompletio
             role: "user",
             content: processedUserInput,
             identifier: "user_input",
-            image: promptConfig.image ? await convertFileToBase64(promptConfig.image) : undefined
+            image: promptConfig.image
+                ? await convertFileToBase64(promptConfig.image)
+                : undefined,
         };
         baseData.chatContext.oaiMessages.unshift(userPrompt);
     }
@@ -780,7 +788,7 @@ async function populationInjectionPrompts(messages, customInjects = []) {
             content: authorsNote.value,
             identifier: "authorsNote",
             injection_depth: authorsNote.depth,
-            injected: true
+            injected: true,
         });
     }
     if (power_user.persona_description &&
@@ -791,7 +799,7 @@ async function populationInjectionPrompts(messages, customInjects = []) {
             content: power_user.persona_description,
             identifier: "persona_description",
             injection_depth: power_user.persona_description_depth,
-            injected: true
+            injected: true,
         });
     }
     // 处理自定义注入
@@ -802,7 +810,7 @@ async function populationInjectionPrompts(messages, customInjects = []) {
                 role: inject.role,
                 content: inject.content,
                 injection_depth: inject.depth || 0,
-                injected: true
+                injected: true,
             });
         }
     }
@@ -847,16 +855,14 @@ function getPromptRole(role) {
 }
 //生成响应
 async function generateResponse(generate_data, useStream = false) {
-    let result = '';
+    let result = "";
     try {
         deactivateSendButtons();
-        // @ts-ignore
-        $("#mes_stop").css({ display: "flex" });
         // 清理注入
         const prompts = getContext().extensionPrompts;
         Object.keys(prompts)
-            .filter(key => key.startsWith("customDepthWI") || key.startsWith("INJECTION"))
-            .forEach(key => delete prompts[key]);
+            .filter((key) => key.startsWith("customDepthWI") || key.startsWith("INJECTION"))
+            .forEach((key) => delete prompts[key]);
         await saveChatConditional();
         if (useStream) {
             let originalStreamSetting = oai_settings.stream_openai;
@@ -866,7 +872,7 @@ async function generateResponse(generate_data, useStream = false) {
             }
             const streamingProcessor = new StreamingProcessor();
             streamingProcessor.generator = await sendOpenAIRequest("normal", generate_data.prompt, abortController.signal);
-            result = await streamingProcessor.generate();
+            result = (await streamingProcessor.generate());
             // console.log("getMessage", getMessage);
             if (originalStreamSetting !== oai_settings.stream_openai) {
                 oai_settings.stream_openai = originalStreamSetting;
@@ -883,9 +889,7 @@ async function generateResponse(generate_data, useStream = false) {
         throw error;
     }
     finally {
-        if (!is_send_press) {
-            unblockGeneration();
-        }
+        unblockGeneration();
     }
     return result;
 }
@@ -897,7 +901,9 @@ async function handleResponse(response) {
     if (response.error) {
         if (response?.response) {
             // @ts-ignore
-            toastr.error(response.response, t `API Error`, { preventDuplicates: true });
+            toastr.error(response.response, t `API Error`, {
+                preventDuplicates: true,
+            });
         }
         throw new Error(response?.response);
     }
@@ -906,7 +912,6 @@ async function handleResponse(response) {
     return message;
 }
 function unblockGeneration() {
-    is_send_press = false;
     activateSendButtons();
     showSwipeButtons();
     setGenerationProgress(0);
@@ -930,36 +935,36 @@ async function convertFileToBase64(image) {
     return image;
 }
 function addTemporaryUserMessage(userContent) {
-    setExtensionPrompt('TEMP_USER_MESSAGE', userContent, extension_prompt_types.IN_PROMPT, 0, true, 1);
+    setExtensionPrompt("TEMP_USER_MESSAGE", userContent, extension_prompt_types.IN_PROMPT, 0, true, 1);
 }
 function removeTemporaryUserMessage() {
-    setExtensionPrompt('TEMP_USER_MESSAGE', '', extension_prompt_types.IN_PROMPT, 0, true, 1);
+    setExtensionPrompt("TEMP_USER_MESSAGE", "", extension_prompt_types.IN_PROMPT, 0, true, 1);
 }
 function isPromptFiltered(promptId, config) {
     if (!config.overrides) {
         return false;
     }
-    if (promptId === 'with_depth_entries') {
+    if (promptId === "with_depth_entries") {
         return config.overrides.with_depth_entries === false;
     }
     // 特殊处理 chat_history
-    if (promptId === 'chat_history') {
+    if (promptId === "chat_history") {
         const prompts = config.overrides.chat_history;
-        return prompts !== undefined && (prompts.length === 0);
+        return prompts !== undefined && prompts.length === 0;
     }
     // 对于普通提示词，只有当它在 overrides 中存在且为空字符串时才被过滤
     const override = config.overrides[promptId];
-    return override !== undefined && override === '';
+    return override !== undefined && override === "";
 }
 export function registerIframeGenerateHandler() {
-    registerIframeHandler('[Generate][generate]', async (event) => {
+    registerIframeHandler("[Generate][generate]", async (event) => {
         const iframe_name = getIframeName(event);
         const config = event.data.config;
         console.info(`${getLogPrefix(event)}(${iframe_name}) 发送生成请求: ${config}`);
         const converted_config = fromGenerateConfig(config);
         return await iframeGenerate(converted_config);
     });
-    registerIframeHandler('[Generate][generateRaw]', async (event) => {
+    registerIframeHandler("[Generate][generateRaw]", async (event) => {
         const iframe_name = getIframeName(event);
         const config = event.data.config;
         console.info(`${getLogPrefix(event)}(${iframe_name}) 发送生成请求: ${config}`);
@@ -967,4 +972,13 @@ export function registerIframeGenerateHandler() {
         return await iframeGenerate(converted_config);
     });
 }
+$(document).on("click", "#mes_stop", function () {
+    const wasStopped = stopGeneration();
+    if (wasStopped) {
+        if (abortController) {
+            abortController.abort("Clicked stop button");
+        }
+        unblockGeneration();
+    }
+});
 //# sourceMappingURL=generate.js.map

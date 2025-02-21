@@ -78,8 +78,8 @@ padding-right: 5px;
     display: flex;
     gap: 10px;
     align-items: center;
-    background-color: rgba(38, 38, 38, 0.5);
-    border: 1px rgb(75, 75, 75) solid;
+    background-color: var(--black30a);
+    border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
 }
 #audio_settings .audio-adjust {
@@ -90,11 +90,13 @@ padding-right: 5px;
 }
 #audio_settings .audio-container .audio-player-button {
     position: relative;
+    width: 2rem;
     height: 2rem;
 }
 #audio_settings .audio-adjust .audio-player-button {
     position: relative;
     height: 1.8rem;
+    width: 1.8rem;
 }
 #audio_settings .audio-container>.vol {
     width: 100px;
