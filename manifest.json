@@ -1,12 +1,12 @@
 {
-    "display_name": "JS-Slash-Runner",
-    "loading_order": 100,
-    "requires": [],
-    "optional": [],
-    "js": "dist/index.js",
-    "css": "style.css",
-    "author": "KAKAA",
-    "version": "2.2.4",
-    "homePage": "https://github.com/N0VI028/JS-Slash-Runner",
-    "auto_update": true
+  "display_name": "JS-Slash-Runner",
+  "loading_order": 100,
+  "requires": [],
+  "optional": [],
+  "js": "dist/index.js",
+  "css": "style.css",
+  "author": "KAKAA",
+  "version": "2.2.5",
+  "homePage": "https://github.com/N0VI028/JS-Slash-Runner",
+  "auto_update": true
 }
