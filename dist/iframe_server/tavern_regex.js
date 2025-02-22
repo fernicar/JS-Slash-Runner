@@ -1,4 +1,4 @@
-import { characters, getCurrentChatId, reloadCurrentChat, saveSettingsDebounced, this_chid } from "../../../../../../script.js";
+import { characters, getCurrentChatId, reloadCurrentChat, saveChatConditional, saveSettings, this_chid } from "../../../../../../script.js";
 import { extension_settings, writeExtensionField } from "../../../../../extensions.js";
 import { regex_placement } from "../../../../regex/engine.js";
 import { partition } from "../util/helper.js";
@@ -107,7 +107,8 @@ export function registerIframeTavernRegexHandler() {
             characters[this_chid].data.extensions.regex_scripts = character_regexes;
             await writeExtensionField(this_chid, 'regex_scripts', character_regexes);
         }
-        saveSettingsDebounced();
+        await saveSettings();
+        await saveChatConditional();
         const current_chat_id = getCurrentChatId();
         if (current_chat_id !== undefined && current_chat_id !== null) {
             await reloadCurrentChat();
