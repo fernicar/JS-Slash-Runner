@@ -15,3 +15,8 @@
 由于 SillyTavern 默认不支持直接执行 JavaScript 代码, 这个扩展通过使用 iframe 来隔离和执行脚本, 从而让你在某些受限的上下文中运行外部脚本.
 
 - [文档](https://n0vi028.github.io/JS-Slash-Runner-Doc/)
+
+## 许可证
+
+- [AGPL-3.0](licenses/AGPL-3.0): 必须开源
+- [Aladdin](licenses/Aladdin): 不可销售
