@@ -33,6 +33,8 @@ export async function handleIframe(event) {
     }
     catch (err) {
         const error = err;
+        // @ts-expect-error
+        toastr.error(t `${error}`);
         console.error(error);
     }
     finally {
