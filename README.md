@@ -18,5 +18,4 @@
 
 ## 许可证
 
-- [AGPL-3.0](licenses/AGPL-3.0): 必须开源
-- [Aladdin](licenses/Aladdin): 不可销售
+- [Aladdin](licenses/Aladdin)
