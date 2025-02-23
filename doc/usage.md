@@ -1,25 +1,6 @@
 # 使用方法
 
-页面右上角有目录可以用.
-
-![目录](README_usage_目录.png)
-
-## 编写前端助手角色卡的推荐方案
-
-### Cursor (推荐!)
-
-如果你在电脑上写卡, **推荐安装 Cursor 来编写**, 参考[基于前端助手编写角色卡的 VSCode 环境配置](https://sillytavern-stage-girls-dog.readthedocs.io/tool_and_experience/js_slash_runner/index.html), 你可以关注[类脑帖子: 用前端助手编写角色卡的 VSCode/Cursor 环境搭建](https://discord.com/channels/1134557553011998840/1320081111451439166)来得知该教程的更新情况.
-
-配置好后, iframe_client 文件夹和 slash_command.txt 文件中即分别记录了前端助手的功能和酒馆最新版本的所有 slash command. 你可以将它们连同 tsconfig.json 发给 ai, 让 ai 来写, 并说明 "所有内容均可直接使用, 不需要 import module", **具体在上面的配置文档链接中有提示.**
-
-### html 工具角色卡
-
-如果实在不想安装 Cursor, 或你想在手机上编写, 可以使用: https://discord.com/channels/1134557553011998840/1279910607348564079
-
-但要注意它世界书中对前端助手和 slash command 的提示词是复制粘贴的, 因而在之后如果前端助手或酒馆更新, 则提示词不会涵盖更新内容.
-
-- 如果前端助手更新, 你可以通过复制本文件列出的所有内容到对应条目中来更新提示词.
-- 如果酒馆更新, 你可以通过复制 [slash_command.txt](https://gitgud.io/SmilingFace/tavern_resource/-/blob/main/%E5%B7%A5%E5%85%B7%E7%BB%8F%E9%AA%8C/frontend_writer/slash_command.txt?ref_type=heads) 中的内容到对应条目中来更新提示词.
+本文件仅用于可能需要以单个文件发给 ai 的情况, 项目实际文档[点此跳转](https://n0vi028.github.io/JS-Slash-Runner-Doc).
 
 ## 在哪使用?
 
@@ -81,7 +62,7 @@
 
 在正则中新建一个 `脚本-你想要的脚本名称` 正则 (如果有多个脚本, 名字不要重复), 然后你就能在正则的替换区域中填写你想要的脚本内容.
 
-![全局脚本示例](README_usage_全局脚本.png)
+![全局脚本示例](全局脚本.png)
 
 注意:
 
@@ -94,7 +75,7 @@
 
 在正则中新建一个 `库-你想要的库名称` 正则 (如果有多个库, 名字不要重复), 然后所有的楼层消息 iframe 和全局脚本 iframe 的 `<head>` 部分都会包含它. 你可以在这里统一地设置显示样式, 加入一些第三方库, 编辑一些你需要的便携库……
 
-![库示例](README_usage_库.png)
+![库示例](库.png)
 
 注意:
 
@@ -315,7 +296,7 @@ saveAs("https://gitgud.io/SmilingFace/tavern_resource/-/raw/main/角色卡/妹�
 
 为了让 VSCode 的预览支持这些第三方库, 你需要复制前端助手 `内置库安装` 中的文本, 将它加入到 `<head>` 中:
 
-![内置库插入](README_usage_内置库插入.png)
+![内置库插入](内置库插入.png)
 
 ## 脚本代码功能
 
