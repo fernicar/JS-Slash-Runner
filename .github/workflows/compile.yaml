@@ -2,7 +2,15 @@ name: compile
 
 on:
   pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
   push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
   workflow_dispatch:
 
 jobs:
