@@ -47,6 +47,8 @@ export async function handleIframe(event: MessageEvent<IframeMessage>): Promise<
     result = await handler(event);
   } catch (err) {
     const error = err as Error;
+    // @ts-expect-error
+    toastr.error(t`${error}`);
     console.error(error);
   } finally {
     (event.source as MessageEventSource).postMessage(
