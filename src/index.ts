@@ -50,6 +50,7 @@ import { initializeScriptsOnExtension, destroyScriptsOnExtension, } from "./comp
 import { latest_set_variables_message_id } from "./iframe_server/variables.js";
 import { script_url } from "./script_url.js";
 import { third_party } from "./third_party.js";
+import { initializeModulesOnExtension } from "./component/module.js";
 
 const extensionName = "JS-Slash-Runner";
 const extensionFolderPath = `third-party/${extensionName}`;
@@ -851,6 +852,7 @@ async function onExtensionToggle() {
     script_url.set('viewport_adjust_script', viewport_adjust_script);
     script_url.set('tampermonkey_script', tampermonkey_script);
 
+    initializeModulesOnExtension();
     initializeLibrariesOnExtension();
     initializeScriptsOnExtension();
     initializeMacroOnExtension();
@@ -881,6 +883,7 @@ async function onExtensionToggle() {
     script_url.delete('viewport_adjust_script');
     script_url.delete('tampermonkey_script');
 
+    destroyModulesOnExtension();
     destroyLibrariesOnExtension()
     destroyScriptsOnExtension();
     destroyMacroOnExtension();
