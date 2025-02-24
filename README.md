@@ -18,4 +18,4 @@
 
 ## 许可证
 
-- [Aladdin](licenses/Aladdin)
+- [Aladdin](LICENSE)
