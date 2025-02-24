@@ -3,31 +3,31 @@ import { loadScripts } from '../util/load_script.js';
 
 export let libraries_text: string = "";
 
-const library_load_events = [
+const load_events = [
   event_types.CHAT_CHANGED
-];
+] as const;
 
-function initializeLibraries(): void {
+function initialize(): void {
   const libraries = loadScripts("库-");
   console.info(`[Library] 加载库: ${JSON.stringify(libraries.map(library => library.name))}`);
 
   libraries_text = libraries.map(script => script.code).join('\n');
 }
 
-function destroyLibraries(): void {
+function destroy(): void {
   libraries_text = "";
 }
 
 export function initializeLibrariesOnExtension() {
-  initializeLibraries();
-  library_load_events.forEach((eventType) => {
-    eventSource.on(eventType, initializeLibraries);
+  initialize();
+  load_events.forEach((eventType) => {
+    eventSource.on(eventType, initialize);
   });
 }
 
 export function destroyLibrariesOnExtension() {
-  library_load_events.forEach((eventType) => {
-    eventSource.removeListener(eventType, initializeLibraries);
+  load_events.forEach((eventType) => {
+    eventSource.removeListener(eventType, initialize);
   });
-  destroyLibraries();
+  destroy();
 }

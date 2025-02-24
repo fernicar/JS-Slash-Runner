@@ -1,6 +1,5 @@
 import { event_types, eventSource } from '../../../../../../script.js';
 
-import { iframe_client } from '../iframe_client_exported/index.js';
 import { script_url } from '../script_url.js';
 import { libraries_text } from './library.js';
 import { third_party } from '../third_party.js';
@@ -8,9 +7,9 @@ import { loadScripts, Script } from '../util/load_script.js';
 
 let script_map: Map<string, HTMLIFrameElement> = new Map();
 
-const script_load_events = [
+const load_events = [
   event_types.CHAT_CHANGED
-];
+] as const;
 
 function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_promise: Promise<void>; } {
   const iframe = document.createElement('iframe');
@@ -21,7 +20,7 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
     <html>
     <head>
       ${third_party}
-      <script src="${script_url.get(iframe_client)}"></script>
+      <script src="${script_url.get('iframe_client')}"></script>
       ${libraries_text}
     </head>
     <body>
@@ -44,7 +43,7 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
   return { iframe, load_promise };
 }
 
-function destroyScriptsIfInitialized(): void {
+function destroyIfInitialized(): void {
   if (script_map.size !== 0) {
     console.log(`[Script] 清理全局脚本...`);
     script_map.forEach((iframe, _) => {
@@ -55,9 +54,9 @@ function destroyScriptsIfInitialized(): void {
   }
 }
 
-async function initializeScripts(): Promise<void> {
+async function initialize(): Promise<void> {
   try {
-    destroyScriptsIfInitialized();
+    destroyIfInitialized();
 
     const scripts = loadScripts("脚本-");
     console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
@@ -78,15 +77,15 @@ async function initializeScripts(): Promise<void> {
 }
 
 export async function initializeScriptsOnExtension() {
-  await initializeScripts();
-  script_load_events.forEach((eventType) => {
-    eventSource.on(eventType, initializeScripts);
+  await initialize();
+  load_events.forEach((eventType) => {
+    eventSource.on(eventType, initialize);
   });
 }
 
 export function destroyScriptsOnExtension() {
-  script_load_events.forEach((eventType) => {
-    eventSource.removeListener(eventType, initializeScripts);
+  load_events.forEach((eventType) => {
+    eventSource.removeListener(eventType, initialize);
   });
-  destroyScriptsIfInitialized();
+  destroyIfInitialized();
 }

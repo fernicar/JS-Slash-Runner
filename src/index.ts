@@ -469,13 +469,13 @@ async function renderMessagesInIframes(
           .user_avatar,.user-avatar{background-image:url('${avatarPath}')}
           </style>
           ${third_party}
-          <script src="${script_url.get(iframe_client)}"></script>
+          <script src="${script_url.get('iframe_client')}"></script>
           ${libraries_text}
         </head>
         <body>
           ${extractedText}
-          ${hasMinVh ? `<script>${viewport_adjust_script}</script>` : ``}
-          ${extension_settings[extensionName].tampermonkey_compatibility ? `<script src="${script_url.get(tampermonkey_script)}"></script>` : ``}
+          ${hasMinVh ? `<script src="${script_url.get('viewport_adjust_script')}"></script>` : ``}
+          ${extension_settings[extensionName].tampermonkey_compatibility ? `<script src="${script_url.get('tampermonkey_script')}"></script>` : ``}
         </body>
         </html>
       `;
@@ -847,9 +847,9 @@ async function onExtensionToggle() {
   const isEnabled = Boolean($("#activate_setting").prop("checked"));
   extension_settings[extensionName].activate_setting = isEnabled;
   if (isEnabled) {
-    script_url.set(iframe_client);
-    script_url.set(viewport_adjust_script);
-    script_url.set(tampermonkey_script);
+    script_url.set('iframe_client', iframe_client);
+    script_url.set('viewport_adjust_script', viewport_adjust_script);
+    script_url.set('tampermonkey_script', tampermonkey_script);
 
     initializeLibrariesOnExtension();
     initializeScriptsOnExtension();
@@ -877,9 +877,9 @@ async function onExtensionToggle() {
       formattedLastMessage();
     });
   } else {
-    script_url.delete(iframe_client);
-    script_url.delete(viewport_adjust_script);
-    script_url.delete(tampermonkey_script);
+    script_url.delete('iframe_client');
+    script_url.delete('viewport_adjust_script');
+    script_url.delete('tampermonkey_script');
 
     destroyLibrariesOnExtension()
     destroyScriptsOnExtension();
