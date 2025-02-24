@@ -82,6 +82,18 @@
 - 全局脚本的所有注意事项在这里依旧适用.
 - 如果有多个库, 将会按在正则中的显示顺序从上到下依次加入.
 
+### 模块脚本
+
+在正则中新建一个 `模块-你想要的脚本名称` 正则 (如果有多个模块, 名字不要重复), 然后你就能在正则的替换区域中填写你想要的模块 JavaScript 代码.
+
+![模块脚本示例](模块脚本.png)
+
+注意:
+
+- 全局脚本的所有注意事项在这里依旧适用.
+- 你可以用 [`window.SillyTavern.getContext()`](https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js#L76) 访问酒馆公开给扩展的所有功能.
+- **暂时没有迁移前端助手提供的各种函数**.
+
 ## 内置的第三方库
 
 ### Font Awesome
