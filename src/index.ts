@@ -44,19 +44,19 @@ import { power_user } from "../../../../power-user.js";
 import { handleIframe } from "./iframe_server/index.js";
 import { iframe_client } from "./iframe_client_exported/index.js";
 import { initSlashEventEmit } from "./slash_command/event.js";
+import { initializeLibrariesOnExtension, destroyLibrariesOnExtension, libraries_text } from "./component/library.js";
+import { initializeMacroOnExtension, destroyMacroOnExtension } from "./component/macro.js";
+import { initializeScriptsOnExtension, destroyScriptsOnExtension, } from "./component/script_iframe.js";
 import { latest_set_variables_message_id } from "./iframe_server/variables.js";
-import { libraries_text, library_load_events, initializeLibraries, clearLibraries } from "./library.js";
-import { script_load_events, initializeScripts, destroyScriptsIfInitialized, } from "./script_iframe.js";
 import { script_url } from "./script_url.js";
 import { third_party } from "./third_party.js";
-import { destroyMacro, initializeMacro } from "./macro.js";
 
 const extensionName = "JS-Slash-Runner";
 const extensionFolderPath = `third-party/${extensionName}`;
 
 const audioCache = {};
 
-let tampermonkeyMessageListener = null;
+let tampermonkeyMessageListener: Function | null = null;
 let list_BGMS = null;
 let list_ambients = null;
 let bgmEnded = true;
@@ -851,17 +851,9 @@ async function onExtensionToggle() {
     script_url.set(viewport_adjust_script);
     script_url.set(tampermonkey_script);
 
-    initializeLibraries();
-    library_load_events.forEach((eventType) => {
-      eventSource.on(eventType, initializeLibraries);
-    });
-
-    initializeScripts();
-    script_load_events.forEach((eventType) => {
-      eventSource.on(eventType, initializeScripts);
-    });
-
-    initializeMacro();
+    initializeLibrariesOnExtension();
+    initializeScriptsOnExtension();
+    initializeMacroOnExtension();
 
     window.addEventListener("message", handleIframe);
 
@@ -889,17 +881,9 @@ async function onExtensionToggle() {
     script_url.delete(viewport_adjust_script);
     script_url.delete(tampermonkey_script);
 
-    library_load_events.forEach((eventType) => {
-      eventSource.removeListener(eventType, initializeLibraries);
-    });
-    clearLibraries();
-
-    script_load_events.forEach((eventType) => {
-      eventSource.removeListener(eventType, initializeScripts);
-    });
-    destroyScriptsIfInitialized();
-
-    destroyMacro();
+    destroyLibrariesOnExtension()
+    destroyScriptsOnExtension();
+    destroyMacroOnExtension();
 
     window.removeEventListener("message", handleIframe);
 

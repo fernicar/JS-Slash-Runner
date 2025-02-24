@@ -2,8 +2,6 @@ import { chat_metadata, saveSettingsDebounced } from "../../../../../../script.j
 import { extension_settings, getContext, saveMetadataDebounced } from "../../../../../extensions.js";
 import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
 
-export { latest_set_variables_message_id }
-
 interface IframeGetVariables extends IframeMessage {
   request: '[Variables][getVariables]';
   option: Required<VariableOption>;
@@ -35,7 +33,7 @@ function getVariablesByType(type: 'chat' | 'global'): Record<string, any> {
   }
 }
 
-let latest_set_variables_message_id = null;
+export let latest_set_variables_message_id: number | null = null;
 
 export function registerIframeVariableHandler() {
   registerIframeHandler(

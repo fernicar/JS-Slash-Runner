@@ -1,5 +1,5 @@
-import { chat, chat_metadata, event_types, eventSource, saveChatDebounced } from '../../../../../script.js';
-import { extension_settings, saveMetadataDebounced } from '../../../../extensions.js';
+import { chat, chat_metadata, event_types, eventSource, saveChatDebounced } from '../../../../../../script.js';
+import { extension_settings, saveMetadataDebounced } from '../../../../../extensions.js';
 
 function get_property_from_path(object: Record<string, any>, path: string, default_value: any) {
   let result: Record<string, any> | undefined = object;
@@ -27,10 +27,10 @@ function demacro(event_data: { chat: { role: string; content: string }[]; dryRun
   saveChatDebounced();
 }
 
-export function initializeMacro() {
+export function initializeMacroOnExtension() {
   eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }
 
-export function destroyMacro() {
+export function destroyMacroOnExtension() {
   eventSource.removeListener(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }

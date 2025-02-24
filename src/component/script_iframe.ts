@@ -1,12 +1,10 @@
-export { script_load_events, initializeScripts, destroyScriptsIfInitialized }
+import { event_types, eventSource } from '../../../../../../script.js';
 
-import { event_types } from '../../../../../script.js';
-
-import { iframe_client } from './iframe_client_exported/index.js';
-import { script_url } from './script_url.js';
+import { iframe_client } from '../iframe_client_exported/index.js';
+import { script_url } from '../script_url.js';
 import { libraries_text } from './library.js';
-import { third_party } from './third_party.js';
-import { loadScripts, Script } from './util/load_script.js';
+import { third_party } from '../third_party.js';
+import { loadScripts, Script } from '../util/load_script.js';
 
 let script_map: Map<string, HTMLIFrameElement> = new Map();
 
@@ -77,4 +75,18 @@ async function initializeScripts(): Promise<void> {
     console.error('[Script] 全局脚本加载失败:', error);
     throw error;
   }
+}
+
+export async function initializeScriptsOnExtension() {
+  await initializeScripts();
+  script_load_events.forEach((eventType) => {
+    eventSource.on(eventType, initializeScripts);
+  });
+}
+
+export function destroyScriptsOnExtension() {
+  script_load_events.forEach((eventType) => {
+    eventSource.removeListener(eventType, initializeScripts);
+  });
+  destroyScriptsIfInitialized();
 }
