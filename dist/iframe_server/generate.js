@@ -179,6 +179,7 @@ class StreamingProcessor {
     }
 }
 async function iframeGenerate({ user_input = "", use_preset = true, image = null, overrides = undefined, max_chat_history = undefined, inject = [], order = undefined, stream = false, } = {}) {
+    //初始化
     abortController = new AbortController();
     // 1. 处理用户输入（正则，宏）
     const processedUserInput = processUserInput(substituteParams(user_input), oai_settings) || "";
@@ -397,11 +398,9 @@ async function processWorldInfo(oaiMessages, config) {
     const world_info_after = isPromptFiltered("world_info_after", config)
         ? ""
         : config.overrides?.world_info_after ?? rawWorldInfoAfter;
-    if (isPromptFiltered("with_depth_entries", config)) {
-        const prompts = getContext().extensionPrompts;
-        Object.keys(prompts)
-            .filter((key) => key.startsWith("customDepthWI"))
-            .forEach((key) => delete prompts[key]);
+    await clearInjectionPrompts(["customDepthWI"]);
+    if (!isPromptFiltered("with_depth_entries", config)) {
+        processWorldInfoDepth(worldInfoDepth);
     }
     return {
         worldInfoString,
@@ -415,12 +414,6 @@ async function processWorldInfo(oaiMessages, config) {
 }
 // 处理世界信息深度部分
 function processWorldInfoDepth(worldInfoDepth) {
-    // 清除现有的深度世界信息提示词防止重复注入
-    for (const key of Object.keys(getContext().extensionPrompts)) {
-        if (key.startsWith("customDepthWI")) {
-            delete getContext().extensionPrompts[key];
-        }
-    }
     if (Array.isArray(worldInfoDepth)) {
         worldInfoDepth.forEach((entry) => {
             const joinedEntries = entry.entries.join("\n");
@@ -858,12 +851,6 @@ async function generateResponse(generate_data, useStream = false) {
     let result = "";
     try {
         deactivateSendButtons();
-        // 清理注入
-        const prompts = getContext().extensionPrompts;
-        Object.keys(prompts)
-            .filter((key) => key.startsWith("customDepthWI") || key.startsWith("INJECTION"))
-            .forEach((key) => delete prompts[key]);
-        await saveChatConditional();
         if (useStream) {
             let originalStreamSetting = oai_settings.stream_openai;
             if (!originalStreamSetting) {
@@ -890,6 +877,7 @@ async function generateResponse(generate_data, useStream = false) {
     }
     finally {
         unblockGeneration();
+        await clearInjectionPrompts(["INJECTION"]);
     }
     return result;
 }
@@ -916,6 +904,14 @@ function unblockGeneration() {
     showSwipeButtons();
     setGenerationProgress(0);
     flushEphemeralStoppingStrings();
+}
+// 清理注入
+async function clearInjectionPrompts(prefixes) {
+    const prompts = getContext().extensionPrompts;
+    Object.keys(prompts)
+        .filter((key) => prefixes.some(prefix => key.startsWith(prefix)))
+        .forEach((key) => delete prompts[key]);
+    await saveChatConditional();
 }
 function extractMessageFromData(data) {
     if (typeof data === "string") {

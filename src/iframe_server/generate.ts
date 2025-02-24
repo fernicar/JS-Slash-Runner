@@ -372,6 +372,8 @@ async function iframeGenerate({
   order = undefined,
   stream = false,
 }: detail.GenerateParams = {}): Promise<string> {
+
+  //初始化
   abortController = new AbortController();
 
   // 1. 处理用户输入（正则，宏）
@@ -392,23 +394,23 @@ async function iframeGenerate({
   // 3. 根据 use_preset 分流处理
   const generate_data = use_preset
     ? await handlePresetPath(baseData, processedUserInput, {
+      image,
+      overrides,
+      max_chat_history,
+      inject,
+      order,
+    })
+    : await handleCustomPath(
+      baseData,
+      {
         image,
         overrides,
         max_chat_history,
         inject,
         order,
-      })
-    : await handleCustomPath(
-        baseData,
-        {
-          image,
-          overrides,
-          max_chat_history,
-          inject,
-          order,
-        },
-        processedUserInput
-      );
+      },
+      processedUserInput
+    );
   console.log("[Generate:发送提示词]", generate_data);
   // 4. 根据 stream 参数决定生成方式
   return await generateResponse(generate_data, stream);
@@ -512,9 +514,9 @@ async function prepareAndOverrideData(
   // 9. 处理世界书消息示例
   mesExamplesArray = !isPromptFiltered("dialogue_examples", config)
     ? await processMessageExamples(
-        mesExamplesArray,
-        worldInfo.worldInfoExamples
-      )
+      mesExamplesArray,
+      worldInfo.worldInfoExamples
+    )
     : [];
 
   return {
@@ -581,7 +583,7 @@ function setPersonaDescriptionExtensionPrompt() {
   if (
     !description ||
     power_user.persona_description_position ===
-      persona_description_positions.NONE
+    persona_description_positions.NONE
   ) {
     return;
   }
@@ -599,7 +601,7 @@ function setPersonaDescriptionExtensionPrompt() {
     const originalAN = getContext().extensionPrompts[NOTE_MODULE_NAME].value;
     const ANWithDesc =
       power_user.persona_description_position ===
-      persona_description_positions.TOP_AN
+        persona_description_positions.TOP_AN
         ? `${description}\n${originalAN}`
         : `${originalAN}\n${description}`;
 
@@ -719,12 +721,12 @@ async function processWorldInfo(
     ? ""
     : config.overrides?.world_info_after ?? rawWorldInfoAfter;
 
-  if (isPromptFiltered("with_depth_entries", config)) {
-    const prompts = getContext().extensionPrompts;
-    Object.keys(prompts)
-      .filter((key) => key.startsWith("customDepthWI"))
-      .forEach((key) => delete prompts[key]);
+  await clearInjectionPrompts(["customDepthWI"]);
+
+  if (!isPromptFiltered("with_depth_entries", config)) {
+    processWorldInfoDepth(worldInfoDepth);
   }
+  
   return {
     worldInfoString,
     world_info_before,
@@ -737,13 +739,6 @@ async function processWorldInfo(
 }
 // 处理世界信息深度部分
 function processWorldInfoDepth(worldInfoDepth: any[]) {
-  // 清除现有的深度世界信息提示词防止重复注入
-  for (const key of Object.keys(getContext().extensionPrompts)) {
-    if (key.startsWith("customDepthWI")) {
-      delete getContext().extensionPrompts[key];
-    }
-  }
-
   if (Array.isArray(worldInfoDepth)) {
     worldInfoDepth.forEach((entry) => {
       const joinedEntries = entry.entries.join("\n");
@@ -934,7 +929,7 @@ async function convertSystemPromptsToCollection(
   if (
     power_user.persona_description &&
     power_user.persona_description_position ===
-      persona_description_positions.IN_PROMPT
+    persona_description_positions.IN_PROMPT
   ) {
     promptCollection.add(
       new Prompt({
@@ -1154,7 +1149,7 @@ async function processChatHistoryAndInject(
   // 处理空消息替换
   const lastChatPrompt =
     baseData.chatContext.oaiMessages[
-      baseData.chatContext.oaiMessages.length - 1
+    baseData.chatContext.oaiMessages.length - 1
     ];
   const emptyMessage = await Message.createAsync(
     "user",
@@ -1196,16 +1191,15 @@ async function processChatHistoryAndInject(
   const chatPool = [...messages];
   for (const chatPrompt of chatPool) {
     const prompt = new Prompt(chatPrompt);
-    prompt.identifier = `chat_history-${
-      messages.length - chatPool.indexOf(chatPrompt)
-    }`;
+    prompt.identifier = `chat_history-${messages.length - chatPool.indexOf(chatPrompt)
+      }`;
     prompt.content = substituteParams(prompt.content);
 
     const chatMessage = await Message.fromPromptAsync(prompt);
     const promptManager = setupChatCompletionPromptManager();
     if (
       promptManager.serviceSettings.names_behavior ===
-        character_names_behavior.COMPLETION &&
+      character_names_behavior.COMPLETION &&
       prompt.name
     ) {
       const messageName = promptManager.isValidName(prompt.name)
@@ -1260,7 +1254,7 @@ async function populationInjectionPrompts(
   if (
     power_user.persona_description &&
     power_user.persona_description_position ===
-      persona_description_positions.AT_DEPTH
+    persona_description_positions.AT_DEPTH
   ) {
     injectionPrompts.push({
       role: "system",
@@ -1341,15 +1335,6 @@ async function generateResponse(
   try {
     deactivateSendButtons();
 
-    // 清理注入
-    const prompts = getContext().extensionPrompts;
-    Object.keys(prompts)
-      .filter(
-        (key) => key.startsWith("customDepthWI") || key.startsWith("INJECTION")
-      )
-      .forEach((key) => delete prompts[key]);
-
-    await saveChatConditional();
     if (useStream) {
       let originalStreamSetting = oai_settings.stream_openai;
       if (!originalStreamSetting) {
@@ -1381,6 +1366,7 @@ async function generateResponse(
     throw error;
   } finally {
     unblockGeneration();
+    await clearInjectionPrompts(["INJECTION"]);
   }
   return result;
 }
@@ -1409,6 +1395,16 @@ function unblockGeneration() {
   showSwipeButtons();
   setGenerationProgress(0);
   flushEphemeralStoppingStrings();
+}
+
+// 清理注入
+async function clearInjectionPrompts(prefixes: string[]) {
+  const prompts = getContext().extensionPrompts;
+  Object.keys(prompts)
+    .filter((key) => prefixes.some(prefix => key.startsWith(prefix)))
+    .forEach((key) => delete prompts[key]);
+
+  await saveChatConditional();
 }
 function extractMessageFromData(data: any) {
   if (typeof data === "string") {
@@ -1475,7 +1471,7 @@ function isPromptFiltered(
   // 对于普通提示词，只有当它在 overrides 中存在且为空字符串时才被过滤
   const override =
     config.overrides[
-      promptId as keyof Omit<detail.OverrideConfig, "chat_history">
+    promptId as keyof Omit<detail.OverrideConfig, "chat_history">
     ];
   return override !== undefined && override === "";
 }
