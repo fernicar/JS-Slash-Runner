@@ -1,20 +1,17 @@
-import { extract, get_or_set } from "./util/helper.js";
+import { extract } from "./util/helper.js";
 function createObjectURLFromScript(code) {
     return URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
 }
 class ScriptUrl {
     map = new Map();
-    get(code) {
-        return this.map.get(code);
+    get(name) {
+        return this.map.get(name);
     }
-    set(code) {
-        this.map.set(code, createObjectURLFromScript(code));
+    set(name, code) {
+        this.map.set(name, createObjectURLFromScript(code));
     }
-    get_or_set(code) {
-        return get_or_set(this.map, code, () => createObjectURLFromScript(code));
-    }
-    delete(code) {
-        const url = extract(this.map, code);
+    delete(name) {
+        const url = extract(this.map, name);
         if (!url) {
             return url;
         }

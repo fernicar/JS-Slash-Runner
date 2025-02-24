@@ -1,11 +1,10 @@
 import { event_types, eventSource } from '../../../../../../script.js';
-import { iframe_client } from '../iframe_client_exported/index.js';
 import { script_url } from '../script_url.js';
 import { libraries_text } from './library.js';
 import { third_party } from '../third_party.js';
 import { loadScripts } from '../util/load_script.js';
 let script_map = new Map();
-const script_load_events = [
+const load_events = [
     event_types.CHAT_CHANGED
 ];
 function makeScriptIframe(script) {
@@ -16,7 +15,7 @@ function makeScriptIframe(script) {
     <html>
     <head>
       ${third_party}
-      <script src="${script_url.get(iframe_client)}"></script>
+      <script src="${script_url.get('iframe_client')}"></script>
       ${libraries_text}
     </head>
     <body>
@@ -34,7 +33,7 @@ function makeScriptIframe(script) {
     document.body.appendChild(iframe);
     return { iframe, load_promise };
 }
-function destroyScriptsIfInitialized() {
+function destroyIfInitialized() {
     if (script_map.size !== 0) {
         console.log(`[Script] 清理全局脚本...`);
         script_map.forEach((iframe, _) => {
@@ -44,9 +43,9 @@ function destroyScriptsIfInitialized() {
         console.log(`[Script] 全局脚本清理完成!`);
     }
 }
-async function initializeScripts() {
+async function initialize() {
     try {
-        destroyScriptsIfInitialized();
+        destroyIfInitialized();
         const scripts = loadScripts("脚本-");
         console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
         const load_promises = [];
@@ -63,15 +62,15 @@ async function initializeScripts() {
     }
 }
 export async function initializeScriptsOnExtension() {
-    await initializeScripts();
-    script_load_events.forEach((eventType) => {
-        eventSource.on(eventType, initializeScripts);
+    await initialize();
+    load_events.forEach((eventType) => {
+        eventSource.on(eventType, initialize);
     });
 }
 export function destroyScriptsOnExtension() {
-    script_load_events.forEach((eventType) => {
-        eventSource.removeListener(eventType, initializeScripts);
+    load_events.forEach((eventType) => {
+        eventSource.removeListener(eventType, initialize);
     });
-    destroyScriptsIfInitialized();
+    destroyIfInitialized();
 }
 //# sourceMappingURL=script_iframe.js.map
