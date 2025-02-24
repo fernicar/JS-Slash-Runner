@@ -14,12 +14,20 @@ function destroyIfInitialized() {
         script_url.delete(key);
     });
 }
+function include_library(code) {
+    const library = `
+function sillyTavern() {
+  return window.SillyTavern;
+}
+`;
+    return library + code;
+}
 async function initialize() {
     destroyIfInitialized();
     const scripts = loadScripts("模块-");
     console.info(`[Module] 加载模块: ${JSON.stringify(scripts.map(module => module.name))}`);
     for (const script of scripts) {
-        script_url.set(script.name, script.code);
+        script_url.set(script.name, include_library(script.code));
         const module = await import(script_url.get(script.name));
         if (module.onLoad) {
             module.onLoad();

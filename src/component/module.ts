@@ -23,6 +23,16 @@ function destroyIfInitialized(): void {
   })
 }
 
+function include_library(code: string): string {
+  const library: string = `
+function sillyTavern() {
+  return window.SillyTavern;
+}
+` as const;
+
+  return library + code;
+}
+
 async function initialize(): Promise<void> {
   destroyIfInitialized();
 
@@ -30,7 +40,7 @@ async function initialize(): Promise<void> {
   console.info(`[Module] 加载模块: ${JSON.stringify(scripts.map(module => module.name))}`);
 
   for (const script of scripts) {
-    script_url.set(script.name, script.code);
+    script_url.set(script.name, include_library(script.code));
     const module: Module = await import(script_url.get(script.name) as string);
     if (module.onLoad) {
       module.onLoad();
