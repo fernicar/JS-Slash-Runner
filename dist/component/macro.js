@@ -1,5 +1,5 @@
-import { chat, chat_metadata, event_types, eventSource, saveChatDebounced } from '../../../../../script.js';
-import { extension_settings, saveMetadataDebounced } from '../../../../extensions.js';
+import { chat, chat_metadata, event_types, eventSource, saveChatDebounced } from '../../../../../../script.js';
+import { extension_settings, saveMetadataDebounced } from '../../../../../extensions.js';
 function get_property_from_path(object, path, default_value) {
     let result = object;
     for (const key of path.split('.')) {
@@ -25,10 +25,10 @@ function demacro(event_data) {
     saveMetadataDebounced();
     saveChatDebounced();
 }
-export function initializeMacro() {
+export function initializeMacroOnExtension() {
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }
-export function destroyMacro() {
+export function destroyMacroOnExtension() {
     eventSource.removeListener(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }
 //# sourceMappingURL=macro.js.map

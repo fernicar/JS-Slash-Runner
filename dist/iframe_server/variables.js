@@ -1,7 +1,6 @@
 import { chat_metadata, saveSettingsDebounced } from "../../../../../../script.js";
 import { extension_settings, getContext, saveMetadataDebounced } from "../../../../../extensions.js";
 import { getLogPrefix, registerIframeHandler } from "./index.js";
-export { latest_set_variables_message_id };
 function getVariablesByType(type) {
     switch (type) {
         case 'chat':
@@ -14,7 +13,7 @@ function getVariablesByType(type) {
             return extension_settings.variables.global;
     }
 }
-let latest_set_variables_message_id = null;
+export let latest_set_variables_message_id = null;
 export function registerIframeVariableHandler() {
     registerIframeHandler('[Variables][getVariables]', async (event) => {
         const option = event.data.option;
