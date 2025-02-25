@@ -52,7 +52,7 @@ async function initialize(): Promise<void> {
 export async function initializeModulesOnExtension() {
   await initialize();
   load_events.forEach((eventType) => {
-    eventSource.on(eventType, initialize);
+    eventSource.makeFirst(eventType, initialize);
   });
 }
 

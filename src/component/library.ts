@@ -21,7 +21,7 @@ function destroy(): void {
 export function initializeLibrariesOnExtension() {
   initialize();
   load_events.forEach((eventType) => {
-    eventSource.on(eventType, initialize);
+    eventSource.makeFirst(eventType, initialize);
   });
 }
 

@@ -38,7 +38,7 @@ async function initialize() {
 export async function initializeModulesOnExtension() {
     await initialize();
     load_events.forEach((eventType) => {
-        eventSource.on(eventType, initialize);
+        eventSource.makeFirst(eventType, initialize);
     });
 }
 export function destroyModulesOnExtension() {
