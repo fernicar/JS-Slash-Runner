@@ -1,7 +1,7 @@
 import { getCharacterRegexes, getGlobalRegexes, isCharacterTavernRegexEnabled } from "../iframe_server/tavern_regex.js";
 ;
 export function loadScripts(prefix) {
-    const filterScriptFromRegex = (script) => script.scriptName.startsWith(prefix);
+    const filterScriptFromRegex = (script) => script.scriptName.replace(/^【.*】/, '').startsWith(prefix);
     const isEnabled = (script) => !script.disabled;
     const toName = (script) => script.scriptName.replace(prefix, '');
     let scripts = [];

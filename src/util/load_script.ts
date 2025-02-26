@@ -7,7 +7,7 @@ export interface Script {
 };
 
 export function loadScripts(prefix: string): Script[] {
-  const filterScriptFromRegex = (script: RegexScriptData) => script.scriptName.startsWith(prefix);
+  const filterScriptFromRegex = (script: RegexScriptData) => script.scriptName.replace(/^【.*】/, '').startsWith(prefix);
   const isEnabled = (script: RegexScriptData) => !script.disabled;
   const toName = (script: RegexScriptData) => script.scriptName.replace(prefix, '');
 
