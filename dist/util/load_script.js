@@ -3,7 +3,7 @@ import { getCharacterRegexes, getGlobalRegexes, isCharacterTavernRegexEnabled } 
 export function loadScripts(prefix) {
     const filterScriptFromRegex = (script) => script.scriptName.replace(/^【.*】/, '').startsWith(prefix);
     const isEnabled = (script) => !script.disabled;
-    const toName = (script) => script.scriptName.replace(prefix, '');
+    const toName = (script) => script.scriptName.replace(/^【.*】/, '').replace(prefix, '');
     let scripts = [];
     const enabled_global_regexes = getGlobalRegexes()
         .filter(filterScriptFromRegex)
