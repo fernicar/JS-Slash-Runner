@@ -1,12 +1,8 @@
-import { event_types, eventSource } from '../../../../../../script.js';
-import { script_url } from '../script_url.js';
+import { script_url } from '../../script_url.js';
 import { libraries_text } from './library.js';
-import { third_party } from '../third_party.js';
-import { loadScripts } from '../util/load_script.js';
+import { third_party } from '../../third_party.js';
+import { loadScripts } from '../../util/load_script.js';
 let script_map = new Map();
-const load_events = [
-    event_types.CHAT_CHANGED
-];
 function makeScriptIframe(script) {
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
@@ -33,7 +29,7 @@ function makeScriptIframe(script) {
     document.body.appendChild(iframe);
     return { iframe, load_promise };
 }
-function destroyIfInitialized() {
+export function destroy() {
     if (script_map.size !== 0) {
         console.log(`[Script] 清理全局脚本...`);
         script_map.forEach((iframe, _) => {
@@ -43,9 +39,9 @@ function destroyIfInitialized() {
         console.log(`[Script] 全局脚本清理完成!`);
     }
 }
-async function initialize() {
+export async function initialize() {
     try {
-        destroyIfInitialized();
+        destroy();
         const scripts = loadScripts("脚本-");
         console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
         const load_promises = [];
@@ -60,17 +56,5 @@ async function initialize() {
         console.error('[Script] 全局脚本加载失败:', error);
         throw error;
     }
-}
-export async function initializeScriptsOnExtension() {
-    await initialize();
-    load_events.forEach((eventType) => {
-        eventSource.makeFirst(eventType, initialize);
-    });
-}
-export function destroyScriptsOnExtension() {
-    load_events.forEach((eventType) => {
-        eventSource.removeListener(eventType, initialize);
-    });
-    destroyIfInitialized();
 }
 //# sourceMappingURL=script_iframe.js.map
