@@ -1,15 +1,9 @@
-import { event_types, eventSource } from '../../../../../../script.js';
-
-import { script_url } from '../script_url.js';
+import { script_url } from '../../script_url.js';
 import { libraries_text } from './library.js';
-import { third_party } from '../third_party.js';
-import { loadScripts, Script } from '../util/load_script.js';
+import { third_party } from '../../third_party.js';
+import { loadScripts, Script } from '../../util/load_script.js';
 
 let script_map: Map<string, HTMLIFrameElement> = new Map();
-
-const load_events = [
-  event_types.CHAT_CHANGED
-] as const;
 
 function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_promise: Promise<void>; } {
   const iframe = document.createElement('iframe');
@@ -43,7 +37,7 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
   return { iframe, load_promise };
 }
 
-function destroyIfInitialized(): void {
+export function destroy(): void {
   if (script_map.size !== 0) {
     console.log(`[Script] 清理全局脚本...`);
     script_map.forEach((iframe, _) => {
@@ -54,9 +48,9 @@ function destroyIfInitialized(): void {
   }
 }
 
-async function initialize(): Promise<void> {
+export async function initialize(): Promise<void> {
   try {
-    destroyIfInitialized();
+    destroy();
 
     const scripts = loadScripts("脚本-");
     console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
@@ -74,18 +68,4 @@ async function initialize(): Promise<void> {
     console.error('[Script] 全局脚本加载失败:', error);
     throw error;
   }
-}
-
-export async function initializeScriptsOnExtension() {
-  await initialize();
-  load_events.forEach((eventType) => {
-    eventSource.makeFirst(eventType, initialize);
-  });
-}
-
-export function destroyScriptsOnExtension() {
-  load_events.forEach((eventType) => {
-    eventSource.removeListener(eventType, initialize);
-  });
-  destroyIfInitialized();
 }

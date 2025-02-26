@@ -44,13 +44,12 @@ import { power_user } from "../../../../power-user.js";
 import { handleIframe } from "./iframe_server/index.js";
 import { iframe_client } from "./iframe_client_exported/index.js";
 import { initSlashEventEmit } from "./slash_command/event.js";
-import { initializeLibrariesOnExtension, destroyLibrariesOnExtension, libraries_text } from "./component/library.js";
+import { libraries_text } from "./component/character_level/library.js";
 import { initializeMacroOnExtension, destroyMacroOnExtension } from "./component/macro.js";
-import { initializeScriptsOnExtension, destroyScriptsOnExtension, } from "./component/script_iframe.js";
+import { initializeCharacterLevelOnExtension, destroyCharacterLevelOnExtension } from "./component/character_level/index.js";
 import { latest_set_variables_message_id } from "./iframe_server/variables.js";
 import { script_url } from "./script_url.js";
 import { third_party } from "./third_party.js";
-import { initializeModulesOnExtension } from "./component/module.js";
 
 const extensionName = "JS-Slash-Runner";
 const extensionFolderPath = `third-party/${extensionName}`;
@@ -852,10 +851,8 @@ async function onExtensionToggle() {
     script_url.set('viewport_adjust_script', viewport_adjust_script);
     script_url.set('tampermonkey_script', tampermonkey_script);
 
-    initializeModulesOnExtension();
-    initializeLibrariesOnExtension();
-    initializeScriptsOnExtension();
     initializeMacroOnExtension();
+    initializeCharacterLevelOnExtension();
 
     window.addEventListener("message", handleIframe);
 
@@ -883,10 +880,8 @@ async function onExtensionToggle() {
     script_url.delete('viewport_adjust_script');
     script_url.delete('tampermonkey_script');
 
-    destroyModulesOnExtension();
-    destroyLibrariesOnExtension()
-    destroyScriptsOnExtension();
     destroyMacroOnExtension();
+    destroyCharacterLevelOnExtension();
 
     window.removeEventListener("message", handleIframe);
 
