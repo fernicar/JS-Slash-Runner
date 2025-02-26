@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n.js";
 import { registerIframeChatMessageHandler } from "./chat_message.js";
 import { registerIframeDisplayedMessageHandler } from "./displayed_message.js";
 import { registerIframeEventHandler } from "./event.js";
