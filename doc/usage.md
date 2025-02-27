@@ -2010,6 +2010,32 @@ async function substitudeMacros(text: string): Promise<string>
 async function getLastMessageId(): Promise<number>;
 ```
 
+```typescript
+/**
+ * 生成唯一的 uuidv4 标识符
+ *
+ * @returns 唯一的 uuidv4 标识符
+ */
+function generateUuidv4(): string
+```
+
+```typescript
+/**
+ * 包装 `fn` 函数，返回一个会将报错消息通过酒馆通知显示出来的同功能函数
+ *
+ * @param fn 要包装的函数
+ * @returns 包装后的函数
+ *
+ * @example
+ * // 包装 `test` 函数从而在酒馆通知中显示 'test' 文本
+ * async function test() {
+ *   throw Error(`test`);
+ * }
+ * errorCatched(test)();
+ */
+function errorCatched<T extends any[], U>(fn: (...args: T) => U): (...args: T) => U
+```
+
 ## 播放器功能
 
 用于解决iframe之间难以继承播放进度的问题，变量操作的延伸功能。
