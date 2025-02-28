@@ -1,4 +1,4 @@
-import { chat, chat_metadata, event_types, eventSource, saveChatDebounced } from '../../../../../../script.js';
+import { chat, chat_metadata, event_types, eventSource } from '../../../../../../script.js';
 import { extension_settings, saveMetadataDebounced } from '../../../../../extensions.js';
 function get_property_from_path(object, path, default_value) {
     let result = object;
@@ -23,7 +23,6 @@ function demacro(event_data) {
         });
     });
     saveMetadataDebounced();
-    saveChatDebounced();
 }
 export function initializeMacroOnExtension() {
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);

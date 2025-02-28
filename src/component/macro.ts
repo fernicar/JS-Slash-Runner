@@ -1,5 +1,5 @@
-import { chat, chat_metadata, event_types, eventSource, saveChatDebounced } from '../../../../../../script.js';
-import { extension_settings, saveMetadataDebounced } from '../../../../../extensions.js';
+import { chat, chat_metadata, event_types, eventSource } from '../../../../../../script.js';
+import { extension_settings } from '../../../../../extensions.js';
 
 function get_property_from_path(object: Record<string, any>, path: string, default_value: any) {
   let result: Record<string, any> | undefined = object;
@@ -13,6 +13,9 @@ function get_property_from_path(object: Record<string, any>, path: string, defau
 }
 
 function demacro(event_data: { chat: { role: string; content: string }[]; dryRun: boolean }) {
+  if (event_data.dryRun) {
+    return;
+  }
   const map = {
     get_global_variable: extension_settings.variables.global,
     get_chat_variable: (chat_metadata as { variables: Object }).variables,
@@ -23,8 +26,6 @@ function demacro(event_data: { chat: { role: string; content: string }[]; dryRun
       return JSON.stringify(get_property_from_path(map[type], path, null));
     });
   });
-  saveMetadataDebounced();
-  saveChatDebounced();
 }
 
 export function initializeMacroOnExtension() {

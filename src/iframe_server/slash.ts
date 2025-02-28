@@ -24,7 +24,6 @@ export function registerIframeSlashHandler() {
   registerIframeHandler(
     '[Slash][triggerSlashWithResult]',
     async (event: MessageEvent<IframeSlash>): Promise<string | undefined> => {
-      const iframe_name = getIframeName(event);
       const command = event.data.command;
 
       const result = await executeSlashCommandsWithOptions(command);
