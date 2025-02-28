@@ -1588,7 +1588,7 @@ async function eventWaitOnce(event_type: EventType, listener: Function): Promise
  * @param event_type 要发送的事件
  * @param data 要随着事件发送的数据
  */
-async function eventEmit(event_type: EventType, ...data: any[]): Promise<void>
+async function eventEmit<T extends EventType>(event_type: T, ...data: Parameters<ListenerType[T]>): Promise<void>
 ```
 
 示例:
