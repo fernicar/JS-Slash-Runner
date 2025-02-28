@@ -1,5 +1,5 @@
 import { executeSlashCommandsWithOptions } from "../../../../../slash-commands.js";
-import { getIframeName, getLogPrefix, registerIframeHandler } from "./index.js";
+import { getLogPrefix, registerIframeHandler } from "./index.js";
 export function registerIframeSlashHandler() {
     registerIframeHandler('[Slash][triggerSlash]', async (event) => {
         const command = event.data.command;
@@ -10,7 +10,6 @@ export function registerIframeSlashHandler() {
         console.info(`${getLogPrefix(event)}运行 Slash 命令: ${command}`);
     });
     registerIframeHandler('[Slash][triggerSlashWithResult]', async (event) => {
-        const iframe_name = getIframeName(event);
         const command = event.data.command;
         const result = await executeSlashCommandsWithOptions(command);
         if (result.isError) {

@@ -1,5 +1,5 @@
 import { chat, chat_metadata, event_types, eventSource } from '../../../../../../script.js';
-import { extension_settings, saveMetadataDebounced } from '../../../../../extensions.js';
+import { extension_settings } from '../../../../../extensions.js';
 function get_property_from_path(object, path, default_value) {
     let result = object;
     for (const key of path.split('.')) {
@@ -12,6 +12,9 @@ function get_property_from_path(object, path, default_value) {
     return result ?? default_value;
 }
 function demacro(event_data) {
+    if (event_data.dryRun) {
+        return;
+    }
     const map = {
         get_global_variable: extension_settings.variables.global,
         get_chat_variable: chat_metadata.variables,
@@ -22,7 +25,6 @@ function demacro(event_data) {
             return JSON.stringify(get_property_from_path(map[type], path, null));
         });
     });
-    saveMetadataDebounced();
 }
 export function initializeMacroOnExtension() {
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
