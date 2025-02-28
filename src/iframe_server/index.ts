@@ -1,7 +1,6 @@
 import { t } from "../../../../../i18n.js";
 import { registerIframeChatMessageHandler } from "./chat_message.js";
 import { registerIframeDisplayedMessageHandler } from "./displayed_message.js";
-import { registerIframeEventHandler } from "./event.js";
 import { registerIframeFrontendVersionHandler } from "./frontend_version.js";
 import { registerIframeGenerateHandler } from "./generate.js";
 import { registerIframeLorebookHandler } from "./lorebook.js";
@@ -67,7 +66,6 @@ export async function handleIframe(event: MessageEvent<IframeMessage>): Promise<
 
 registerIframeChatMessageHandler();
 registerIframeDisplayedMessageHandler();
-registerIframeEventHandler();
 registerIframeFrontendVersionHandler();
 registerIframeGenerateHandler();
 registerIframeLorebookEntryHandler();

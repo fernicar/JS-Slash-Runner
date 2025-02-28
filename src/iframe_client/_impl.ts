@@ -1,6 +1,4 @@
 namespace detail {
-  export const do_nothing = () => { };
-
   export interface IframeCallbackMessage {
     request: string;
     uid: number;
@@ -32,5 +30,24 @@ namespace detail {
     } else {
       return string;
     }
+  }
+
+  export function get_or_set<K, V>(map: Map<K, V>, key: K, defaulter: () => V): V {
+    const existing_value = map.get(key);
+    if (existing_value) {
+      return existing_value;
+    }
+    const default_value = defaulter();
+    map.set(key, default_value);
+    return default_value;
+  }
+
+  export function extract<K, V>(map: Map<K, V>, key: K): V | undefined {
+    const value = map.get(key);
+    if (!value) {
+      return undefined;
+    }
+    map.delete(key);
+    return value;
   }
 }
