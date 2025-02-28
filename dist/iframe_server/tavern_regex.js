@@ -69,10 +69,10 @@ export function registerIframeTavernRegexHandler() {
     registerIframeHandler('[TavernRegex][getTavernRegexes]', async (event) => {
         const option = event.data.option;
         if (!['all', 'enabled', 'disabled'].includes(option.enable_state)) {
-            throw Error(`${getLogPrefix(event)}提供的 enable_state 无效, 请提供 'all', 'enabled' 或 'disabled', 你提供的是: ${option.enable_state}`);
+            throw Error(`提供的 enable_state 无效, 请提供 'all', 'enabled' 或 'disabled', 你提供的是: ${option.enable_state}`);
         }
         if (!['all', 'global', 'character'].includes(option.scope)) {
-            throw Error(`${getLogPrefix(event)}提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`);
+            throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`);
         }
         let regexes = [];
         if (option.scope === 'all' || option.scope === 'global') {
@@ -91,12 +91,12 @@ export function registerIframeTavernRegexHandler() {
         const regexes = event.data.regexes;
         const option = event.data.option;
         if (!['all', 'global', 'character'].includes(option.scope)) {
-            throw Error(`${getLogPrefix(event)}提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`);
+            throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`);
         }
         // FIXME: `trimStrings` and `substituteRegex` are not considered
         const emptied_regexes = regexes.filter(regex => regex.script_name == '');
         if (emptied_regexes.length > 0) {
-            throw Error(`${getLogPrefix(event)}不能将酒馆正则的名称设置为空字符串: ${JSON.stringify(emptied_regexes.map(regex => regex.id))}`);
+            throw Error(`不能将酒馆正则的名称设置为空字符串:\n${JSON.stringify(emptied_regexes.map(regex => regex.id))}`);
         }
         const [global_regexes, character_regexes] = partition(regexes, regex => regex.scope === 'global')
             .map(regexes => regexes.map(fromTavernRegex));
@@ -116,8 +116,8 @@ export function registerIframeTavernRegexHandler() {
         }
         await reloadCurrentChat();
         console.info(`${getLogPrefix(event)}替换酒馆正则\
-${option.scope === 'all' || option.scope === 'global' ? `, 全局正则: ${JSON.stringify(global_regexes)}` : ``}\
-${option.scope === 'all' || option.scope === 'character' ? `, 局部正则: ${JSON.stringify(character_regexes)}` : ``}`);
+${option.scope === 'all' || option.scope === 'global' ? `, 全局正则:\n${JSON.stringify(global_regexes, undefined, 2)}` : ``}\
+${option.scope === 'all' || option.scope === 'character' ? `, 局部正则:\n${JSON.stringify(character_regexes, undefined, 2)}` : ``}`);
     });
 }
 //# sourceMappingURL=tavern_regex.js.map

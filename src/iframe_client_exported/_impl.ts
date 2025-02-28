@@ -1,7 +1,6 @@
 export const iframe_client__impl = `
 var detail;
 (function (detail) {
-    detail.do_nothing = () => { };
     ;
     async function make_iframe_promise(message) {
         return new Promise((resolve, _) => {
@@ -31,5 +30,24 @@ var detail;
         }
     }
     detail.format_function_to_string = format_function_to_string;
+    function get_or_set(map, key, defaulter) {
+        const existing_value = map.get(key);
+        if (existing_value) {
+            return existing_value;
+        }
+        const default_value = defaulter();
+        map.set(key, default_value);
+        return default_value;
+    }
+    detail.get_or_set = get_or_set;
+    function extract(map, key) {
+        const value = map.get(key);
+        if (!value) {
+            return undefined;
+        }
+        map.delete(key);
+        return value;
+    }
+    detail.extract = extract;
 })(detail || (detail = {}));
 `

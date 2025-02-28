@@ -159,27 +159,27 @@ export function registerIframeLorebookEntryHandler() {
         const lorebook = event.data.lorebook;
         const entries = event.data.entries;
         if (!world_names.includes(lorebook)) {
-            throw Error(`${getLogPrefix(event)}未能找到世界书 '${lorebook}'`);
+            throw Error(`未能找到世界书 '${lorebook}'`);
         }
         const data = await loadWorldInfo(lorebook);
         const process_entry = async (entry) => {
             // @ts-ignore
             const wi_entry = data.entries[entry.uid];
             if (!wi_entry) {
-                throw Error(`${getLogPrefix(event)}未能在世界书 '${lorebook}' 中找到 uid=${entry.uid} 的条目`);
+                throw Error(`未能在世界书 '${lorebook}' 中找到 uid=${entry.uid} 的条目`);
             }
             assignFieldValuesToWiEntry(data, wi_entry, fromPartialLorebookEntry(entry));
         };
         await Promise.all(entries.map(process_entry));
         await saveWorldInfo(lorebook, data);
         reloadEditorDebounced(lorebook);
-        console.info(`${getLogPrefix(event)}修改世界书 '${lorebook}' 中以下条目的以下字段: ${JSON.stringify(entries)}`);
+        console.info(`${getLogPrefix(event)}修改世界书 '${lorebook}' 中以下条目的以下字段:\n${JSON.stringify(entries, undefined, 2)}`);
     });
     registerIframeHandler('[LorebookEntry][createLorebookEntry]', async (event) => {
         const lorebook = event.data.lorebook;
         const field_values = event.data.field_values;
         if (!world_names.includes(lorebook)) {
-            throw Error(`${getLogPrefix(event)}未能找到世界书 '${lorebook}'`);
+            throw Error(`未能找到世界书 '${lorebook}'`);
         }
         const data = await loadWorldInfo(lorebook);
         const wi_entry = createWorldInfoEntry(lorebook, data);
@@ -190,7 +190,7 @@ export function registerIframeLorebookEntryHandler() {
         assignFieldValuesToWiEntry(data, wi_entry, partial_lorebook_entry);
         await saveWorldInfo(lorebook, data);
         reloadEditorDebounced(lorebook);
-        console.info(`${getLogPrefix(event)}在世界书 '${lorebook}' 中新建 uid='${wi_entry.uid}' 条目, 并设置内容: ${JSON.stringify(field_values)}`);
+        console.info(`${getLogPrefix(event)}在世界书 '${lorebook}' 中新建 uid='${wi_entry.uid}' 条目, 并设置内容:\n${JSON.stringify(field_values, undefined, 2)}`);
         return wi_entry.uid;
     });
     registerIframeHandler('[LorebookEntry][deleteLorebookEntry]', async (event) => {

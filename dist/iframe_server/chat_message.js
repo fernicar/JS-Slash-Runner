@@ -8,13 +8,13 @@ export function registerIframeChatMessageHandler() {
         const range = stringToRange(range_demacroed, 0, chat.length - 1);
         const option = event.data.option;
         if (!range) {
-            throw Error(`${getLogPrefix(event)}提供的消息范围 range 无效: ${range_demacroed}`);
+            throw Error(`提供的消息范围 range 无效: ${range_demacroed}`);
         }
         if (!['all', 'system', 'assistant', 'user'].includes(option.role)) {
-            throw Error(`${getLogPrefix(event)}提供的 role 无效, 请提供 'all', 'system', 'assistant' 或 'user', 你提供的是: ${option.role}`);
+            throw Error(`提供的 role 无效, 请提供 'all', 'system', 'assistant' 或 'user', 你提供的是: ${option.role}`);
         }
         if (!['all', 'hidden', 'unhidden'].includes(option.hide_state)) {
-            throw Error(`${getLogPrefix(event)}提供的 hide_state 无效, 请提供 'all', 'hidden' 或 'unhidden', 你提供的是: ${option.hide_state}`);
+            throw Error(`提供的 hide_state 无效, 请提供 'all', 'hidden' 或 'unhidden', 你提供的是: ${option.hide_state}`);
         }
         const { start, end } = range;
         const getRole = (chat_message) => {
@@ -76,10 +76,10 @@ export function registerIframeChatMessageHandler() {
         const message_id = event.data.message_id;
         const option = event.data.option;
         if (typeof option.swipe_id !== 'number' && option.swipe_id !== 'current') {
-            throw Error(`${getLogPrefix(event)}提供的 swipe_id 无效, 请提供 'current' 或序号, 你提供的是: ${option.swipe_id} `);
+            throw Error(`提供的 swipe_id 无效, 请提供 'current' 或序号, 你提供的是: ${option.swipe_id} `);
         }
         if (!['none', 'display_current', 'display_and_render_current', 'all'].includes(option.refresh)) {
-            throw Error(`${getLogPrefix(event)}提供的 refresh 无效, 请提供 'none', 'display_current', 'display_and_render_current' 或 'all', 你提供的是: ${option.refresh} `);
+            throw Error(`提供的 refresh 无效, 请提供 'none', 'display_current', 'display_and_render_current' 或 'all', 你提供的是: ${option.refresh} `);
         }
         const chat_message = chat[message_id];
         if (!chat_message) {

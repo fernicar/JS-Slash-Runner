@@ -142,7 +142,7 @@ class StreamingProcessor {
         saveChatConditional();
     }
     async *nullStreamingGeneration() {
-        throw new Error("Generation function for streaming is not hooked up");
+        throw Error("Generation function for streaming is not hooked up");
     }
     async generate() {
         try {
@@ -169,7 +169,7 @@ class StreamingProcessor {
         catch (err) {
             if (!this.isFinished) {
                 this.onErrorStreaming();
-                throw new Error(`Generate method error: ${err}`);
+                throw Error(`Generate method error: ${err}`);
             }
             this.messageBuffer = "";
             return this.result;
@@ -884,7 +884,7 @@ async function generateResponse(generate_data, useStream = false) {
 // 处理响应
 async function handleResponse(response) {
     if (!response) {
-        throw new Error(`未得到响应`);
+        throw Error(`未得到响应`);
     }
     if (response.error) {
         if (response?.response) {
@@ -893,7 +893,7 @@ async function handleResponse(response) {
                 preventDuplicates: true,
             });
         }
-        throw new Error(response?.response);
+        throw Error(response?.response);
     }
     const message = extractMessageFromData(response);
     eventSource.emit("js_generation_ended", message);

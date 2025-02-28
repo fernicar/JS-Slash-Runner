@@ -117,7 +117,7 @@ function assignPartialLorebookSettings(settings) {
 export function registerIframeLorebookHandler() {
     registerIframeHandler('[Lorebook][getLorebookSettings]', async (event) => {
         const lorebook_settings = toLorebookSettings(getWorldInfoSettings());
-        console.info(`${getLogPrefix(event)}获取世界书全局设置: ${JSON.stringify(lorebook_settings)}`);
+        console.info(`${getLogPrefix(event)}获取世界书全局设置:\n${JSON.stringify(lorebook_settings, undefined, 2)}`);
         return lorebook_settings;
     });
     registerIframeHandler('[Lorebook][setLorebookSettings]', async (event) => {
@@ -125,23 +125,23 @@ export function registerIframeLorebookHandler() {
         if (settings.selected_global_lorebooks) {
             const inexisting_lorebooks = settings.selected_global_lorebooks.filter(lorebook => !world_names.includes(lorebook));
             if (inexisting_lorebooks.length > 0) {
-                throw Error(`${getLogPrefix(event)}尝试修改要全局启用的世界书, 但未找到以下世界书: ${inexisting_lorebooks}`);
+                throw Error(`尝试修改要全局启用的世界书, 但未找到以下世界书: ${JSON.stringify(inexisting_lorebooks)}`);
             }
         }
         assignPartialLorebookSettings(settings);
-        console.info(`${getLogPrefix(event)}修改世界书全局设置: ${JSON.stringify(settings)}`);
+        console.info(`${getLogPrefix(event)}修改世界书全局设置:\n${JSON.stringify(settings, undefined, 2)}`);
     });
     registerIframeHandler('[Lorebook][getCharLorebooks]', async (event) => {
         const option = event.data.option;
         // @ts-ignore
         if (selected_group && !option.name) {
-            throw Error(`${getLogPrefix(event)}不要在群组中调用这个功能`);
+            throw Error(`不要在群组中调用这个功能`);
         }
         const filename = option.name ?? getCharaFilename(this_chid) ?? null;
         // @ts-ignore
         const character = findChar({ name: filename });
         if (!character) {
-            throw Error(`${getLogPrefix(event)}未找到名为 '${filename}' 的角色卡`);
+            throw Error(`未找到名为 '${filename}' 的角色卡`);
         }
         let books = { primary: null, additional: [] };
         if (character.data?.extensions?.world) {
@@ -159,18 +159,18 @@ export function registerIframeLorebookHandler() {
         const lorebooks = event.data.lorebooks;
         // @ts-ignore
         if (selected_group && !option.name) {
-            throw Error(`${getLogPrefix(event)}不要在群组中调用这个功能`);
+            throw Error(`不要在群组中调用这个功能`);
         }
         const filename = getCharaFilename(this_chid);
         if (!filename) {
-            throw Error(`${getLogPrefix(event)}未打开任何角色卡`);
+            throw Error(`未打开任何角色卡`);
         }
         const inexisting_lorebooks = [
             ...((lorebooks.primary && !world_names.includes(lorebooks.primary)) ? [lorebooks.primary] : []),
             ...(lorebooks.additional ? lorebooks.additional.filter(lorebook => !world_names.includes(lorebook)) : []),
         ];
         if (inexisting_lorebooks.length > 0) {
-            throw Error(`${getLogPrefix(event)}尝试修改 '${filename}' 绑定的世界书, 但未找到以下世界书: ${inexisting_lorebooks}`);
+            throw Error(`尝试修改 '${filename}' 绑定的世界书, 但未找到以下世界书: ${inexisting_lorebooks}`);
         }
         if (lorebooks.primary !== undefined) {
             const previous_primary = String($('#character_world').val());
@@ -184,7 +184,7 @@ export function registerIframeLorebookHandler() {
                 $('#character_json_data').val(JSON.stringify(data));
             }
             if (!await editCurrentCharacter()) {
-                throw Error(`${getLogPrefix(event)}尝试为 '${filename}' 绑定主要世界书, 但在访问酒馆后端时出错`);
+                throw Error(`尝试为 '${filename}' 绑定主要世界书, 但在访问酒馆后端时出错`);
             }
             // @ts-ignore
             setWorldInfoButtonClass(undefined, !!lorebooks.primary);

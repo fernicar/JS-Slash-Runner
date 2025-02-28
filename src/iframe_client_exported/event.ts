@@ -1,92 +1,5 @@
 export const iframe_client_event = `
 /**
- * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动运行 \`listener\`.
- *
- * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数不会有任何效果.
- *
- * @param event_type 要监听的事件
- * @param listener 要注册的函数
- *
- * @example
- * function hello() { alert("hello"); }
- * eventOn(要监听的事件, hello);
- *
- * @example
- * // 消息被修改时监听是哪一条消息被修改
- * // 能这么做是因为酒馆 MESSAGE_UPDATED 会发送消息 id 回来, 但是这个发送太自由了, 我还没整理出每种消息会发送什么
- * function detectMessageUpdated(message_id) {
- *   alert(\`你刚刚修改了第 \${message_id} 条聊天消息对吧😡\`);
- * }
- * eventOn(tavern_events.MESSAGE_UPDATED, detectMessageUpdated);
- */
-async function eventOn(event_type, listener) {
-    return detail.listen_event("[eventOn]", event_type, listener);
-}
-/**
- * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动在最后运行 \`listener\`.
- *
- * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数会将 \`listener\` 调整为最后运行.
- *
- * @param event_type 要监听的事件
- * @param listener 要注册/调整到最后运行的函数
- *
- * @example
- * eventMakeLast(要监听的事件, 要注册的函数);
- */
-async function eventMakeLast(event_type, listener) {
-    return detail.listen_event("[eventMakeLast]", event_type, listener);
-}
-/**
- * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动在最先运行 \`listener\`.
- *
- * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数会将 \`listener\` 调整为最先运行.
- *
- * @param event_type 要监听的事件
- * @param listener 要注册/调整为最先运行的函数
- *
- * @example
- * eventMakeFirst(要监听的事件, 要注册的函数);
- */
-async function eventMakeFirst(event_type, listener) {
-    return detail.listen_event("[eventMakeFirst]", event_type, listener);
-}
-/**
- * 让 \`listener\` 仅监听下一次 \`event_type\`, 当该次事件发生时运行 \`listener\`, 此后取消监听.
- *
- * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数不会有任何效果.
- *
- * @param event_type 要监听的事件
- * @param listener 要注册的函数
- *
- * @example
- * eventOnce(要监听的事件, 要注册的函数);
- */
-async function eventOnce(event_type, listener) {
-    return detail.listen_event("[eventOnce]", event_type, listener);
-}
-async function eventWaitOnce(event_type, listener) {
-    if (!listener) {
-        eventOnce(event_type, detail.do_nothing);
-        return eventWaitOnce(event_type, detail.do_nothing);
-    }
-    const listener_string = listener.toString();
-    const entry = \`\${event_type}#\${listener_string}\`;
-    return new Promise((resolve, _) => {
-        const uid = Date.now() + Math.random();
-        function handleMessage(event) {
-            if (event.data?.request === "iframe_event_wait_callback" && event.data.uid == uid) {
-                window.removeEventListener("message", handleMessage);
-                resolve(event.data.result);
-                detail.waiting_event_map.deleteEntry(entry, uid);
-                console.info(\`[Event][eventWaitOnce](\${getIframeName()}) 等待到函数因 '\${event_type}' 事件触发后的执行结果: \${JSON.stringify(event.data.result)}\\n\\n  \${detail.console_listener_string(listener_string)}\`);
-            }
-        }
-        window.addEventListener("message", handleMessage);
-        detail.waiting_event_map.put(entry, uid);
-        console.info(\`[Event][eventWaitOnce](\${getIframeName()}) 等待函数被 '\${event_type}' 事件触发\\n\\n  \${detail.console_listener_string(listener_string)}\`);
-    });
-}
-/**
  * 发送 \`event_type\` 事件, 同时可以发送一些数据 \`data\`.
  *
  * 所有正在监听 \`event_type\` 消息频道的都会收到该消息并接收到 \`data\`.
@@ -107,10 +20,118 @@ async function eventWaitOnce(event_type, listener) {
  * eventEmit("事件", "你好", 0);
  */
 async function eventEmit(event_type, ...data) {
-    return detail.make_iframe_promise({
-        request: "[Event][eventEmit]",
-        event_type: event_type,
-        data: data
+    await sillyTavern().eventSource.emit(event_type, ...data);
+    console.info(\`[Event][eventEmit](\${getIframeName()}) 发送 '\${event_type}' 事件, 携带数据: \${JSON.stringify(data)}\`);
+}
+/**
+ * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动运行 \`listener\`.
+ *
+ * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数不会有任何效果.
+ *
+ * @param event_type 要监听的事件
+ * @param listener 要注册的函数
+ *
+ * @example
+ * function hello() { alert("hello"); }
+ * eventOn(要监听的事件, hello);
+ *
+ * @example
+ * // 消息被修改时监听是哪一条消息被修改
+ * // 能这么做是因为酒馆 MESSAGE_UPDATED 会发送消息 id 回来, 但是这个发送太自由了, 我还没整理出每种消息会发送什么
+ * function detectMessageUpdated(message_id) {
+ *   alert(\`你刚刚修改了第 \${message_id} 条聊天消息对吧😡\`);
+ * }
+ * eventOn(tavern_events.MESSAGE_UPDATED, detectMessageUpdated);
+ */
+function eventOn(event_type, listener) {
+    if (detail.try_get_wrapper(listener, event_type)) {
+        console.warn(\`[Event][eventOn](\${getIframeName()}) 函数已经在监听 '\${event_type}' 事件, 调用无效\\n\\n  \${detail.format_function_to_string(listener)}\`);
+        return;
+    }
+    sillyTavern().eventSource.on(event_type, detail.get_or_make_wrapper(listener, event_type, false));
+    console.info(\`[Event][eventOn](\${getIframeName()}) 函数开始监听 '\${event_type}' 事件并将随事件触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+}
+/**
+ * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动在最后运行 \`listener\`.
+ *
+ * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数会将 \`listener\` 调整为最后运行.
+ *
+ * @param event_type 要监听的事件
+ * @param listener 要注册/调整到最后运行的函数
+ *
+ * @example
+ * eventMakeLast(要监听的事件, 要注册的函数);
+ */
+function eventMakeLast(event_type, listener) {
+    const is_listening = detail.try_get_wrapper(listener, event_type) !== undefined;
+    sillyTavern().eventSource.makeLast(event_type, detail.get_or_make_wrapper(listener, event_type, false));
+    if (is_listening) {
+        console.info(\`[Event][eventMakeLast](\${getIframeName()}) 函数调整为监听到 '\${event_type}' 事件时最后触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+    }
+    else {
+        console.info(\`[Event][eventMakeLast](\${getIframeName()}) 函数开始监听 '\${event_type}' 事件并将随事件最后触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+    }
+}
+/**
+ * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动在最先运行 \`listener\`.
+ *
+ * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数会将 \`listener\` 调整为最先运行.
+ *
+ * @param event_type 要监听的事件
+ * @param listener 要注册/调整为最先运行的函数
+ *
+ * @example
+ * eventMakeFirst(要监听的事件, 要注册的函数);
+ */
+function eventMakeFirst(event_type, listener) {
+    const is_listening = detail.try_get_wrapper(listener, event_type) !== undefined;
+    sillyTavern().eventSource.makeFirst(event_type, detail.get_or_make_wrapper(listener, event_type, false));
+    if (is_listening) {
+        console.info(\`[Event][eventMakeFirst](\${getIframeName()}) 函数调整为监听到 '\${event_type}' 事件时最先触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+    }
+    else {
+        console.info(\`[Event][eventMakeFirst](\${getIframeName()}) 函数开始监听 '\${event_type}' 事件并将随事件最先触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+    }
+}
+/**
+ * 让 \`listener\` 仅监听下一次 \`event_type\`, 当该次事件发生时运行 \`listener\`, 此后取消监听.
+ *
+ * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数不会有任何效果.
+ *
+ * @param event_type 要监听的事件
+ * @param listener 要注册的函数
+ *
+ * @example
+ * eventOnce(要监听的事件, 要注册的函数);
+ */
+function eventOnce(event_type, listener) {
+    if (detail.try_get_wrapper(listener, event_type)) {
+        console.warn(\`[Event][eventOnce](\${getIframeName()}) 函数已经在监听 '\${event_type}' 事件, 调用无效\\n\\n  \${detail.format_function_to_string(listener)}\`);
+        return;
+    }
+    sillyTavern().eventSource.once(event_type, detail.get_or_make_wrapper(listener, event_type, true));
+    console.info(\`[Event][eventOnce](\${getIframeName()}) 函数开始监听下一次 '\${event_type}' 事件并仅在该次事件时触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+}
+async function eventWaitOnce(event_type, listener) {
+    if (!listener) {
+        const do_nothing = () => { };
+        eventOnce(event_type, do_nothing);
+        return await eventWaitOnce(event_type, do_nothing);
+    }
+    const entry = \`\${event_type}#\${listener.toString()}\`;
+    return new Promise((resolve, _) => {
+        const uid = Date.now() + Math.random();
+        function handleMessage(event) {
+            if (event.data?.request === "iframe_event_wait_callback" && event.data.uid == uid) {
+                window.removeEventListener("message", handleMessage);
+                resolve(event.data.result);
+                detail.waiting_event_map.deleteEntry(entry, uid);
+                console.info(\`[Event][eventWaitOnce](\${getIframeName()}) 等待到函数因 '\${event_type}' 事件触发后的执行结果: \${JSON.stringify(event.data.result)}\\n\\n  \${detail.format_function_to_string(listener)}\`);
+            }
+        }
+        window.addEventListener("message", handleMessage);
+        detail.waiting_event_map.put(entry, uid);
+        console.info(\`[Event][eventWaitOnce](\${getIframeName()}) 等待函数被 '\${event_type}' 事件触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
     });
 }
 /**
@@ -124,44 +145,56 @@ async function eventEmit(event_type, ...data) {
  * @example
  * eventRemoveListener(要监听的事件, 要取消注册的函数);
  */
-async function eventRemoveListener(event_type, listener) {
-    return detail.make_iframe_promise({
-        request: '[Event][eventRemoveListener]',
-        event_type: event_type,
-        listener_uid: detail.listener_uid_map.get(listener),
-        listener_string: listener.toString(),
-    });
+function eventRemoveListener(event_type, listener) {
+    const wrapper = detail.try_get_wrapper(listener, event_type);
+    if (!wrapper) {
+        console.warn(\`[Event][eventRemoveListener](\${getIframeName()}) 函数没有监听 '\${event_type}' 事件, 调用无效\\n\\n  \${detail.format_function_to_string(listener)}\`);
+        return;
+    }
+    sillyTavern().eventSource.removeListener(event_type, wrapper);
+    detail.remove_wrapper(listener, event_type);
+    console.info(\`[Event][eventRemoveListener](\${getIframeName()}) 函数不再监听 '\${event_type}' 事件\\n\\n  \${detail.format_function_to_string(listener)}\`);
 }
 /**
  * 取消本 iframe 中对 \`event_type\` 的所有监听
  *
  * @param event_type 要取消监听的事件
  */
-async function eventClearEvent(event_type) {
-    return detail.make_iframe_promise({
-        request: '[Event][eventClearEvent]',
-        event_type: event_type,
+function eventClearEvent(event_type) {
+    detail.listener_event_wrapper_map.forEach((event_wrapper_map, _) => {
+        const wrapper = event_wrapper_map.get(event_type);
+        if (wrapper) {
+            sillyTavern().eventSource.removeListener(event_type, wrapper);
+            event_wrapper_map.delete(event_type);
+        }
     });
+    console.info(\`[Event][eventClearEvent](\${getIframeName()})所有函数都不再监听 '\${event_type}' 事件\`);
 }
 /**
  * 取消本 iframe 中 \`listener\` 的的所有监听
  *
  * @param listener 要取消注册的函数
  */
-async function eventClearListener(listener) {
-    return detail.make_iframe_promise({
-        request: '[Event][eventClearListener]',
-        listener_uid: detail.listener_uid_map.get(listener),
-        listener_string: listener.toString(),
-    });
+function eventClearListener(listener) {
+    const event_callback_map = detail.extract(detail.listener_event_wrapper_map, listener);
+    if (event_callback_map) {
+        event_callback_map.forEach((callback, event_type) => {
+            sillyTavern().eventSource.removeListener(event_type, callback);
+        });
+    }
+    console.info(\`[Event][eventClearListener](\${getIframeName()}) 函数不再监听任何事件\\n\\n  \${detail.format_function_to_string(listener)}\`);
 }
 /**
  * 取消本 iframe 中对所有事件的所有监听
  */
-async function eventClearAll() {
-    return detail.make_iframe_promise({
-        request: '[Event][eventClearAll]'
+function eventClearAll() {
+    detail.listener_event_wrapper_map.forEach((event_wrapper_map, _) => {
+        event_wrapper_map.forEach((wrapper, event_type) => {
+            sillyTavern().eventSource.removeListener(event_type, wrapper);
+        });
     });
+    detail.listener_event_wrapper_map.clear();
+    console.info(\`[Event][eventClearAll](\${getIframeName()}) 取消所有函数对所有事件的监听\`);
 }
 // iframe 事件
 const iframe_events = {
@@ -241,46 +274,23 @@ const tavern_events = {
 //------------------------------------------------------------------------------------------------------------------------
 var detail;
 (function (detail) {
-    function console_listener_string(listener_string) {
-        const index = listener_string.indexOf('\\n');
-        if (index > -1) {
-            return listener_string.slice(0, index);
-        }
-        else {
-            return listener_string;
-        }
+    detail.listener_event_wrapper_map = new Map();
+    function try_get_wrapper(listener, event_type) {
+        return detail.listener_event_wrapper_map.get(listener)?.get(event_type);
     }
-    detail.console_listener_string = console_listener_string;
-    // TODO: 可能最好重写整个 tavern_event 的 client 和 server?
-    detail.listener_uid_map = new Map();
-    detail.uid_listener_map = new Map();
-    async function listen_event(request, event_type, listener) {
-        let listener_uid = 0;
-        if (!detail.listener_uid_map.has(listener)) {
-            listener_uid = Date.now() + Math.random();
-            detail.listener_uid_map.set(listener, listener_uid);
-            detail.uid_listener_map.set(listener_uid, listener);
-        }
-        return detail.make_iframe_promise({
-            request: \`[Event]\${request}\`,
-            event_type: event_type,
-            listener_uid: detail.listener_uid_map.get(listener),
-            listener_string: listener.toString(),
-        });
+    detail.try_get_wrapper = try_get_wrapper;
+    function remove_wrapper(listener, event_type) {
+        detail.listener_event_wrapper_map.get(listener)?.delete(event_type);
     }
-    detail.listen_event = listen_event;
-    detail.waiting_event_map = new ArrayMultimap();
-    window.addEventListener("message", async (event) => {
-        if (event.data?.request === "iframe_event_callback") {
-            // @ts-ignore 7015
-            const listener = detail.uid_listener_map.get(event.data.listener_uid);
-            if (!listener) {
-                console.warn(\`[Event][callback '\${event.data.event_type}'](\${getIframeName()}) 监听到 '\${event.data.event_type}' 事件, 但注册的函数触发失败或不存在\\n\\n  \${detail.console_listener_string(event.data.listener_string)}\`);
-                return;
+    detail.remove_wrapper = remove_wrapper;
+    function get_or_make_wrapper(listener, event_type, once) {
+        const default_wrapper = async (...args) => {
+            if (once) {
+                remove_wrapper(listener, event_type);
             }
-            console.info(\`[Event][callback '\${event.data.event_type}'](\${getIframeName()}) 函数因监听到 '\${event.data.event_type}' 事件而触发\\n\\n  \${detail.console_listener_string(event.data.listener_string)}\`);
-            const result = await listener.call(null, ...(event.data.args ?? []));
-            const uid = detail.waiting_event_map.get(\`\${event.data.event_type}#\${event.data.listener_string}\`)[0];
+            const result = await listener(...args);
+            console.info(\`[Event][callback '\${event_type}'](\${getIframeName()}) 函数因监听到 '\${event_type}' 事件而触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
+            const uid = detail.waiting_event_map.get(\`\${event_type}#\${listener.toString()}\`)[0];
             if (uid) {
                 window.postMessage({
                     request: 'iframe_event_wait_callback',
@@ -288,8 +298,16 @@ var detail;
                     result: result,
                 }, '*');
             }
-        }
-    });
+            return result;
+        };
+        const default_event_wrapper_map = new Map([[event_type, default_wrapper]]);
+        const event_wrapper = detail.get_or_set(detail.listener_event_wrapper_map, listener, () => default_event_wrapper_map);
+        const wrapper = detail.get_or_set(event_wrapper, event_type, () => default_wrapper);
+        return wrapper;
+    }
+    detail.get_or_make_wrapper = get_or_make_wrapper;
+    detail.waiting_event_map = new ArrayMultimap();
+    $(window).on('unload', eventClearAll);
 })(detail || (detail = {}));
 //------------------------------------------------------------------------------------------------------------------------
 // 已被弃用的接口, 请尽量按照指示更新它们
@@ -313,16 +331,4 @@ const tavernOnce = eventOnce;
  * @deprecated 已弃用, 请使用 eventRemoveListener
  */
 const tavernRemoveListener = eventRemoveListener;
-/**
- * @deprecated 已弃用, 请使用 eventClearEvent
- */
-const tavernClearEvent = eventClearEvent;
-/**
- * @deprecated 已弃用, 请使用 eventClearListener
- */
-const tavernClearListener = eventClearListener;
-/**
- * @deprecated 已弃用, 请使用 eventClearAll
- */
-const tavernClearAll = eventClearAll;
 `

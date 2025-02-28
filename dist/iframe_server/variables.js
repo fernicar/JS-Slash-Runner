@@ -18,7 +18,7 @@ export function registerIframeVariableHandler() {
     registerIframeHandler('[Variables][getVariables]', async (event) => {
         const option = event.data.option;
         const result = getVariablesByType(option.type);
-        console.info(`${getLogPrefix(event)}获取${option.type == 'chat' ? `聊天` : `全局`}变量表: ${JSON.stringify(result)}`);
+        console.info(`${getLogPrefix(event)}获取${option.type == 'chat' ? `聊天` : `全局`}变量表:\n${JSON.stringify(result, undefined, 2)}`);
         return result;
     });
     registerIframeHandler('[Variables][replaceVariables]', async (event) => {
@@ -34,7 +34,7 @@ export function registerIframeVariableHandler() {
                 saveSettingsDebounced();
                 break;
         }
-        console.info(`${getLogPrefix(event)}将${option.type == 'chat' ? `聊天` : `全局`}变量表替换为: ${JSON.stringify(variables)}`);
+        console.info(`${getLogPrefix(event)}将${option.type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(variables, undefined, 2)}`);
     });
     registerIframeHandler('[Variables][setVariables]', async (event) => {
         const variables = event.data.variables;
@@ -45,7 +45,7 @@ export function registerIframeVariableHandler() {
         const chat_length = getContext().chat.length;
         const latest_message_id = chat_length - 1;
         if (message_id !== latest_message_id) {
-            throw Error(`${getLogPrefix(event)}因为 ${message_id} 楼不是最新楼层 ${latest_message_id} 楼, 取消设置聊天变量. 原本要设置的变量: ${JSON.stringify(variables)} `);
+            throw Error(`因为 ${message_id} 楼不是最新楼层 ${latest_message_id} 楼, 取消设置聊天变量. 原本要设置的变量:\n${JSON.stringify(variables, undefined, 2)} `);
         }
         latest_set_variables_message_id = message_id;
         if (
@@ -83,7 +83,7 @@ export function registerIframeVariableHandler() {
         // @ts-ignore
         chat_metadata.variables.tempVariables = tempVariables;
         saveMetadataDebounced();
-        console.info(`${getLogPrefix(event)}设置聊天变量, 要设置的变量: ${JSON.stringify(variables)} `);
+        console.info(`${getLogPrefix(event)}设置聊天变量, 要设置的变量:\n${JSON.stringify(variables, undefined, 2)} `);
     });
 }
 //# sourceMappingURL=variables.js.map
