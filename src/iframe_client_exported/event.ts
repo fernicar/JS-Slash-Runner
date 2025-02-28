@@ -1,29 +1,5 @@
 export const iframe_client_event = `
 /**
- * 发送 \`event_type\` 事件, 同时可以发送一些数据 \`data\`.
- *
- * 所有正在监听 \`event_type\` 消息频道的都会收到该消息并接收到 \`data\`.
- *
- * @param event_type 要发送的事件
- * @param data 要随着事件发送的数据
- *
- * @example
- * // 发送 "角色阶段更新完成" 事件, 所有监听该事件的 \`listener\` 都会被运行
- * eventEmit("角色阶段更新完成");
- *
- * @example
- * // 发送 "存档" 事件, 并等待所有 \`listener\` (也许是负责存档的函数) 执行完毕后才继续
- * await eventEmit("存档");
- *
- * @example
- * // 发送时携带数据 ["你好", 0]
- * eventEmit("事件", "你好", 0);
- */
-async function eventEmit(event_type, ...data) {
-    await sillyTavern().eventSource.emit(event_type, ...data);
-    console.info(\`[Event][eventEmit](\${getIframeName()}) 发送 '\${event_type}' 事件, 携带数据: \${JSON.stringify(data)}\`);
-}
-/**
  * 让 \`listener\` 监听 \`event_type\`, 当事件发生时自动运行 \`listener\`.
  *
  * - 如果 \`listener\` 已经在监听 \`event_type\`, 则调用本函数不会有任何效果.
@@ -133,6 +109,30 @@ async function eventWaitOnce(event_type, listener) {
         detail.waiting_event_map.put(entry, uid);
         console.info(\`[Event][eventWaitOnce](\${getIframeName()}) 等待函数被 '\${event_type}' 事件触发\\n\\n  \${detail.format_function_to_string(listener)}\`);
     });
+}
+/**
+ * 发送 \`event_type\` 事件, 同时可以发送一些数据 \`data\`.
+ *
+ * 所有正在监听 \`event_type\` 消息频道的都会收到该消息并接收到 \`data\`.
+ *
+ * @param event_type 要发送的事件
+ * @param data 要随着事件发送的数据
+ *
+ * @example
+ * // 发送 "角色阶段更新完成" 事件, 所有监听该事件的 \`listener\` 都会被运行
+ * eventEmit("角色阶段更新完成");
+ *
+ * @example
+ * // 发送 "存档" 事件, 并等待所有 \`listener\` (也许是负责存档的函数) 执行完毕后才继续
+ * await eventEmit("存档");
+ *
+ * @example
+ * // 发送时携带数据 ["你好", 0]
+ * eventEmit("事件", "你好", 0);
+ */
+async function eventEmit(event_type, ...data) {
+    await sillyTavern().eventSource.emit(event_type, ...data);
+    console.info(\`[Event][eventEmit](\${getIframeName()}) 发送 '\${event_type}' 事件, 携带数据: \${JSON.stringify(data)}\`);
 }
 /**
  * 让 \`listener\` 取消对 \`event_type\` 的监听.
