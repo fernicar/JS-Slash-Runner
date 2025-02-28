@@ -137,9 +137,8 @@ async function updateTavernRegexesWith(updater: TavernRegexUpdater, option: Repl
   } as Required<ReplaceTavernRegexesOption>;
   let regexes = await getTavernRegexes(defaulted_option);
   regexes = await updater(regexes);
+  console.info(`[Chat Message][updateVariablesWith](${getIframeName()}) 用函数对${{ all: '全部', global: '全局', character: '局部' }[defaulted_option.scope]}变量表进行更新, 使用的函数:\n\n ${JSON.stringify(detail.format_function_to_string(updater))}`);
   await replaceTavernRegexes(regexes, defaulted_option);
-
-  console.info(`[Chat Message][updateVariablesWith](${getIframeName()}) 用函数对${{ all: '全部', global: '全局', character: '局部' }[defaulted_option.scope]}变量表进行更新, 结果: ${JSON.stringify(regexes)}, 使用的函数:\n\n ${JSON.stringify(detail.format_function_to_string(updater))}`);
   return regexes;
 }
 

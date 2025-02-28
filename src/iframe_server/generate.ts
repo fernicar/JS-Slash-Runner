@@ -316,7 +316,7 @@ class StreamingProcessor {
     void,
     void
   > {
-    throw new Error("Generation function for streaming is not hooked up");
+    throw Error("Generation function for streaming is not hooked up");
   }
 
   async generate() {
@@ -351,7 +351,7 @@ class StreamingProcessor {
     } catch (err) {
       if (!this.isFinished) {
         this.onErrorStreaming();
-        throw new Error(`Generate method error: ${err}`);
+        throw Error(`Generate method error: ${err}`);
       }
       this.messageBuffer = "";
       return this.result;
@@ -726,7 +726,7 @@ async function processWorldInfo(
   if (!isPromptFiltered("with_depth_entries", config)) {
     processWorldInfoDepth(worldInfoDepth);
   }
-  
+
   return {
     worldInfoString,
     world_info_before,
@@ -1374,7 +1374,7 @@ async function generateResponse(
 // 处理响应
 async function handleResponse(response: any) {
   if (!response) {
-    throw new Error(`未得到响应`);
+    throw Error(`未得到响应`);
   }
   if (response.error) {
     if (response?.response) {
@@ -1383,7 +1383,7 @@ async function handleResponse(response: any) {
         preventDuplicates: true,
       });
     }
-    throw new Error(response?.response);
+    throw Error(response?.response);
   }
   const message: string = extractMessageFromData(response);
   eventSource.emit("js_generation_ended", message);
