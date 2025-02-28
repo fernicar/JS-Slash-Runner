@@ -1,5 +1,5 @@
 import { executeSlashCommandsWithOptions } from "../../../../../slash-commands.js";
-import { getIframeName, getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
+import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
 
 interface IframeSlash extends IframeMessage {
   request: '[Slash][triggerSlash]' | '[Slash][triggerSlashWithResult]'
