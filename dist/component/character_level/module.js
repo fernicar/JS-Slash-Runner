@@ -13,7 +13,7 @@ export function destroy() {
 function include_library(code) {
     const library = `
 function sillyTavern() {
-  return window.SillyTavern;
+  return window.SillyTavern.getContext();
 }
 `;
     return library + code;

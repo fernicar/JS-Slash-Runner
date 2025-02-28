@@ -91,7 +91,7 @@
 注意:
 
 - 全局脚本的所有注意事项在这里依旧适用.
-- 你可以用 [`sillyTavern().getContext()`](https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js#L76) 访问酒馆公开给扩展的所有功能.
+- 你可以用 [`sillyTavern()`](https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js#L76) 访问酒馆公开给扩展的所有功能.
 - **暂时没有迁移前端助手提供的各种函数**.
 
 ## 内置的第三方库
@@ -317,29 +317,20 @@ saveAs("https://gitgud.io/SmilingFace/tavern_resource/-/raw/main/角色卡/妹�
 通过 `sillyTavern()`, 你可以访问酒馆提供给扩展的稳定接口.
 
 ```typescript
-interface SillyTavern {
-  /**
-   * 酒馆提供给插件的稳定接口, 具体内容见于 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js#L76
-   * 你也可以在酒馆页面按 f12, 在监视中输入 `window.SillyTavern` 来查看当前酒馆所提供的接口
-   */
-  getContext: () => any;
-
-  /**
-   * 酒馆提供给插件的一些第三方库, 具体内容见于 https://github.com/SillyTavern/SillyTavern/blob/release/public/lib.js#L79
-   * 你也可以在酒馆页面按 f12, 在监视中输入 `window.SillyTavern` 来查看当前酒馆所提供的接口
-   */
-  libs: Record<string, any>;
-}
+/**
+ * 酒馆提供给插件的稳定接口, 具体内容见于 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js#L76
+ * 你也可以在酒馆页面按 f12, 在监视中输入 `window.SillyTavern` 来查看当前酒馆所提供的接口
+ */
+type SillyTavern = any;
 
 function sillyTavern(): SillyTavern
-
 ```
 
 示例:
 
 ```typescript
 // 获取第 0 条消息的数据
-alert(JSON.stringify(sillyTavern().getContext().chat[0]));
+alert(JSON.stringify(sillyTavern().chat[0]));
 ```
 
 而前端助手在酒馆接口之外, 提供了更多更直接的功能.

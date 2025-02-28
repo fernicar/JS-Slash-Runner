@@ -21,7 +21,7 @@ export function destroy(): void {
 function include_library(code: string): string {
   const library: string = `
 function sillyTavern() {
-  return window.SillyTavern;
+  return window.SillyTavern.getContext();
 }
 ` as const;
 
