@@ -1497,7 +1497,7 @@ type ListenerType = {
  * }
  * eventOn(tavern_events.MESSAGE_UPDATED, detectMessageUpdated);
  */
-async function eventOn(event_type: EventType, listener: Function): Promise<void>
+function eventOn(event_type: EventType, listener: Function): void
 ```
 
 ```typescript
@@ -1512,7 +1512,7 @@ async function eventOn(event_type: EventType, listener: Function): Promise<void>
  * @example
  * eventMakeLast(要监听的事件, 要注册的函数);
  */
-async function eventMakeLast(event_type: EventType, listener: Function): Promise<void>
+function eventMakeLast(event_type: EventType, listener: Function): void
 ```
 
 ```typescript
@@ -1527,7 +1527,7 @@ async function eventMakeLast(event_type: EventType, listener: Function): Promise
  * @example
  * eventMakeFirst(要监听的事件, 要注册的函数);
  */
-async function eventMakeFirst(event_type: EventType, listener: Function): Promise<void>
+function eventMakeFirst(event_type: EventType, listener: Function): void
 ```
 
 ```typescript
@@ -1542,7 +1542,7 @@ async function eventMakeFirst(event_type: EventType, listener: Function): Promis
  * @example
  * eventOnce(要监听的事件, 要注册的函数);
  */
-async function eventOnce(event_type: EventType, listener: Function): Promise<void>
+function eventOnce(event_type: EventType, listener: Function): void
 ```
 
 #### 等待事件
@@ -1622,7 +1622,7 @@ eventEmit("事件", "你好", 0);
  * @example
  * eventRemoveListener(要监听的事件, 要取消注册的函数);
  */
-async function eventRemoveListener(event_type: EventType, listener: Function): Promise<void>
+function eventRemoveListener(event_type: EventType, listener: Function): void
 ```
 
 ```typescript
@@ -1631,7 +1631,7 @@ async function eventRemoveListener(event_type: EventType, listener: Function): P
  *
  * @param event_type 要取消监听的事件
  */
-async function eventClearEvent(event_type: EventType): Promise<void>
+function eventClearEvent(event_type: EventType): void
 ```
 
 ```typescript
@@ -1640,14 +1640,14 @@ async function eventClearEvent(event_type: EventType): Promise<void>
  *
  * @param listener 要取消注册的函数
  */
-async function eventClearListener(listener: Function): Promise<void>
+function eventClearListener(listener: Function): void
 ```
 
 ```typescript
 /**
  * 取消本 iframe 中对所有事件的所有监听
  */
-async function eventClearAll(): Promise<void>
+function eventClearAll(): void
 ```
 
 #### Quick Reply 命令
