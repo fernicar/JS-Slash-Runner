@@ -1,4 +1,4 @@
-import { characters, getCurrentChatId, reloadCurrentChat, saveChatConditional, saveSettings, this_chid } from "../../../../../../script.js";
+import { characters, reloadCurrentChat, saveChatConditional, saveSettings, this_chid } from "../../../../../../script.js";
 import { extension_settings, writeExtensionField } from "../../../../../extensions.js";
 import { regex_placement } from "../../../../regex/engine.js";
 import { partition } from "../util/helper.js";
@@ -100,19 +100,21 @@ export function registerIframeTavernRegexHandler() {
         }
         const [global_regexes, character_regexes] = partition(regexes, regex => regex.scope === 'global')
             .map(regexes => regexes.map(fromTavernRegex));
+        const character = characters[this_chid];
         if (option.scope === 'all' || option.scope === 'global') {
             extension_settings.regex = global_regexes;
         }
         if (option.scope === 'all' || option.scope === 'character') {
-            characters[this_chid].data.extensions.regex_scripts = character_regexes;
-            await writeExtensionField(this_chid, 'regex_scripts', character_regexes);
+            if (character) {
+                characters[this_chid].data.extensions.regex_scripts = character_regexes;
+                await writeExtensionField(this_chid, 'regex_scripts', character_regexes);
+            }
         }
         await saveSettings();
-        await saveChatConditional();
-        const current_chat_id = getCurrentChatId();
-        if (current_chat_id !== undefined && current_chat_id !== null) {
-            await reloadCurrentChat();
+        if (character) {
+            await saveChatConditional();
         }
+        await reloadCurrentChat();
         console.info(`${getLogPrefix(event)}替换酒馆正则\
 ${option.scope === 'all' || option.scope === 'global' ? `, 全局正则: ${JSON.stringify(global_regexes)}` : ``}\
 ${option.scope === 'all' || option.scope === 'character' ? `, 局部正则: ${JSON.stringify(character_regexes)}` : ``}`);
