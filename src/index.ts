@@ -348,7 +348,6 @@ async function renderMessagesInIframes(
     return;
   }
 
-  const chatContainer = document.getElementById("chat");
   const context = getContext();
   const totalMessages = context.chat.length;
   const processDepth = parseInt($("#process_depth").val(), 10);
@@ -392,7 +391,7 @@ async function renderMessagesInIframes(
 
   const renderedMessages = [];
   for (const messageId of messagesToRenderIds) {
-    const messageElement = chatContainer.querySelector(
+    const messageElement = document.querySelector(
       `.mes[mesid="${messageId}"]`
     );
     if (!messageElement) {
@@ -400,20 +399,11 @@ async function renderMessagesInIframes(
       continue;
     }
 
-    const mesTextContainer = messageElement.querySelector(".mes_text");
-    if (!mesTextContainer) {
-      console.debug(`未找到 mes_text 容器，跳过消息 mesid: ${messageId}`);
-      continue;
-    }
-
-    const codeElements = mesTextContainer.querySelectorAll("pre");
+    const codeElements = messageElement.querySelectorAll("pre");
     if (!codeElements.length) {
       continue;
     }
 
-    const computedStyle = window.getComputedStyle(mesTextContainer);
-    const paddingRight = parseFloat(computedStyle.paddingRight);
-    const mesTextWidth = mesTextContainer.clientWidth - paddingRight;
     const avatarPath = `./User Avatars/${user_avatar}`;
 
     let index = 0;
@@ -529,44 +519,34 @@ async function renderMessagesInIframes(
 
 
 function destroyIframe(iframe) {
-  return new Promise((resolve) => {
-    if (!iframe || !iframe.parentNode) {
-      resolve();
-      return;
-    }
+  const mediaElements = iframe.contentDocument?.querySelectorAll('audio, video');
+  if (mediaElements) {
+    mediaElements.forEach(media => {
+      media.pause();
+      media.src = '';
+      media.load();
+    });
+  }
 
-    if (typeof iframe.cleanup === 'function') {
-      try {
-        iframe.cleanup();
-      } catch (error) {
-        console.warn('执行iframe清理函数时出错:', error);
-      }
-    }
+  if (iframe.contentWindow && 'stop' in iframe.contentWindow) {
+    iframe.contentWindow.stop();
+  }
 
-    let isResolved = false;
-    const timeoutDuration = 3000;
-
-    iframe.srcdoc = '';
+  if (iframe.contentWindow) {
     iframe.src = 'about:blank';
+  }
 
-    const cleanup = () => {
-      if (!isResolved) {
-        clearTimeout(timeout);
-        if (iframe.parentNode) {
-          iframe.remove();
-        }
-        isResolved = true;
-        resolve();
-      }
-    };
+  const clone = iframe.cloneNode(false);
 
-    const timeout = setTimeout(cleanup, timeoutDuration);
-    iframe.onload = cleanup;
+  if (iframe.parentNode) {
+    iframe.parentNode.replaceChild(clone, iframe);
+  }
 
-    if (iframe.src === 'about:blank' && !iframe.srcdoc) {
-      cleanup();
-    }
-  });
+  if (clone.parentNode) {
+    clone.parentNode.removeChild(clone);
+  }
+
+  return null;
 }
 
 function handleTampermonkeyMessages(event) {

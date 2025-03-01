@@ -242,11 +242,88 @@ function updateIframeViewportHeight() {
         }
     });
 }
+// 添加虚拟化和延迟加载相关变量
+let iframeObserver;
+const visibleIframes = new Set();
+// 检查元素是否在视口中可见
+function isElementInViewport(el) {
+    const rect = el.getBoundingClientRect();
+    return (rect.top >= -rect.height &&
+        rect.top <= window.innerHeight &&
+        rect.left >= -rect.width &&
+        rect.left <= window.innerWidth);
+}
+// 处理iframe的可见性
+function handleIframeVisibility() {
+    // 修改选择器匹配实际的iframe ID格式
+    const iframes = document.querySelectorAll('[id^="message-iframe-"]');
+    console.log(`[JS-Slash-Runner] 检查iframe可见性: 共${iframes.length}个iframe`);
+    const allIframeIds = Array.from(iframes).map(iframe => iframe.id);
+    console.log(`[JS-Slash-Runner] 页面中的iframe IDs:`, allIframeIds);
+    let visibleCount = 0;
+    let newlyLoadedCount = 0;
+    let hiddenCount = 0;
+    // 先标记所有iframe为不可见，然后只有在视口内的才标记为可见
+    const currentlyVisible = new Set();
+    iframes.forEach(iframe => {
+        // 检查iframe是否在视口中
+        const isVisible = isElementInViewport(iframe);
+        if (isVisible) {
+            currentlyVisible.add(iframe.id);
+            // 如果之前不可见，现在可见
+            if (!visibleIframes.has(iframe.id)) {
+                visibleIframes.add(iframe.id);
+                iframe.style.visibility = 'visible'; // 使用visibility而不是display
+                console.log(`[JS-Slash-Runner] iframe显示: ${iframe.id}`);
+                // 如果iframe还没有加载内容，则加载内容
+                if (iframe.getAttribute('data-loaded') !== 'true') {
+                    const srcdoc = iframe.getAttribute('data-srcdoc');
+                    if (srcdoc) {
+                        console.log(`[JS-Slash-Runner] 首次加载iframe内容: ${iframe.id}`);
+                        iframe.srcdoc = srcdoc;
+                        iframe.setAttribute('data-loaded', 'true');
+                        newlyLoadedCount++;
+                    }
+                }
+            }
+            visibleCount++;
+        }
+        else {
+            // 如果之前可见，现在不可见
+            if (visibleIframes.has(iframe.id)) {
+                visibleIframes.delete(iframe.id);
+                iframe.style.visibility = 'hidden'; // 使用visibility而不是display
+                console.log(`[JS-Slash-Runner] iframe隐藏: ${iframe.id}`);
+                hiddenCount++;
+            }
+        }
+    });
+    // 更新visibleIframes集合为当前可见的iframe
+    visibleIframes.clear();
+    currentlyVisible.forEach(id => visibleIframes.add(id));
+    console.log(`[JS-Slash-Runner] 可见性检查结果: ${visibleCount}个可见, ${newlyLoadedCount}个新加载, ${hiddenCount}个隐藏, 共${visibleIframes.size}个在视图中`);
+}
+// 设置滚动监听器
+function setupIframeVirtualization() {
+    console.log('[JS-Slash-Runner] 初始化iframe虚拟化系统');
+    // 移除之前的监听器（如果存在）
+    if (iframeObserver) {
+        console.log('[JS-Slash-Runner] 移除旧的滚动监听器');
+        window.removeEventListener('scroll', handleIframeVisibility);
+        window.removeEventListener('resize', handleIframeVisibility);
+    }
+    // 添加新的监听器
+    window.addEventListener('scroll', handleIframeVisibility, { passive: true });
+    window.addEventListener('resize', handleIframeVisibility, { passive: true });
+    console.log('[JS-Slash-Runner] 已添加滚动和调整大小监听器');
+    // 初始检查
+    handleIframeVisibility();
+    iframeObserver = true;
+}
 async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId = null) {
     if (!$("#activate_setting").prop("checked")) {
         return;
     }
-    const chatContainer = document.getElementById("chat");
     const context = getContext();
     const totalMessages = context.chat.length;
     const processDepth = parseInt($("#process_depth").val(), 10);
@@ -279,23 +356,15 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
     }
     const renderedMessages = [];
     for (const messageId of messagesToRenderIds) {
-        const messageElement = chatContainer.querySelector(`.mes[mesid="${messageId}"]`);
+        const messageElement = document.querySelector(`.mes[mesid="${messageId}"]`);
         if (!messageElement) {
             console.debug(`未找到 mesid: ${messageId} 对应的消息元素。`);
             continue;
         }
-        const mesTextContainer = messageElement.querySelector(".mes_text");
-        if (!mesTextContainer) {
-            console.debug(`未找到 mes_text 容器，跳过消息 mesid: ${messageId}`);
-            continue;
-        }
-        const codeElements = mesTextContainer.querySelectorAll("pre");
+        const codeElements = messageElement.querySelectorAll("pre");
         if (!codeElements.length) {
             continue;
         }
-        const computedStyle = window.getComputedStyle(mesTextContainer);
-        const paddingRight = parseFloat(computedStyle.paddingRight);
-        const mesTextWidth = mesTextContainer.clientWidth - paddingRight;
         const avatarPath = `./User Avatars/${user_avatar}`;
         let index = 0;
         codeElements.forEach((codeElement, _) => {
@@ -374,45 +443,72 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
             }, { once: true });
             eventSource.emitAndWait('message_iframe_render_started', iframe.id);
             codeElement.replaceWith(fragment);
+            // 确保新创建的iframe初始状态是可见的，但会在可见性检查中调整
+            const iframeId = `message-iframe-${messageId}-${index}`;
+            const iframeElement = document.getElementById(iframeId);
+            if (iframeElement) {
+                // 确保所有的iframe都具有适当的属性来支持虚拟化
+                if (!iframeElement.hasAttribute('data-srcdoc') && iframeElement.srcdoc) {
+                    iframeElement.setAttribute('data-srcdoc', iframeElement.srcdoc);
+                    iframeElement.setAttribute('data-loaded', 'true');
+                }
+                // 默认设置为可见，让可见性检查函数来处理是否需要隐藏
+                iframeElement.style.visibility = 'visible';
+            }
+            index++;
         });
         renderedMessages.push(messageId);
     }
     console.log(`[Render]模式: ${mode}, 深度限制: ${processDepth > 0 ? processDepth : "无限制"},已渲染的消息ID: ${renderedMessages.join(", ")},已取消渲染的消息ID: ${messagesToCancelIds.join(", ")}`);
+    // 修改iframe创建逻辑使用visibility控制可见性而不是display
+    const createIframe = (mesId, htmlContent) => {
+        const existingIframe = document.getElementById(`iframe_${mesId}`);
+        if (existingIframe) {
+            destroyIframe(existingIframe);
+        }
+        const iframe = document.createElement("iframe");
+        iframe.id = `iframe_${mesId}`;
+        iframe.classList.add("jsSlashIframe");
+        iframe.setAttribute("data-mesid", mesId);
+        iframe.setAttribute("data-srcdoc", htmlContent); // 存储内容但不立即加载
+        iframe.setAttribute("data-loaded", "false");
+        iframe.style.width = "100%";
+        iframe.style.display = "none"; // 默认隐藏
+        iframe.style.border = "none";
+        iframe.style.overflow = "hidden";
+        iframe.style.height = "0px";
+        iframe.scrolling = "no";
+        iframe.sandbox = "allow-scripts";
+        console.log(`[JS-Slash-Runner] 创建iframe: ${iframe.id} (未加载内容)`);
+        return iframe;
+    };
+    // 在所有iframe创建完成后，设置虚拟化
+    console.log(`[JS-Slash-Runner] 渲染完成，设置虚拟化 (模式: ${mode})`);
+    setupIframeVirtualization();
 }
 function destroyIframe(iframe) {
-    return new Promise((resolve) => {
-        if (!iframe || !iframe.parentNode) {
-            resolve();
-            return;
-        }
-        if (typeof iframe.cleanup === 'function') {
-            try {
-                iframe.cleanup();
-            }
-            catch (error) {
-                console.warn('执行iframe清理函数时出错:', error);
-            }
-        }
-        let isResolved = false;
-        const timeoutDuration = 3000;
-        iframe.srcdoc = '';
+    const mediaElements = iframe.contentDocument?.querySelectorAll('audio, video');
+    if (mediaElements) {
+        mediaElements.forEach(media => {
+            media.pause();
+            media.src = '';
+            media.load();
+        });
+    }
+    if (iframe.contentWindow && 'stop' in iframe.contentWindow) {
+        iframe.contentWindow.stop();
+    }
+    if (iframe.contentWindow) {
         iframe.src = 'about:blank';
-        const cleanup = () => {
-            if (!isResolved) {
-                clearTimeout(timeout);
-                if (iframe.parentNode) {
-                    iframe.remove();
-                }
-                isResolved = true;
-                resolve();
-            }
-        };
-        const timeout = setTimeout(cleanup, timeoutDuration);
-        iframe.onload = cleanup;
-        if (iframe.src === 'about:blank' && !iframe.srcdoc) {
-            cleanup();
-        }
-    });
+    }
+    const clone = iframe.cloneNode(false);
+    if (iframe.parentNode) {
+        iframe.parentNode.replaceChild(clone, iframe);
+    }
+    if (clone.parentNode) {
+        clone.parentNode.removeChild(clone);
+    }
+    return null;
 }
 function handleTampermonkeyMessages(event) {
     if (event.data.type === "buttonClick") {
@@ -672,6 +768,10 @@ async function onExtensionToggle() {
             clearTempVariables();
             formattedLastMessage();
         });
+        if (extension_settings[extensionName].enabled) {
+            console.log('[JS-Slash-Runner] 扩展已启用，设置iframe虚拟化');
+            setupIframeVirtualization();
+        }
     }
     else {
         script_url.delete('iframe_client');
@@ -696,6 +796,13 @@ async function onExtensionToggle() {
             formattedLastMessage();
         });
         await reloadCurrentChat();
+        // 移除滚动监听器
+        if (iframeObserver) {
+            console.log('[JS-Slash-Runner] 扩展已禁用，移除iframe虚拟化');
+            window.removeEventListener('scroll', handleIframeVisibility);
+            window.removeEventListener('resize', handleIframeVisibility);
+            iframeObserver = null;
+        }
     }
     saveSettingsDebounced();
 }
