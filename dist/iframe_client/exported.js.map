@@ -1,1 +1,1 @@
-{"version": 3, "file": "exported.js", "sourceRoot": "", "sources": ["..\\..\\src\\iframe_client\\exported.ts"], "names": [], "mappings": ";AAMA,SAAS,WAAW;IAClB,OAAQ,MAAM,CAAC,MAAkD,CAAC,WAAW,CAAC,UAAU,EAAE,CAAC;AAC7F,CAAC"}
+{"version": 3, "file": "exported.js", "sourceRoot": "", "sources": ["../../src/iframe_client/exported.ts"], "names": [], "mappings": ";AAMA,SAAS,WAAW;IAClB,OAAQ,MAAM,CAAC,MAAkD,CAAC,WAAW,CAAC,UAAU,EAAE,CAAC;AAC7F,CAAC"}
