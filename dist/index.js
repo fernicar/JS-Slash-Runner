@@ -149,10 +149,10 @@ async function renderAllIframes() {
     await renderMessagesInIframes(RENDER_MODES.FULL);
 }
 const viewport_adjust_script = `
-window.addEventListener("message", function (event) {
-    if (event.data.request === "updateViewportHeight") {
-        const newHeight = event.data.newHeight;
-        document.documentElement.style.setProperty("--viewport-height", newHeight + "px");
+$(window).on("message", function (event) {
+    if (event.originalEvent.data.request === "updateViewportHeight") {
+        const newHeight = event.originalEvent.data.newHeight;
+        $("html").css("--viewport-height", newHeight + "px");
     }
 });
 `;
@@ -180,41 +180,36 @@ class AudioManager {
   }
 }
 const audioManager = new AudioManager();
-document.querySelectorAll('.qr-button').forEach(button => {
-  button.addEventListener('click', function () {
-    const buttonName = this.textContent.trim();
-    window.parent.postMessage({ type: 'buttonClick', name: buttonName }, '*');
-  });
+$('.qr-button').on('click', function() {
+  const buttonName = $(this).text().trim();
+  window.parent.postMessage({ type: 'buttonClick', name: buttonName }, '*');
 });
-document.querySelectorAll('.st-text').forEach(textarea => {
-  textarea.addEventListener('input', function () {
-    window.parent.postMessage({ type: 'textInput', text: this.value }, '*');
+$('.st-text').each(function() {
+  $(this).on('input', function() {
+    window.parent.postMessage({ type: 'textInput', text: $(this).val() }, '*');
   });
-  textarea.addEventListener('change', function () {
-    window.parent.postMessage({ type: 'textInput', text: this.value }, '*');
+  $(this).on('change', function() {
+    window.parent.postMessage({ type: 'textInput', text: $(this).val() }, '*');
   });
+  const textarea = this;
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-        window.parent.postMessage({ type: 'textInput', text: textarea.value }, '*');
+        window.parent.postMessage({ type: 'textInput', text: $(textarea).val() }, '*');
       }
     });
   });
   observer.observe(textarea, { attributes: true });
 });
-document.querySelectorAll('.st-send-button').forEach(button => {
-  button.addEventListener('click', function () {
-    window.parent.postMessage({ type: 'sendClick' }, '*');
-  });
+$('.st-send-button').on('click', function() {
+  window.parent.postMessage({ type: 'sendClick' }, '*');
 });
-document.querySelectorAll('.st-audio').forEach(audio => {
-  audio.addEventListener('play', function () {
-    audioManager.handlePlay(this);
-  });
+$('.st-audio').on('play', function() {
+  audioManager.handlePlay(this);
 });
-window.addEventListener('message', function (event) {
-  if (event.data.type === 'stopAudio' &&
-    event.data.iframeId !== window.frameElement.id) {
+$(window).on('message', function(event) {
+  if (event.originalEvent.data.type === 'stopAudio' &&
+    event.originalEvent.data.iframeId !== window.frameElement.id) {
     audioManager.stopAll();
   }
 });
@@ -233,9 +228,9 @@ function processVhUnits(htmlContent) {
 }
 function updateIframeViewportHeight() {
     const viewportHeight = window.innerHeight;
-    document.querySelectorAll('iframe[data-needs-vh="true"]').forEach(iframe => {
-        if (iframe.contentWindow) {
-            iframe.contentWindow.postMessage({
+    $('iframe[data-needs-vh="true"]').each(function () {
+        if (this.contentWindow) {
+            this.contentWindow.postMessage({
                 request: "updateViewportHeight",
                 newHeight: viewportHeight
             }, "*");
@@ -267,10 +262,9 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
     }
     for (const messageId of messagesToCancelIds) {
         const message = context.chat[messageId];
-        const iframes = document.querySelectorAll(`[id^="message-iframe-${messageId}-"]`);
-        if (iframes.length > 0) {
-            const iframeArray = Array.from(iframes);
-            await Promise.all(iframeArray.map(async (iframe) => {
+        const $iframes = $(`[id^="message-iframe-${messageId}-"]`);
+        if ($iframes.length > 0) {
+            await Promise.all($iframes.toArray().map(async (iframe) => {
                 await destroyIframe(iframe);
             }));
             updateMessageBlock(messageId, message);
@@ -278,53 +272,59 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
     }
     const renderedMessages = [];
     for (const messageId of messagesToRenderIds) {
-        const messageElement = document.querySelector(`.mes[mesid="${messageId}"]`);
-        if (!messageElement) {
+        const $messageElement = $(`.mes[mesid="${messageId}"]`);
+        if (!$messageElement.length) {
             console.debug(`未找到 mesid: ${messageId} 对应的消息元素。`);
             continue;
         }
-        const codeElements = messageElement.querySelectorAll("pre");
-        if (!codeElements.length) {
+        const $codeElements = $messageElement.find("pre");
+        if (!$codeElements.length) {
             continue;
         }
         const avatarPath = `./User Avatars/${user_avatar}`;
         let index = 0;
-        codeElements.forEach((codeElement, _) => {
-            let extractedText = extractTextFromCode(codeElement);
+        $codeElements.each(function () {
+            let extractedText = extractTextFromCode(this);
             if (!extractedText.includes("<body") || !extractedText.includes("</body>")) {
                 return;
             }
             const disableLoading = /<!--\s*disable-default-loading\s*-->/.test(extractedText);
             const hasMinVh = /min-height:\s*[^;]*vh/.test(extractedText);
             extractedText = hasMinVh ? processVhUnits(extractedText) : extractedText;
-            const fragment = document.createDocumentFragment();
-            const wrapper = document.createElement("div");
-            wrapper.style.cssText = "position:relative;width:100%";
-            const iframe = document.createElement("iframe");
-            iframe.id = `message-iframe-${messageId}-${index++}`;
-            iframe.loading = "lazy";
-            iframe.style.cssText = "margin:5px auto;border:none;width:100%";
+            const $wrapper = $("<div>").css({
+                position: "relative",
+                width: "100%"
+            });
+            const $iframe = $("<iframe>")
+                .attr({
+                id: `message-iframe-${messageId}-${index++}`,
+                loading: "lazy"
+            })
+                .css({
+                margin: "5px auto",
+                border: "none",
+                width: "100%"
+            });
             if (hasMinVh) {
-                iframe.dataset.needsVh = "true";
+                $iframe.attr("data-needs-vh", "true");
             }
             if (!disableLoading) {
-                const loadingOverlay = document.createElement("div");
-                loadingOverlay.className = "iframe-loading-overlay";
-                loadingOverlay.innerHTML = `
-          <div class="iframe-loading-content">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <span class="loading-text">Loading...</span>
-          </div>`;
-                const loadingText = loadingOverlay.querySelector('.loading-text');
+                const $loadingOverlay = $("<div>")
+                    .addClass("iframe-loading-overlay")
+                    .html(`
+            <div class="iframe-loading-content">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <span class="loading-text">Loading...</span>
+            </div>`);
                 const loadingTimeout = setTimeout(() => {
-                    if (loadingText) {
-                        loadingText.textContent = '如加载时间过长，请检查网络';
+                    const $loadingText = $loadingOverlay.find('.loading-text');
+                    if ($loadingText.length) {
+                        $loadingText.text('如加载时间过长，请检查网络');
                     }
                 }, 10000);
-                wrapper.appendChild(loadingOverlay);
+                $wrapper.append($loadingOverlay);
             }
-            wrapper.appendChild(iframe);
-            fragment.appendChild(wrapper);
+            $wrapper.append($iframe);
             const srcdocContent = `
         <html>
         <head>
@@ -344,53 +344,52 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
         </body>
         </html>
       `;
-            iframe.srcdoc = srcdocContent;
-            iframe.addEventListener("load", () => {
-                observeIframeContent(iframe);
-                const wrapper = iframe.parentElement;
-                if (wrapper) {
-                    const loadingOverlay = wrapper.querySelector(".iframe-loading-overlay");
-                    if (loadingOverlay) {
-                        loadingOverlay.style.opacity = "0";
-                        setTimeout(() => loadingOverlay.remove(), 300);
+            $iframe.attr("srcdoc", srcdocContent);
+            $iframe.on("load", function () {
+                observeIframeContent(this);
+                const $wrapper = $(this).parent();
+                if ($wrapper.length) {
+                    const $loadingOverlay = $wrapper.find(".iframe-loading-overlay");
+                    if ($loadingOverlay.length) {
+                        $loadingOverlay.css("opacity", "0");
+                        setTimeout(() => $loadingOverlay.remove(), 300);
                     }
                 }
-                if (iframe.dataset.needsVh === "true") {
-                    iframe.contentWindow.postMessage({
+                if ($(this).attr("data-needs-vh") === "true") {
+                    this.contentWindow.postMessage({
                         request: "updateViewportHeight",
                         newHeight: window.innerHeight,
                     }, "*");
                 }
-                eventSource.emitAndWait("message_iframe_render_ended", iframe.id);
-            }, { once: true });
-            eventSource.emitAndWait('message_iframe_render_started', iframe.id);
-            codeElement.replaceWith(fragment);
+                eventSource.emitAndWait("message_iframe_render_ended", this.id);
+            });
+            eventSource.emitAndWait('message_iframe_render_started', $iframe.attr("id"));
+            $(this).replaceWith($wrapper);
         });
         renderedMessages.push(messageId);
     }
     console.log(`[Render]模式: ${mode}, 深度限制: ${processDepth > 0 ? processDepth : "无限制"},已渲染的消息ID: ${renderedMessages.join(", ")},已取消渲染的消息ID: ${messagesToCancelIds.join(", ")}`);
 }
 function destroyIframe(iframe) {
-    const mediaElements = iframe.contentDocument?.querySelectorAll('audio, video');
-    if (mediaElements) {
-        mediaElements.forEach(media => {
-            media.pause();
-            media.src = '';
-            media.load();
-        });
+    const $iframe = $(iframe);
+    const $mediaElements = $iframe.contents().find('audio, video');
+    $mediaElements.each(function () {
+        this.pause();
+        this.src = '';
+        this.load(); // 不要用trigger('load')，这里需要调用HTMLMediaElement的load方法
+    });
+    if ($iframe[0].contentWindow && 'stop' in $iframe[0].contentWindow) {
+        $iframe[0].contentWindow.stop();
     }
-    if (iframe.contentWindow && 'stop' in iframe.contentWindow) {
-        iframe.contentWindow.stop();
+    if ($iframe[0].contentWindow) {
+        $iframe.attr('src', 'about:blank');
     }
-    if (iframe.contentWindow) {
-        iframe.src = 'about:blank';
+    const $clone = $iframe.clone(false);
+    if ($iframe.parent().length) {
+        $iframe.replaceWith($clone);
     }
-    const clone = iframe.cloneNode(false);
-    if (iframe.parentNode) {
-        iframe.parentNode.replaceChild(clone, iframe);
-    }
-    if (clone.parentNode) {
-        clone.parentNode.removeChild(clone);
+    if ($clone.parent().length) {
+        $clone.remove();
     }
     return null;
 }
@@ -405,17 +404,15 @@ function handleTampermonkeyMessages(event) {
         });
     }
     else if (event.data.type === "textInput") {
-        const sendTextarea = document.getElementById("send_textarea");
-        if (sendTextarea) {
-            sendTextarea.value = event.data.text;
-            sendTextarea.dispatchEvent(new Event("input", { bubbles: true }));
-            sendTextarea.dispatchEvent(new Event("change", { bubbles: true }));
+        const $sendTextarea = jQuery("#send_textarea");
+        if ($sendTextarea.length) {
+            $sendTextarea.val(event.data.text).trigger("input").trigger("change");
         }
     }
     else if (event.data.type === "sendClick") {
-        const sendButton = document.getElementById("send_but");
-        if (sendButton) {
-            sendButton.click();
+        const $sendButton = jQuery("#send_but");
+        if ($sendButton.length) {
+            $sendButton.click();
         }
     }
 }
@@ -425,8 +422,8 @@ function createGlobalAudioManager() {
         if (event.data.type === "audioPlay") {
             const newIframeId = event.data.iframeId;
             if (currentPlayingIframeId && currentPlayingIframeId !== newIframeId) {
-                document.querySelectorAll("iframe").forEach((iframe) => {
-                    iframe.contentWindow.postMessage({
+                $("iframe").each(function () {
+                    this.contentWindow.postMessage({
                         type: "stopAudio",
                         iframeId: newIframeId,
                     }, "*");
@@ -437,21 +434,23 @@ function createGlobalAudioManager() {
     });
 }
 function adjustIframeHeight(iframe) {
-    if (!iframe || !iframe.contentWindow || !iframe.contentWindow.document.body) {
+    const $iframe = $(iframe);
+    if (!$iframe.length || !$iframe[0].contentWindow || !$iframe[0].contentWindow.document.body) {
         return;
     }
-    const doc = iframe.contentWindow.document;
+    const doc = $iframe[0].contentWindow.document;
     const newHeight = doc.documentElement.offsetHeight;
-    const currentHeight = parseFloat(iframe.style.height) || 0;
+    const currentHeight = parseFloat($iframe.css('height')) || 0;
     if (Math.abs(currentHeight - newHeight) > 1) {
-        iframe.style.height = newHeight + "px";
+        $iframe.css('height', newHeight + "px");
     }
 }
 function observeIframeContent(iframe) {
-    if (!iframe || !iframe.contentWindow || !iframe.contentWindow.document.body) {
+    const $iframe = $(iframe);
+    if (!$iframe.length || !$iframe[0].contentWindow || !$iframe[0].contentWindow.document.body) {
         return;
     }
-    const docBody = iframe.contentWindow.document.body;
+    const docBody = $iframe[0].contentWindow.document.body;
     let mutationTimeout = null;
     adjustIframeHeight(iframe);
     const mutationObserver = new MutationObserver(() => {
@@ -468,17 +467,17 @@ function observeIframeContent(iframe) {
         attributes: true,
         characterData: true,
     });
-    const mesTextParent = iframe.closest(".mes_text");
-    if (mesTextParent) {
+    const $mesTextParent = $iframe.closest(".mes_text");
+    if ($mesTextParent.length) {
         const resizeObserver = new ResizeObserver(() => {
             requestAnimationFrame(() => {
-                if (iframe &&
-                    iframe.contentWindow &&
-                    iframe.contentWindow.document &&
-                    document.body.contains(iframe)) {
-                    const updatedHeight = iframe.contentWindow.document.documentElement.offsetHeight;
+                if ($iframe.length &&
+                    $iframe[0].contentWindow &&
+                    $iframe[0].contentWindow.document &&
+                    document.body.contains($iframe[0])) {
+                    const updatedHeight = $iframe[0].contentWindow.document.documentElement.offsetHeight;
                     if (updatedHeight > 0) {
-                        iframe.style.height = updatedHeight + "px";
+                        $iframe.css('height', updatedHeight + "px");
                     }
                 }
                 else {
@@ -488,7 +487,7 @@ function observeIframeContent(iframe) {
                 }
             });
         });
-        resizeObserver.observe(mesTextParent);
+        resizeObserver.observe($mesTextParent[0]);
         iframe.cleanup = () => {
             mutationObserver.disconnect();
             resizeObserver.disconnect();
@@ -497,11 +496,11 @@ function observeIframeContent(iframe) {
             }
         };
     }
-    const parentNode = iframe.parentNode;
+    const $parentNode = $iframe.parent();
     const removalObserver = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
             for (const removedNode of mutation.removedNodes) {
-                if (removedNode === parentNode) {
+                if (removedNode === $parentNode[0]) {
                     if (typeof iframe.cleanup === "function") {
                         iframe.cleanup();
                     }
@@ -509,8 +508,8 @@ function observeIframeContent(iframe) {
             }
         }
     });
-    if (parentNode && parentNode.parentNode) {
-        removalObserver.observe(parentNode.parentNode, { childList: true });
+    if ($parentNode.length && $parentNode.parent().length) {
+        removalObserver.observe($parentNode.parent()[0], { childList: true });
     }
     if (!iframe.cleanup) {
         iframe.cleanup = () => {
@@ -524,12 +523,12 @@ function observeIframeContent(iframe) {
 }
 function extractTextFromCode(codeElement) {
     let textContent = "";
-    codeElement.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-            textContent += node.textContent;
+    $(codeElement).contents().each(function () {
+        if (this.nodeType === Node.TEXT_NODE) {
+            textContent += this.textContent;
         }
-        else if (node.nodeType === Node.ELEMENT_NODE) {
-            textContent += extractTextFromCode(node);
+        else if (this.nodeType === Node.ELEMENT_NODE) {
+            textContent += extractTextFromCode(this);
         }
     });
     return textContent;
@@ -706,13 +705,13 @@ async function onDepthInput() {
     saveSettingsDebounced();
 }
 eventSource.on(event_types.CHAT_CHANGED, async () => {
-    const bgmPlayer = document.getElementById("audio_bgm");
-    const ambientPlayer = document.getElementById("audio_ambient");
-    if (bgmPlayer && !bgmPlayer.paused) {
-        bgmPlayer.pause();
+    const $bgmPlayer = $("#audio_bgm")[0];
+    const $ambientPlayer = $("#audio_ambient")[0];
+    if ($bgmPlayer && !$bgmPlayer.paused) {
+        $bgmPlayer.pause();
     }
-    if (ambientPlayer && !ambientPlayer.paused) {
-        ambientPlayer.pause();
+    if ($ambientPlayer && !$ambientPlayer.paused) {
+        $ambientPlayer.pause();
     }
     await refreshAudioResources();
 });
@@ -868,15 +867,15 @@ async function onBGMModeClick() {
     saveSettingsDebounced();
 }
 async function onBGMRandomClick() {
-    var select = document.getElementById("audio_bgm_select");
-    var items = select.getElementsByTagName("option");
-    if (items.length < 2)
+    var $select = $("#audio_bgm_select");
+    var $items = $select.find("option");
+    if ($items.length < 2)
         return;
     var index;
     do {
-        index = Math.floor(Math.random() * items.length);
-    } while (index == select.selectedIndex);
-    select.selectedIndex = index;
+        index = Math.floor(Math.random() * $items.length);
+    } while (index == $select.prop("selectedIndex"));
+    $select.prop("selectedIndex", index);
     onBGMSelectChange();
 }
 async function onBGMMuteClick() {
@@ -1346,111 +1345,112 @@ function onVolumeSliderWheelEvent(e) {
     slider.val(newVal).trigger("input");
 }
 function handleLongPress(volumeControlId, iconId) {
-    const volumeControl = document.getElementById(volumeControlId);
-    const icon = document.getElementById(iconId);
+    const $volumeControl = $("#" + volumeControlId);
+    const $icon = $("#" + iconId);
     let pressTimer;
     if (isMobile()) {
-        icon.addEventListener("touchstart", (e) => {
+        $icon.on("touchstart", function (e) {
             pressTimer = setTimeout(() => {
-                volumeControl.style.display = "block";
+                $volumeControl.css("display", "block");
             }, 500);
         });
-        icon.addEventListener("touchend", (e) => {
+        $icon.on("touchend", function (e) {
             clearTimeout(pressTimer);
         });
-        document.addEventListener("click", (event) => {
-            if (!icon.contains(event.target) &&
-                !volumeControl.contains(event.target)) {
-                volumeControl.style.display = "none";
+        $(document).on("click", function (event) {
+            if (!$icon.is(event.target) && $icon.has(event.target).length === 0 &&
+                !$volumeControl.is(event.target) && $volumeControl.has(event.target).length === 0) {
+                $volumeControl.css("display", "none");
             }
         });
     }
 }
 function initializeProgressBar(type) {
     cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
-    const audioElement = $(`#audio_${type}`)[0];
-    const progressSlider = $(`#audio_${type}_progress_slider`);
-    audioElement.addEventListener("timeupdate", () => {
-        if (!isNaN(audioElement.duration)) {
-            const progressPercent = (audioElement.currentTime / audioElement.duration) * 100;
-            progressSlider.val(progressPercent);
+    const $audioElement = $(`#audio_${type}`);
+    const $progressSlider = $(`#audio_${type}_progress_slider`);
+    $audioElement.on("timeupdate", function () {
+        if (!isNaN(this.duration)) {
+            const progressPercent = (this.currentTime / this.duration) * 100;
+            $progressSlider.val(progressPercent);
         }
         const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
-        const remainingTime = audioElement.duration - audioElement.currentTime;
-        if (remainingTime <= cooldownBGM && !audioElement.isFadingOut) {
-            const initialVolume = audioElement.volume;
+        const remainingTime = this.duration - this.currentTime;
+        if (remainingTime <= cooldownBGM && !this.isFadingOut) {
+            const initialVolume = this.volume;
             const fadeStep = initialVolume / (cooldownBGM * 10);
-            audioElement.isFadingOut = true;
+            this.isFadingOut = true;
             const fadeOutInterval = setInterval(() => {
-                if (audioElement.volume > 0) {
-                    audioElement.volume = Math.max(0, audioElement.volume - fadeStep);
+                if (this.volume > 0) {
+                    this.volume = Math.max(0, this.volume - fadeStep);
                 }
                 else {
                     clearInterval(fadeOutInterval);
-                    audioElement.isFadingOut = false;
+                    this.isFadingOut = false;
                 }
             }, 100);
         }
     });
-    audioElement.addEventListener("play", () => {
-        audioElement.volume = 0;
+    $audioElement.on("play", function () {
+        this.volume = 0;
         const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
         const targetVolume = $(`#audio_${type}_volume_slider`).val() / 100;
         const fadeStep = targetVolume / (cooldownBGM * 10);
         let fadeInInterval = setInterval(() => {
-            if (audioElement.volume < targetVolume) {
-                audioElement.volume = Math.min(targetVolume, audioElement.volume + fadeStep);
+            if (this.volume < targetVolume) {
+                this.volume = Math.min(targetVolume, this.volume + fadeStep);
             }
             else {
                 clearInterval(fadeInInterval);
             }
         }, 100);
     });
-    audioElement.addEventListener("loadedmetadata", () => {
-        if (!isNaN(audioElement.duration)) {
-            progressSlider.attr("max", 100);
+    $audioElement.on("loadedmetadata", function () {
+        if (!isNaN(this.duration)) {
+            $progressSlider.attr("max", 100);
         }
     });
-    progressSlider.on("input", () => {
-        const value = progressSlider.val();
-        if (!isNaN(audioElement.duration)) {
-            audioElement.currentTime = (value / 100) * audioElement.duration;
+    $progressSlider.on("input", function () {
+        const value = $(this).val();
+        if (!isNaN($audioElement[0].duration)) {
+            $audioElement[0].currentTime = (value / 100) * $audioElement[0].duration;
         }
     });
 }
 function injectLoadingStyles() {
-    if (document.getElementById('iframe-loading-styles'))
+    if ($('#iframe-loading-styles').length)
         return;
-    const styleSheet = document.createElement('style');
-    styleSheet.id = 'iframe-loading-styles';
-    styleSheet.textContent = `
-    .iframe-loading-overlay{
-      position:absolute;
-      top:0;
-      left:0;
-      right:0;
-      bottom:0;
-      background:rgba(0,0,0,.7);
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      z-index:1000;
-      transition:opacity .3s ease
-    }
-    .iframe-loading-content{
-      color:#fff;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-size:16px
-    }
-    .iframe-loading-content i{
-      font-size:20px
-    }
-    .loading-text {
-      transition: opacity 0.3s ease;
-    }`;
-    document.head.appendChild(styleSheet);
+    const styleSheet = $('<style>', {
+        id: 'iframe-loading-styles',
+        text: `
+      .iframe-loading-overlay{
+        position:absolute;
+        top:0;
+        left:0;
+        right:0;
+        bottom:0;
+        background:rgba(0,0,0,.7);
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        z-index:1000;
+        transition:opacity .3s ease
+      }
+      .iframe-loading-content{
+        color:#fff;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        font-size:16px
+      }
+      .iframe-loading-content i{
+        font-size:20px
+      }
+      .loading-text {
+        transition: opacity 0.3s ease;
+      }`
+    });
+    $('head').append(styleSheet);
 }
 function formatSlashCommands() {
     const cmdList = Object
@@ -1477,9 +1477,8 @@ function formatSlashCommands() {
         }), {});
     };
     const transform_help_string = (help_string) => {
-        const content = document.createElement('span');
-        content.innerHTML = help_string;
-        return content.textContent?.split('\n').map(line => line.trim()).filter(line => line !== '').join(' ');
+        const content = $('<span>').html(help_string);
+        return content.text().split('\n').map(line => line.trim()).filter(line => line !== '').join(' ');
     };
     return cmdList
         .map(cmd => ({
@@ -1568,13 +1567,10 @@ jQuery(async () => {
     $("#audio_ambient_mode").on("click", onAmbientModeClick);
     $("#audio_ambient_mute").on("click", onAmbientMuteClick);
     $("#audio_ambient_volume_slider").on("input", onAmbientVolumeChange);
-    document
-        .getElementById("audio_ambient_volume_slider")
-        .addEventListener("wheel", onVolumeSliderWheelEvent, { passive: false });
-    document
-        .getElementById("audio_bgm_volume_slider")
-        .addEventListener("wheel", onVolumeSliderWheelEvent, { passive: false });
-    document.addEventListener("DOMContentLoaded", () => {
+    // 使用jQuery的on方法，但保留原始功能
+    $("#audio_ambient_volume_slider").get(0).addEventListener("wheel", onVolumeSliderWheelEvent, { passive: false });
+    $("#audio_bgm_volume_slider").get(0).addEventListener("wheel", onVolumeSliderWheelEvent, { passive: false });
+    $(document).ready(() => {
         handleLongPress("volume-control", "audio_bgm_mute_icon");
         handleLongPress("ambient-volume-control", "audio_ambient_mute_icon");
     });
@@ -1839,8 +1835,8 @@ jQuery(async () => {
         </div>
       `,
     }));
-    window.addEventListener('resize', () => {
-        if (document.querySelector('iframe[data-needs-vh="true"]')) {
+    $(window).on('resize', function () {
+        if ($('iframe[data-needs-vh="true"]').length) {
             updateIframeViewportHeight();
         }
     });
