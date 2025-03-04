@@ -390,22 +390,26 @@ async function processWorldInfo(oaiMessages, config) {
         return world_info_include_names ? `${name}: ${x.content}` : x.content;
     })
         .reverse();
-    const { worldInfoString, world_info_before: rawWorldInfoBefore, world_info_after: rawWorldInfoAfter, worldInfoExamples, worldInfoDepth, } = await getWorldInfoPrompt(chatForWI, this_max_context, dryRun);
-    // 只有当提示词未被过滤时才获取内容
-    const world_info_before = isPromptFiltered("world_info_before", config)
-        ? ""
-        : config.overrides?.world_info_before ?? rawWorldInfoBefore;
-    const world_info_after = isPromptFiltered("world_info_after", config)
-        ? ""
-        : config.overrides?.world_info_after ?? rawWorldInfoAfter;
+    const { worldInfoString, worldInfoBefore, worldInfoAfter, worldInfoExamples, worldInfoDepth, } = await getWorldInfoPrompt(chatForWI, this_max_context, dryRun);
     await clearInjectionPrompts(["customDepthWI"]);
     if (!isPromptFiltered("with_depth_entries", config)) {
         processWorldInfoDepth(worldInfoDepth);
     }
+    // 先检查是否被过滤，如果被过滤直接返回null
+    const finalWorldInfoBefore = isPromptFiltered("world_info_before", config)
+        ? null
+        : (config.overrides?.world_info_before !== undefined
+            ? config.overrides.world_info_before
+            : worldInfoBefore);
+    const finalWorldInfoAfter = isPromptFiltered("world_info_after", config)
+        ? null
+        : (config.overrides?.world_info_after !== undefined
+            ? config.overrides.world_info_after
+            : worldInfoAfter);
     return {
         worldInfoString,
-        world_info_before,
-        world_info_after,
+        worldInfoBefore: finalWorldInfoBefore,
+        worldInfoAfter: finalWorldInfoAfter,
         worldInfoExamples,
         worldInfoDepth: !isPromptFiltered("with_depth_entries", config)
             ? worldInfoDepth
@@ -488,8 +492,8 @@ async function handlePresetPath(baseData, processedUserInput, config) {
             charDescription: baseData.characterInfo.description,
             charPersonality: baseData.characterInfo.personality,
             Scenario: baseData.characterInfo.scenario,
-            worldInfoBefore: baseData.worldInfo.world_info_before,
-            worldInfoAfter: baseData.worldInfo.world_info_after,
+            worldInfoBefore: baseData.worldInfo.worldInfoBefore,
+            worldInfoAfter: baseData.worldInfo.worldInfoAfter,
             extensionPrompts: getContext().extensionPrompts,
             bias: baseData.chatContext.promptBias,
             type: "normal",
