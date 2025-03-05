@@ -1,4 +1,4 @@
-import { event_types, eventSource } from "../../../../../../../script.js";
+import { event_types, eventSource, getCurrentChatId } from "../../../../../../../script.js";
 import { initialize as initializeLibrary, destroy as destroyLibrary } from "./library.js";
 import { initialize as initializeModule, destroy as destroyModule } from "./module.js";
 import { initialize as initializeScriptIframe, destroy as destroyScriptIframe } from "./script_iframe.js";
@@ -8,9 +8,11 @@ const load_events = [
 ] as const;
 
 export function initializeCharacterLevelOnExtension() {
-  initializeModule();
-  initializeLibrary();
-  initializeScriptIframe();
+  if (getCurrentChatId()) {
+    initializeModule();
+    initializeLibrary();
+    initializeScriptIframe();
+  }
   load_events.forEach((eventType) => {
     eventSource.makeFirst(eventType, initializeScriptIframe);
     eventSource.makeFirst(eventType, initializeLibrary);
