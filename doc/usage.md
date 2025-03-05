@@ -1417,8 +1417,38 @@ type ListenerType = {
   [tavern_events.MESSAGE_FILE_EMBEDDED]: (message_id: number) => void;
   [tavern_events.IMPERSONATE_READY]: (message: string) => void;
   [tavern_events.CHAT_CHANGED]: (chat_file_name: string) => void;
-  [tavern_events.GENERATION_AFTER_COMMANDS]: (type: string, option: { automatic_trigger?: boolean, force_name2?: boolean, quiet_prompt?: string, quietToLoud?: boolean, skipWIAN?: boolean, force_chid?: number, signal?: AbortSignal, quietImage?: string, quietName?: string, depth?: number }, dry_run: boolean) => void;
-  [tavern_events.GENERATION_STARTED]: (type: string, option: { automatic_trigger?: boolean, force_name2?: boolean, quiet_prompt?: string, quietToLoud?: boolean, skipWIAN?: boolean, force_chid?: number, signal?: AbortSignal, quietImage?: string, quietName?: string, depth?: number }, dry_run: boolean) => void;
+  [tavern_events.GENERATION_AFTER_COMMANDS]: (
+    type: string,
+    option: {
+      automatic_trigger?: boolean;
+      force_name2?: boolean;
+      quiet_prompt?: string;
+      quietToLoud?: boolean;
+      skipWIAN?: boolean;
+      force_chid?: number;
+      signal?: AbortSignal;
+      quietImage?: string;
+      quietName?: string;
+      depth?: number;
+    },
+    dry_run: boolean,
+  ) => void;
+  [tavern_events.GENERATION_STARTED]: (
+    type: string,
+    option: {
+      automatic_trigger?: boolean;
+      force_name2?: boolean;
+      quiet_prompt?: string;
+      quietToLoud?: boolean;
+      skipWIAN?: boolean;
+      force_chid?: number;
+      signal?: AbortSignal;
+      quietImage?: string;
+      quietName?: string;
+      depth?: number;
+    },
+    dry_run: boolean,
+  ) => void;
   [tavern_events.GENERATION_STOPPED]: () => void;
   [tavern_events.GENERATION_ENDED]: (message_id: number) => void;
   [tavern_events.EXTENSIONS_FIRST_LOAD]: () => void;
@@ -1431,40 +1461,76 @@ type ListenerType = {
   [tavern_events.SETTINGS_LOADED_AFTER]: (settings: Object) => void;
   [tavern_events.CHATCOMPLETION_SOURCE_CHANGED]: (source: string) => void;
   [tavern_events.CHATCOMPLETION_MODEL_CHANGED]: (model: string) => void;
-  [tavern_events.OAI_PRESET_CHANGED_BEFORE]: (result: { preset: Object, presetName: string, settingsToUpdate: Object, settings: Object, savePreset: Function }) => void;
+  [tavern_events.OAI_PRESET_CHANGED_BEFORE]: (result: {
+    preset: Object;
+    presetName: string;
+    settingsToUpdate: Object;
+    settings: Object;
+    savePreset: Function;
+  }) => void;
   [tavern_events.OAI_PRESET_CHANGED_AFTER]: () => void;
   [tavern_events.OAI_PRESET_EXPORT_READY]: (preset: Object) => void;
-  [tavern_events.OAI_PRESET_IMPORT_READY]: (result: { data: Object, presetName: string }) => void;
+  [tavern_events.OAI_PRESET_IMPORT_READY]: (result: { data: Object; presetName: string }) => void;
   [tavern_events.WORLDINFO_SETTINGS_UPDATED]: () => void;
   [tavern_events.WORLDINFO_UPDATED]: (name: string, data: Object) => void;
-  [tavern_events.CHARACTER_EDITED]: (result: { detail: { id: string, character: Object } }) => void;
+  [tavern_events.CHARACTER_EDITED]: (result: { detail: { id: string; character: Object } }) => void;
   [tavern_events.CHARACTER_PAGE_LOADED]: () => void;
   [tavern_events.CHARACTER_GROUP_OVERLAY_STATE_CHANGE_BEFORE]: (state: number) => void;
   [tavern_events.CHARACTER_GROUP_OVERLAY_STATE_CHANGE_AFTER]: (state: number) => void;
   [tavern_events.USER_MESSAGE_RENDERED]: (message_id: number) => void;
   [tavern_events.CHARACTER_MESSAGE_RENDERED]: (message_id: number) => void;
-  [tavern_events.FORCE_SET_BACKGROUND]: (background: { url: string, path: string }) => void;
+  [tavern_events.FORCE_SET_BACKGROUND]: (background: { url: string; path: string }) => void;
   [tavern_events.CHAT_DELETED]: (chat_file_name: string) => void;
   [tavern_events.CHAT_CREATED]: () => void;
   [tavern_events.GROUP_CHAT_DELETED]: (chat_file_name: string) => void;
   [tavern_events.GROUP_CHAT_CREATED]: () => void;
   [tavern_events.GENERATE_BEFORE_COMBINE_PROMPTS]: () => void;
-  [tavern_events.GENERATE_AFTER_COMBINE_PROMPTS]: (result: { prompt: string, dryRun: boolean }) => void;
+  [tavern_events.GENERATE_AFTER_COMBINE_PROMPTS]: (result: { prompt: string; dryRun: boolean }) => void;
   [tavern_events.GENERATE_AFTER_DATA]: (generate_data: Object) => void;
   [tavern_events.GROUP_MEMBER_DRAFTED]: (character_id: string) => void;
   [tavern_events.WORLD_INFO_ACTIVATED]: (entries: any[]) => void;
   [tavern_events.TEXT_COMPLETION_SETTINGS_READY]: () => void;
-  [tavern_events.CHAT_COMPLETION_SETTINGS_READY]: (generate_data: { messages: { role: string, content: string }[], model: string, temprature: number, frequency_penalty: number, presence_penalty: number, top_p: number, max_tokens: number, stream: boolean, logit_bias: Object, stop: string[], chat_comletion_source: string, n?: number, user_name: string, char_name: string, group_names: string[], include_reasoning: boolean, reasoning_effort: string }) => void;
-  [tavern_events.CHAT_COMPLETION_PROMPT_READY]: (event_data: { chat: { role: string, content: string }[], dryRun: boolean }) => void;
-  [tavern_events.CHARACTER_FIRST_MESSAGE_SELECTED]: (event_args: { input: string, output: string, character: Object }) => void;
-  [tavern_events.CHARACTER_DELETED]: (result: { id: string, character: Object }) => void;
-  [tavern_events.CHARACTER_DUPLICATED]: (result: { oldAvatar: string, newAvatar: string }) => void;
+  [tavern_events.CHAT_COMPLETION_SETTINGS_READY]: (generate_data: {
+    messages: { role: string; content: string }[];
+    model: string;
+    temprature: number;
+    frequency_penalty: number;
+    presence_penalty: number;
+    top_p: number;
+    max_tokens: number;
+    stream: boolean;
+    logit_bias: Object;
+    stop: string[];
+    chat_comletion_source: string;
+    n?: number;
+    user_name: string;
+    char_name: string;
+    group_names: string[];
+    include_reasoning: boolean;
+    reasoning_effort: string;
+    [others: string]: any;
+  }) => void;
+  [tavern_events.CHAT_COMPLETION_PROMPT_READY]: (event_data: {
+    chat: { role: string; content: string }[];
+    dryRun: boolean;
+  }) => void;
+  [tavern_events.CHARACTER_FIRST_MESSAGE_SELECTED]: (event_args: {
+    input: string;
+    output: string;
+    character: Object;
+  }) => void;
+  [tavern_events.CHARACTER_DELETED]: (result: { id: string; character: Object }) => void;
+  [tavern_events.CHARACTER_DUPLICATED]: (result: { oldAvatar: string; newAvatar: string }) => void;
   [tavern_events.STREAM_TOKEN_RECEIVED]: (text: string) => void;
   [tavern_events.FILE_ATTACHMENT_DELETED]: (url: string) => void;
   [tavern_events.WORLDINFO_FORCE_ACTIVATE]: (entries: Object[]) => void;
   [tavern_events.OPEN_CHARACTER_LIBRARY]: () => void;
   [tavern_events.ONLINE_STATUS_CHANGED]: () => void;
-  [tavern_events.IMAGE_SWIPED]: (result: { message: Object, element: JQuery<HTMLElement>, direction: 'left' | 'right' }) => void;
+  [tavern_events.IMAGE_SWIPED]: (result: {
+    message: Object;
+    element: JQuery<HTMLElement>;
+    direction: 'left' | 'right';
+  }) => void;
   [tavern_events.CONNECTION_PROFILE_LOADED]: (profile_name: string) => void;
   [tavern_events.TOOL_CALLS_PERFORMED]: (tool_invocations: Object[]) => void;
   [tavern_events.TOOL_CALLS_RENDERED]: (tool_invocations: Object[]) => void;
