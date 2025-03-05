@@ -34,7 +34,7 @@ export async function handleIframe(event) {
     catch (err) {
         const error = err;
         // @ts-expect-error
-        toastr.error(t `${getLogPrefix(event)}${error.stack ? error.stack : error.name + ': ' + error.message}`);
+        toastr.error(t `${getLogPrefix(event)}${error.name + ': ' + error.message}${error.stack ? error.stack : ''}`);
         console.error(getLogPrefix(event), error);
     }
     finally {
