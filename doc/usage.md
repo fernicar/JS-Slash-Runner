@@ -1454,8 +1454,8 @@ type ListenerType = {
   [tavern_events.GROUP_MEMBER_DRAFTED]: (character_id: string) => void;
   [tavern_events.WORLD_INFO_ACTIVATED]: (entries: any[]) => void;
   [tavern_events.TEXT_COMPLETION_SETTINGS_READY]: () => void;
-  [tavern_events.CHAT_COMPLETION_SETTINGS_READY]: (generate_data: Object) => void;
-  [tavern_events.CHAT_COMPLETION_PROMPT_READY]: (event_data: { chat: {role: string, content: string}[], dryRun: boolean }) => void;
+  [tavern_events.CHAT_COMPLETION_SETTINGS_READY]: (generate_data: { messages: { role: string, content: string }[], model: string, temprature: number, frequency_penalty: number, presence_penalty: number, top_p: number, max_tokens: number, stream: boolean, logit_bias: Object, stop: string[], chat_comletion_source: string, n?: number, user_name: string, char_name: string, group_names: string[], include_reasoning: boolean, reasoning_effort: string }) => void;
+  [tavern_events.CHAT_COMPLETION_PROMPT_READY]: (event_data: { chat: { role: string, content: string }[], dryRun: boolean }) => void;
   [tavern_events.CHARACTER_FIRST_MESSAGE_SELECTED]: (event_args: { input: string, output: string, character: Object }) => void;
   [tavern_events.CHARACTER_DELETED]: (result: { id: string, character: Object }) => void;
   [tavern_events.CHARACTER_DUPLICATED]: (result: { oldAvatar: string, newAvatar: string }) => void;
@@ -1468,7 +1468,7 @@ type ListenerType = {
   [tavern_events.CONNECTION_PROFILE_LOADED]: (profile_name: string) => void;
   [tavern_events.TOOL_CALLS_PERFORMED]: (tool_invocations: Object[]) => void;
   [tavern_events.TOOL_CALLS_RENDERED]: (tool_invocations: Object[]) => void;
-  [custom_event: string]: Function;
+  [custom_event: string]: (...args: any) => any;
 };
 ```
 
