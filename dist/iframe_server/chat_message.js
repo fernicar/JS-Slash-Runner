@@ -31,36 +31,36 @@ export function registerIframeChatMessageHandler() {
             return 'assistant';
         };
         const process_message = async (message_id) => {
-            const chat_message = chat[message_id];
-            if (!chat_message) {
+            const message = chat[message_id];
+            if (!message) {
                 console.warn(`${getLogPrefix(event)}没找到第 ${message_id} 楼的消息`);
                 return null;
             }
-            const role = getRole(chat_message);
+            const role = getRole(message);
             if (option.role !== 'all' && role !== option.role) {
                 console.debug(`${getLogPrefix(event)}筛去了第 ${message_id} 楼的消息因为它的身份不是 ${option.role}`);
                 return null;
             }
-            if (option.hide_state !== 'all' && ((option.hide_state === 'hidden') !== chat_message.is_system)) {
+            if (option.hide_state !== 'all' && ((option.hide_state === 'hidden') !== message.is_system)) {
                 console.debug(`${getLogPrefix(event)}筛去了第 ${message_id} 楼的消息因为它${option.hide_state === 'hidden' ? `` : `没`} 被隐藏`);
                 return null;
             }
-            const swipe_id = chat_message?.swipe_id ?? 0;
-            const swipes = chat_message?.swipes ?? [chat_message.mes];
-            const swipes_data = chat_message?.variables ?? [];
+            const swipe_id = message?.swipe_id ?? 0;
+            const swipes = message?.swipes ?? [message.mes];
+            const swipes_data = message?.variables ?? [];
             const data = swipes_data[swipe_id] ?? {};
             return {
                 message_id: message_id,
-                name: chat_message.name,
+                name: message.name,
                 role: role,
-                is_hidden: chat_message.is_system,
-                message: chat_message.mes,
+                is_hidden: message.is_system,
+                message: message.mes,
                 data: data,
                 swipe_id: swipe_id,
                 swipes: swipes,
                 swipes_data: swipes_data,
-                is_user: chat_message.is_user,
-                is_system_or_hidden: chat_message.is_system,
+                is_user: message.is_user,
+                is_system_or_hidden: message.is_system,
             };
         };
         const promises = [];

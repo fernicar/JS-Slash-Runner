@@ -16,7 +16,7 @@ function demacro(event_data: { messages: { role: string; content: string }[] }) 
   const map = {
     get_global_variable: extension_settings.variables.global,
     get_chat_variable: (chat_metadata as { variables: Object }).variables,
-    get_message_variable: chat.filter(chat => chat.variables !== undefined).map(chat => chat.variables[chat.swipe_id ?? 0]).at(-1) ?? {},
+    get_message_variable: chat.filter(message => message.variables?.[message.swipe_id ?? 0] !== undefined).map(message => message.variables[message.swipe_id ?? 0]).at(-1) ?? {},
   };
   event_data.messages.forEach(messages => {
     messages.content = messages.content.replaceAll(/\{\{(get_global_variable|get_chat_variable|get_message_variable)::(.*?)\}\}/g, (_substring, type: keyof typeof map, path: string) => {
