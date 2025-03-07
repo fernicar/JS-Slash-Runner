@@ -9,5 +9,5 @@ const SillyTavern = (window.parent as unknown as { SillyTavern: any }).SillyTave
  * @deprecated 请使用 SillyTavern 而不是 sillyTavern()
  */
 function sillyTavern(): any {
-  return sillyTavern;
+  return SillyTavern;
 }
