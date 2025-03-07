@@ -46,6 +46,7 @@ import { iframe_client } from "./iframe_client_exported/index.js";
 import { initSlashEventEmit } from "./slash_command/event.js";
 import { libraries_text } from "./component/character_level/library.js";
 import { initializeMacroOnExtension, destroyMacroOnExtension } from "./component/macro.js";
+import { initializeEmbeddedCodeblockOnExtension, destroyEmbeddedCodeblockOnExtension } from "./component/embedded_codeblock.js";
 import { initializeCharacterLevelOnExtension, destroyCharacterLevelOnExtension } from "./component/character_level/index.js";
 import { latest_set_variables_message_id } from "./iframe_server/variables.js";
 import { script_url } from "./script_url.js";
@@ -823,6 +824,7 @@ async function onExtensionToggle() {
     script_url.set('tampermonkey_script', tampermonkey_script);
 
     initializeMacroOnExtension();
+    initializeEmbeddedCodeblockOnExtension();
     initializeCharacterLevelOnExtension();
 
     window.addEventListener("message", handleIframe);
@@ -852,6 +854,7 @@ async function onExtensionToggle() {
     script_url.delete('tampermonkey_script');
 
     destroyMacroOnExtension();
+    destroyEmbeddedCodeblockOnExtension();
     destroyCharacterLevelOnExtension();
 
     window.removeEventListener("message", handleIframe);
