@@ -9,7 +9,7 @@ const SillyTavern = window.parent.SillyTavern.getContext();
  * @deprecated 请使用 SillyTavern 而不是 sillyTavern()
  */
 function sillyTavern() {
-    return sillyTavern;
+    return SillyTavern;
 }
 `;
 //# sourceMappingURL=exported.js.map
