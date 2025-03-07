@@ -17,16 +17,16 @@ function demacro(event_data) {
         get_chat_variable: chat_metadata.variables,
         get_message_variable: chat.filter(message => message.variables?.[message.swipe_id ?? 0] !== undefined).map(message => message.variables[message.swipe_id ?? 0]).at(-1) ?? {},
     };
-    event_data.messages.forEach(messages => {
+    event_data.chat.forEach(messages => {
         messages.content = messages.content.replaceAll(/\{\{(get_global_variable|get_chat_variable|get_message_variable)::(.*?)\}\}/g, (_substring, type, path) => {
             return JSON.stringify(get_property_from_path(map[type], path, null));
         });
     });
 }
 export function initializeMacroOnExtension() {
-    eventSource.on(event_types.CHAT_COMPLETION_SETTINGS_READY, demacro);
+    eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }
 export function destroyMacroOnExtension() {
-    eventSource.removeListener(event_types.CHAT_COMPLETION_SETTINGS_READY, demacro);
+    eventSource.removeListener(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }
 //# sourceMappingURL=macro.js.map
