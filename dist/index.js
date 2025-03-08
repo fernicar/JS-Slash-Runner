@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { eventSource, event_types, saveSettingsDebounced, reloadCurrentChat, } from '../../../../../script.js';
-import { extension_settings, renderExtensionTemplateAsync, } from '../../../../extensions.js';
+import { eventSource, event_types, saveSettingsDebounced, reloadCurrentChat } from '../../../../../script.js';
+import { extension_settings, renderExtensionTemplateAsync } from '../../../../extensions.js';
 import { executeSlashCommandsWithOptions } from '../../../../slash-commands.js';
 import { SlashCommandParser } from '../../../../slash-commands/SlashCommandParser.js';
 import { handleIframe } from './iframe_server/index.js';
 import { iframe_client } from './iframe_client_exported/index.js';
 import { initSlashEventEmit } from './slash_command/event.js';
-import { initializeMacroOnExtension, destroyMacroOnExtension } from './component/macro.js';
+import { initializeMacroOnExtension, destroyMacroOnExtension, registerAllMacros, unregisterAllMacros, } from './component/macro.js';
 import { initializeEmbeddedCodeblockOnExtension, destroyEmbeddedCodeblockOnExtension, } from './component/embedded_codeblock.js';
 import { initializeCharacterLevelOnExtension, destroyCharacterLevelOnExtension, } from './component/character_level/index.js';
 import { clearTempVariables, shouldUpdateVariables, checkVariablesEvents } from './iframe_server/variables.js';
@@ -34,6 +34,7 @@ async function onExtensionToggle() {
         script_url.set('iframe_client', iframe_client);
         script_url.set('viewport_adjust_script', viewport_adjust_script);
         script_url.set('tampermonkey_script', tampermonkey_script);
+        registerAllMacros();
         initializeMacroOnExtension();
         initializeEmbeddedCodeblockOnExtension();
         initializeCharacterLevelOnExtension();
@@ -61,6 +62,7 @@ async function onExtensionToggle() {
         script_url.delete('iframe_client');
         script_url.delete('viewport_adjust_script');
         script_url.delete('tampermonkey_script');
+        unregisterAllMacros();
         destroyMacroOnExtension();
         destroyEmbeddedCodeblockOnExtension();
         destroyCharacterLevelOnExtension();

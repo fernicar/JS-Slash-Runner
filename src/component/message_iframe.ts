@@ -7,6 +7,9 @@ import {
   user_avatar,
   messageFormatting,
   reloadCurrentChat,
+  getThumbnailUrl,
+  characters,
+  this_chid,
 } from '../../../../../../script.js';
 
 import { extensionName } from '../index.js';
@@ -37,6 +40,15 @@ export const defaultIframeSettings = {
   auto_disable_incompatible_options: true,
   tampermonkey_compatibility: false,
   process_depth: 0,
+};
+
+// 获取头像原图
+export const getUserAvatarPath = () => `./User Avatars/${user_avatar}`;
+export const getCharAvatarPath = () => {
+  const charsPath = '/characters/';
+  const thumbnailPath = getThumbnailUrl('avatar', characters[this_chid].avatar);
+  const targetAvatarImg = thumbnailPath.substring(thumbnailPath.lastIndexOf('=') + 1);
+  return charsPath + targetAvatarImg;
 };
 
 /**
@@ -250,8 +262,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
       continue;
     }
 
-    const avatarPath = `./User Avatars/${user_avatar}`;
-
     $codeElements.each(function () {
       let extractedText = extractTextFromCode(this);
       if (!extractedText.includes('<body') || !extractedText.includes('</body>')) {
@@ -308,7 +318,8 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
           <style>
           ${hasMinVh ? `:root{--viewport-height:${window.innerHeight}px;}` : ``}
           html,body{margin:0;padding:0;overflow:hidden;max-width:100%!important;box-sizing:border-box}
-          .user_avatar,.user-avatar{background-image:url('${avatarPath}')}
+          .user_avatar,.user-avatar{background-image:url('${getUserAvatarPath()}')}
+          .char_avatar,.char-avatar{background-image:url('${getCharAvatarPath()}')}
           </style>
           ${third_party}
           <script src="${script_url.get('iframe_client')}"></script>

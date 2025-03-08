@@ -1,43 +1,23 @@
 // @ts-nocheck
-import {
-  eventSource,
-  event_types,
-  saveSettingsDebounced,
-  chat_metadata,
-  updateMessageBlock,
-  reloadCurrentChat,
-  user_avatar,
-  messageFormatting,
-  this_chid,
-  characters,
-} from '../../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, reloadCurrentChat } from '../../../../../script.js';
 import { selected_group } from '../../../../group-chats.js';
-import {
-  extension_settings,
-  renderExtensionTemplateAsync,
-  getContext,
-  saveMetadataDebounced,
-} from '../../../../extensions.js';
-import { getSortableDelay } from '../../../../utils.js';
+import { extension_settings, renderExtensionTemplateAsync } from '../../../../extensions.js';
 import { executeSlashCommandsWithOptions } from '../../../../slash-commands.js';
 import { SlashCommandParser } from '../../../../slash-commands/SlashCommandParser.js';
 import { SlashCommand } from '../../../../slash-commands/SlashCommand.js';
-import {
-  SlashCommandArgument,
-  SlashCommandNamedArgument,
-  ARGUMENT_TYPE,
-} from '../../../../slash-commands/SlashCommandArgument.js';
-import { SlashCommandEnumValue, enumTypes } from '../../../../slash-commands/SlashCommandEnumValue.js';
-import { enumIcons, commonEnumProviders } from '../../../../slash-commands/SlashCommandCommonEnumsProvider.js';
-import { POPUP_TYPE, callGenericPopup } from '../../../../popup.js';
-import { isMobile } from '../../../../RossAscends-mods.js';
-import { power_user } from '../../../../power-user.js';
+import { SlashCommandArgument, SlashCommandNamedArgument } from '../../../../slash-commands/SlashCommandArgument.js';
+import { SlashCommandEnumValue } from '../../../../slash-commands/SlashCommandEnumValue.js';
 
 import { handleIframe } from './iframe_server/index.js';
 import { iframe_client } from './iframe_client_exported/index.js';
 import { initSlashEventEmit } from './slash_command/event.js';
 import { libraries_text } from './component/character_level/library.js';
-import { initializeMacroOnExtension, destroyMacroOnExtension } from './component/macro.js';
+import {
+  initializeMacroOnExtension,
+  destroyMacroOnExtension,
+  registerAllMacros,
+  unregisterAllMacros,
+} from './component/macro.js';
 import {
   initializeEmbeddedCodeblockOnExtension,
   destroyEmbeddedCodeblockOnExtension,
@@ -86,6 +66,7 @@ async function onExtensionToggle() {
     script_url.set('viewport_adjust_script', viewport_adjust_script);
     script_url.set('tampermonkey_script', tampermonkey_script);
 
+    registerAllMacros();
     initializeMacroOnExtension();
     initializeEmbeddedCodeblockOnExtension();
     initializeCharacterLevelOnExtension();
@@ -117,6 +98,7 @@ async function onExtensionToggle() {
     script_url.delete('viewport_adjust_script');
     script_url.delete('tampermonkey_script');
 
+    unregisterAllMacros();
     destroyMacroOnExtension();
     destroyEmbeddedCodeblockOnExtension();
     destroyCharacterLevelOnExtension();
