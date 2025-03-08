@@ -262,6 +262,8 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
       continue;
     }
 
+    let iframeCounter = 1;
+
     $codeElements.each(function () {
       let extractedText = extractTextFromCode(this);
       if (!extractedText.includes('<body') || !extractedText.includes('</body>')) {
@@ -278,7 +280,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
 
       const $iframe = $('<iframe>')
         .attr({
-          id: `iframe_${messageId}`,
+          id: `message-iframe-${messageId}-${iframeCounter}`,
           srcdoc: '',
           loading: 'lazy',
         })
@@ -287,6 +289,8 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
           border: 'none',
           width: '100%',
         });
+
+      iframeCounter++;
 
       if (hasMinVh) {
         $iframe.attr('data-needs-vh', 'true');
