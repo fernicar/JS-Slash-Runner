@@ -4,7 +4,7 @@ import { initialize as initializeModule, destroy as destroyModule } from './modu
 import { initialize as initializeScriptIframe, destroy as destroyScriptIframe } from './script_iframe.js';
 const load_events = [event_types.CHAT_CHANGED];
 export function initializeCharacterLevelOnExtension() {
-    if (getCurrentChatId()) {
+    if (!getCurrentChatId()) {
         initializeModule();
         initializeLibrary();
         initializeScriptIframe();
