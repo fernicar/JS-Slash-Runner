@@ -4,7 +4,8 @@ import { initialize as initializeModule, destroy as destroyModule } from './modu
 import { initialize as initializeScriptIframe, destroy as destroyScriptIframe } from './script_iframe.js';
 const load_events = [event_types.CHAT_CHANGED];
 export function initializeCharacterLevelOnExtension() {
-    if (!getCurrentChatId()) {
+    // TODO: 不应该监听 CHAT_CHANGED 事件, 也许 CHARACTER_PAGE_LOADED 等是更好的选择?
+    if (getCurrentChatId()) {
         initializeModule();
         initializeLibrary();
         initializeScriptIframe();
