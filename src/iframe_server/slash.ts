@@ -1,25 +1,22 @@
-import { executeSlashCommandsWithOptions } from "../../../../../slash-commands.js";
-import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
+import { executeSlashCommandsWithOptions } from '../../../../../slash-commands.js';
+import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
 
 interface IframeSlash extends IframeMessage {
-  request: '[Slash][triggerSlash]' | '[Slash][triggerSlashWithResult]'
+  request: '[Slash][triggerSlash]' | '[Slash][triggerSlashWithResult]';
   command: string;
 }
 
 export function registerIframeSlashHandler() {
-  registerIframeHandler(
-    '[Slash][triggerSlash]',
-    async (event: MessageEvent<IframeSlash>): Promise<void> => {
-      const command = event.data.command;
+  registerIframeHandler('[Slash][triggerSlash]', async (event: MessageEvent<IframeSlash>): Promise<void> => {
+    const command = event.data.command;
 
-      const result = await executeSlashCommandsWithOptions(command);
-      if (result.isError) {
-        throw Error(`运行 Slash 命令 '${command}' 时出错: ${result.errorMessage}`);
-      }
+    const result = await executeSlashCommandsWithOptions(command);
+    if (result.isError) {
+      throw Error(`运行 Slash 命令 '${command}' 时出错: ${result.errorMessage}`);
+    }
 
-      console.info(`${getLogPrefix(event)}运行 Slash 命令: ${command}`);
-    },
-  )
+    console.info(`${getLogPrefix(event)}运行 Slash 命令: ${command}`);
+  });
 
   registerIframeHandler(
     '[Slash][triggerSlashWithResult]',
@@ -34,5 +31,5 @@ export function registerIframeSlashHandler() {
       console.info(`${getLogPrefix(event)}运行 Slash 命令 '${command}', 结果: ${result.pipe}`);
       return result.pipe;
     },
-  )
+  );
 }

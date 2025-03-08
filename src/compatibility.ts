@@ -1,9 +1,9 @@
 // for compatibility with old sillytavern versions
-import { characters, this_chid } from "../../../../../script.js";
-  // @ts-ignore
-import { selected_group } from "../../../../group-chats.js";
-import { getTagsList } from "../../../../tags.js";
-import { equalsIgnoreCaseAndAccents } from "../../../../utils.js";
+import { characters, this_chid } from '../../../../../script.js';
+// @ts-ignore
+import { selected_group } from '../../../../group-chats.js';
+import { getTagsList } from '../../../../tags.js';
+import { equalsIgnoreCaseAndAccents } from '../../../../utils.js';
 
 // for 1.12.6
 /**
@@ -17,8 +17,18 @@ import { equalsIgnoreCaseAndAccents } from "../../../../utils.js";
  * @param {boolean} [options.quiet=false] - Whether to suppress warnings
  * @returns {any?} - The found character or null if not found
  */
-export function findChar({ name = null, allowAvatar = true, insensitive = true, filteredByTags = null, preferCurrentChar = true, quiet = false } = {}) {
-  const matches = (char: any) => !name || (allowAvatar && char.avatar === name) || (insensitive ? equalsIgnoreCaseAndAccents(char.name, name) : char.name === name);
+export function findChar({
+  name = null,
+  allowAvatar = true,
+  insensitive = true,
+  filteredByTags = null,
+  preferCurrentChar = true,
+  quiet = false,
+} = {}) {
+  const matches = (char: any) =>
+    !name ||
+    (allowAvatar && char.avatar === name) ||
+    (insensitive ? equalsIgnoreCaseAndAccents(char.name, name) : char.name === name);
 
   // Filter characters by tags if provided
   let filteredCharacters = characters;
@@ -33,8 +43,15 @@ export function findChar({ name = null, allowAvatar = true, insensitive = true, 
   // Get the current character(s)
   /** @type {any[]} */
   // @ts-ignore
-  const currentChars = selected_group as any ? groups.find(group => group.id === selected_group)?.members.map(member => filteredCharacters.find(char => char.avatar === member))
-    : filteredCharacters.filter(char => characters[this_chid]?.avatar === char.avatar);
+  const currentChars = (selected_group as any)
+    ? // @ts-ignore
+      groups
+        // @ts-ignore
+        .find(group => group.id === selected_group)
+        // @ts-ignore
+        ?.members.map(member => filteredCharacters.find(char => char.avatar === member))
+    : // @ts-ignore
+      filteredCharacters.filter(char => characters[this_chid]?.avatar === char.avatar);
 
   // If we have a current char and prefer it, return that if it matches
   if (preferCurrentChar) {

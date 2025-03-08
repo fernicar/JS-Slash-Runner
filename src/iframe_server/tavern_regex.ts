@@ -1,9 +1,15 @@
-import { characters, reloadCurrentChat, saveChatConditional, saveSettings, this_chid } from "../../../../../../script.js";
-import { RegexScriptData } from "../../../../../char-data.js";
-import { extension_settings, writeExtensionField } from "../../../../../extensions.js";
-import { regex_placement } from "../../../../regex/engine.js";
-import { partition } from "../util/helper.js";
-import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
+import {
+  characters,
+  reloadCurrentChat,
+  saveChatConditional,
+  saveSettings,
+  this_chid,
+} from '../../../../../../script.js';
+import { RegexScriptData } from '../../../../../char-data.js';
+import { extension_settings, writeExtensionField } from '../../../../../extensions.js';
+import { regex_placement } from '../../../../regex/engine.js';
+import { partition } from '../util/helper.js';
+import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
 
 interface IframeIsCharacterTavernRegexEnabled extends IframeMessage {
   request: '[TavernRegex][isCharacterTavernRegexesEnabled]';
@@ -70,7 +76,7 @@ function fromTavernRegex(tavern_regex: TavernRegex): RegexScriptData {
 
     findRegex: tavern_regex.find_regex,
     replaceString: tavern_regex.replace_string,
-    trimStrings: [],  // TODO: handle this?
+    trimStrings: [], // TODO: handle this?
 
     placement: [
       ...(tavern_regex.source.user_input ? [regex_placement.USER_INPUT] : []),
@@ -79,7 +85,7 @@ function fromTavernRegex(tavern_regex: TavernRegex): RegexScriptData {
       ...(tavern_regex.source.world_info ? [regex_placement.WORLD_INFO] : []),
     ],
 
-    substituteRegex: 0,  // TODO: handle this?
+    substituteRegex: 0, // TODO: handle this?
 
     // @ts-ignore
     minDepth: tavern_regex.min_depth,
@@ -108,18 +114,20 @@ export function registerIframeTavernRegexHandler() {
       const option = event.data.option;
 
       if (!['all', 'enabled', 'disabled'].includes(option.enable_state)) {
-        throw Error(`提供的 enable_state 无效, 请提供 'all', 'enabled' 或 'disabled', 你提供的是: ${option.enable_state}`)
+        throw Error(
+          `提供的 enable_state 无效, 请提供 'all', 'enabled' 或 'disabled', 你提供的是: ${option.enable_state}`,
+        );
       }
       if (!['all', 'global', 'character'].includes(option.scope)) {
-        throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`)
+        throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`);
       }
 
       let regexes: TavernRegex[] = [];
       if (option.scope === 'all' || option.scope === 'global') {
-        regexes = [...regexes, ...getGlobalRegexes().map(regex => toTavernRegex(regex, 'global'))]
+        regexes = [...regexes, ...getGlobalRegexes().map(regex => toTavernRegex(regex, 'global'))];
       }
       if (option.scope === 'all' || option.scope === 'character') {
-        regexes = [...regexes, ...getCharacterRegexes().map(regex => toTavernRegex(regex, 'character'))]
+        regexes = [...regexes, ...getCharacterRegexes().map(regex => toTavernRegex(regex, 'character'))];
       }
       if (option.enable_state !== 'all') {
         regexes = regexes.filter(regex => regex.enabled === (option.enable_state === 'enabled'));
@@ -136,7 +144,7 @@ export function registerIframeTavernRegexHandler() {
       const regexes = event.data.regexes;
       const option = event.data.option;
       if (!['all', 'global', 'character'].includes(option.scope)) {
-        throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`)
+        throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${option.scope}`);
       }
 
       // FIXME: `trimStrings` and `substituteRegex` are not considered
@@ -144,9 +152,9 @@ export function registerIframeTavernRegexHandler() {
       if (emptied_regexes.length > 0) {
         throw Error(`不能将酒馆正则的名称设置为空字符串:\n${JSON.stringify(emptied_regexes.map(regex => regex.id))}`);
       }
-      const [global_regexes, character_regexes]
-        = partition(regexes, regex => regex.scope === 'global')
-          .map(regexes => regexes.map(fromTavernRegex));
+      const [global_regexes, character_regexes] = partition(regexes, regex => regex.scope === 'global').map(regexes =>
+        regexes.map(fromTavernRegex),
+      );
 
       const character = characters[this_chid];
       if (option.scope === 'all' || option.scope === 'global') {
@@ -165,8 +173,16 @@ export function registerIframeTavernRegexHandler() {
       await reloadCurrentChat();
 
       console.info(`${getLogPrefix(event)}替换酒馆正则\
-${option.scope === 'all' || option.scope === 'global' ? `, 全局正则:\n${JSON.stringify(global_regexes, undefined, 2)}` : ``}\
-${option.scope === 'all' || option.scope === 'character' ? `, 局部正则:\n${JSON.stringify(character_regexes, undefined, 2)}` : ``}`);
+${
+  option.scope === 'all' || option.scope === 'global'
+    ? `, 全局正则:\n${JSON.stringify(global_regexes, undefined, 2)}`
+    : ``
+}\
+${
+  option.scope === 'all' || option.scope === 'character'
+    ? `, 局部正则:\n${JSON.stringify(character_regexes, undefined, 2)}`
+    : ``
+}`);
     },
   );
 }

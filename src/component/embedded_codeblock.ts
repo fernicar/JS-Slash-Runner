@@ -7,7 +7,7 @@ async function parse_message(event_data: Parameters<ListenerType['chat_completio
     try {
       message.content = await parse_codeblock(message.content);
     } catch (error) {
-      const error_message = `[EmbeddedCodeblock] 解析内嵌代码失败: ${error}`
+      const error_message = `[EmbeddedCodeblock] 解析内嵌代码失败: ${error}`;
       // @ts-expect-error
       toastr.error(error_message);
       console.error(error_message);

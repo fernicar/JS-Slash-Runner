@@ -15,7 +15,7 @@ export function destroy(): void {
       value.onUnload();
     }
     script_url.delete(key);
-  })
+  });
 }
 
 function include_library(code: string): string {
@@ -31,7 +31,7 @@ function sillyTavern() {
 export async function initialize(): Promise<void> {
   destroy();
 
-  const scripts = loadScripts("模块-");
+  const scripts = loadScripts('模块-');
   console.info(`[Module] 加载模块: ${JSON.stringify(scripts.map(module => module.name))}`);
   if (scripts.length > 0) {
     const error_message = `该功能出于安全性考虑已暂时关闭，请等待前端助手 3.0`;

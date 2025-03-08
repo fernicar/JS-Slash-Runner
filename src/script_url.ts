@@ -1,7 +1,7 @@
-import { extract } from "./util/helper.js";
+import { extract } from './util/helper.js';
 
 function createObjectURLFromScript(code: string): string {
-  return URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
+  return URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
 }
 
 class ScriptUrl {
@@ -21,6 +21,6 @@ class ScriptUrl {
     URL.revokeObjectURL(url);
     return url;
   }
-};
+}
 
 export let script_url = new ScriptUrl();

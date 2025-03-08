@@ -1,11 +1,27 @@
-import { characters, getOneCharacter, getRequestHeaders, saveCharacterDebounced, saveSettings, saveSettingsDebounced, this_chid } from "../../../../../../script.js";
+import {
+  characters,
+  getOneCharacter,
+  getRequestHeaders,
+  saveCharacterDebounced,
+  saveSettings,
+  saveSettingsDebounced,
+  this_chid,
+} from '../../../../../../script.js';
 // @ts-ignore
-import { selected_group } from "../../../../../group-chats.js";
-import { ensureImageFormatSupported, getCharaFilename } from "../../../../../utils.js";
-import { createNewWorldInfo, deleteWorldInfo, getWorldInfoSettings, selected_world_info, setWorldInfoButtonClass, world_info, world_names } from "../../../../../world-info.js";
+import { selected_group } from '../../../../../group-chats.js';
+import { ensureImageFormatSupported, getCharaFilename } from '../../../../../utils.js';
+import {
+  createNewWorldInfo,
+  deleteWorldInfo,
+  getWorldInfoSettings,
+  selected_world_info,
+  setWorldInfoButtonClass,
+  world_info,
+  world_names,
+} from '../../../../../world-info.js';
 
-import { findChar } from "../compatibility.js"
-import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
+import { findChar } from '../compatibility.js';
+import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
 
 interface IframeGetLorebookSettings extends IframeMessage {
   request: '[Lorebook][getLorebookSettings]';
@@ -17,26 +33,26 @@ interface IframeSetLorebookSettings extends IframeMessage {
 }
 
 interface IframeGetCharLorebooks extends IframeMessage {
-  request: "[Lorebook][getCharLorebooks]";
+  request: '[Lorebook][getCharLorebooks]';
   option: GetCharLorebooksOption;
 }
 
 interface IframesetCurrentCharLorebooks extends IframeMessage {
-  request: "[Lorebook][setCurrentCharLorebooks]";
+  request: '[Lorebook][setCurrentCharLorebooks]';
   lorebooks: Partial<CharLorebooks>;
 }
 
 interface IframeGetLorebooks extends IframeMessage {
-  request: "[Lorebook][getLorebooks]";
+  request: '[Lorebook][getLorebooks]';
 }
 
 interface IframeDeleteLorebook extends IframeMessage {
-  request: "[Lorebook][deleteLorebook]";
+  request: '[Lorebook][deleteLorebook]';
   lorebook: string;
 }
 
 interface IframeCreateLorebook extends IframeMessage {
-  request: "[Lorebook][createLorebook]";
+  request: '[Lorebook][createLorebook]';
   lorebook: string;
 }
 
@@ -76,9 +92,7 @@ async function editCurrentCharacter(): Promise<boolean> {
 
   await getOneCharacter(form_data.get('avatar_url'));
 
-  $('#add_avatar_button').replaceWith(
-    $('#add_avatar_button').val('').clone(true),
-  );
+  $('#add_avatar_button').replaceWith($('#add_avatar_button').val('').clone(true));
   $('#create_button').attr('value', 'Save');
 
   return true;
@@ -95,7 +109,9 @@ function toLorebookSettings(world_info_settings: ReturnType<typeof getWorldInfoS
     max_depth: world_info_settings.world_info_min_activations_depth_max,
     max_recursion_steps: world_info_settings.world_info_max_recursion_steps,
 
-    insertion_strategy: ({ 0: 'evenly', 1: 'character_first', 2: 'global_first' }[world_info_settings.world_info_character_strategy]) as 'evenly' | 'character_first' | 'global_first',
+    insertion_strategy: { 0: 'evenly', 1: 'character_first', 2: 'global_first' }[
+      world_info_settings.world_info_character_strategy
+    ] as 'evenly' | 'character_first' | 'global_first',
 
     include_names: world_info_settings.world_info_include_names,
     recursive: world_info_settings.world_info_recursive,
@@ -111,7 +127,8 @@ function assignPartialLorebookSettings(settings: Partial<LorebookSettings>): voi
     selected_global_lorebooks: (value: LorebookSettings['selected_global_lorebooks']) => {
       $('#world_info').find('option[value!=""]').remove();
       world_names.forEach((item, i) =>
-        $('#world_info').append(`<option value='${i}'${value.includes(item) ? ' selected' : ''}>${item}</option>`));
+        $('#world_info').append(`<option value='${i}'${value.includes(item) ? ' selected' : ''}>${item}</option>`),
+      );
 
       selected_world_info.length = 0;
       selected_world_info.push(...value);
@@ -138,7 +155,7 @@ function assignPartialLorebookSettings(settings: Partial<LorebookSettings>): voi
     },
 
     insertion_strategy: (value: LorebookSettings['insertion_strategy']) => {
-      const converted_value = { 'evenly': 0, 'character_first': 1, 'global_first': 2 }[value];
+      const converted_value = { evenly: 0, character_first: 1, global_first: 2 }[value];
       $(`#world_info_character_strategy option[value='${converted_value}']`).prop('selected', true);
       $('#world_info_character_strategy').val(converted_value).trigger('change');
     },
@@ -163,13 +180,12 @@ function assignPartialLorebookSettings(settings: Partial<LorebookSettings>): voi
     },
   };
 
-
   Object.entries(settings)
     .filter(([_, value]) => value !== undefined)
     .forEach(([field, value]) => {
       // @ts-ignore
       for_eachs[field]?.(value);
-    })
+    });
 }
 
 export function registerIframeLorebookHandler() {
@@ -188,7 +204,9 @@ export function registerIframeLorebookHandler() {
     async (event: MessageEvent<IframeSetLorebookSettings>): Promise<void> => {
       const settings = event.data.settings;
       if (settings.selected_global_lorebooks) {
-        const inexisting_lorebooks = settings.selected_global_lorebooks.filter(lorebook => !world_names.includes(lorebook));
+        const inexisting_lorebooks = settings.selected_global_lorebooks.filter(
+          lorebook => !world_names.includes(lorebook),
+        );
         if (inexisting_lorebooks.length > 0) {
           throw Error(`尝试修改要全局启用的世界书, 但未找到以下世界书: ${JSON.stringify(inexisting_lorebooks)}`);
         }
@@ -223,12 +241,16 @@ export function registerIframeLorebookHandler() {
       }
 
       // @ts-ignore
-      const extraCharLore = world_info.charLore?.find((e) => e.name === filename);
+      const extraCharLore = world_info.charLore?.find(e => e.name === filename);
       if (extraCharLore && Array.isArray(extraCharLore.extraBooks)) {
         books.additional = extraCharLore.extraBooks;
       }
 
-      console.info(`${getLogPrefix(event)}获取角色卡绑定的世界书, 选项: ${JSON.stringify(option)}, 获取结果: ${JSON.stringify(books)}`);
+      console.info(
+        `${getLogPrefix(event)}获取角色卡绑定的世界书, 选项: ${JSON.stringify(option)}, 获取结果: ${JSON.stringify(
+          books,
+        )}`,
+      );
       return books;
     },
   );
@@ -248,7 +270,7 @@ export function registerIframeLorebookHandler() {
       }
 
       const inexisting_lorebooks: string[] = [
-        ...((lorebooks.primary && !world_names.includes(lorebooks.primary)) ? [lorebooks.primary] : []),
+        ...(lorebooks.primary && !world_names.includes(lorebooks.primary) ? [lorebooks.primary] : []),
         ...(lorebooks.additional ? lorebooks.additional.filter(lorebook => !world_names.includes(lorebook)) : []),
       ];
       if (inexisting_lorebooks.length > 0) {
@@ -259,7 +281,9 @@ export function registerIframeLorebookHandler() {
         const previous_primary = String($('#character_world').val());
         $('#character_world').val(lorebooks.primary ? lorebooks.primary : '');
 
-        $('.character_world_info_selector').find('option:selected').val(lorebooks.primary ? world_names.indexOf(lorebooks.primary) : '');
+        $('.character_world_info_selector')
+          .find('option:selected')
+          .val(lorebooks.primary ? world_names.indexOf(lorebooks.primary) : '');
 
         if (previous_primary && !lorebooks.primary) {
           const data = JSON.parse(String($('#character_json_data').val()));
@@ -269,7 +293,7 @@ export function registerIframeLorebookHandler() {
           $('#character_json_data').val(JSON.stringify(data));
         }
 
-        if (!await editCurrentCharacter()) {
+        if (!(await editCurrentCharacter())) {
           throw Error(`尝试为 '${filename}' 绑定主要世界书, 但在访问酒馆后端时出错`);
         }
 
@@ -281,10 +305,10 @@ export function registerIframeLorebookHandler() {
         interface CharLoreEntry {
           name: string;
           extraBooks: string[];
-        };
+        }
         let char_lore = (world_info as { charLore: CharLoreEntry[] }).charLore ?? [];
 
-        const existing_char_index = char_lore.findIndex((entry) => entry.name === filename);
+        const existing_char_index = char_lore.findIndex(entry => entry.name === filename);
         if (existing_char_index === -1) {
           char_lore.push({ name: filename, extraBooks: lorebooks.additional });
         } else if (lorebooks.additional.length === 0) {
@@ -299,7 +323,11 @@ export function registerIframeLorebookHandler() {
       saveCharacterDebounced();
       saveSettingsDebounced();
 
-      console.info(`${getLogPrefix(event)}修改角色卡绑定的世界书, 要修改的部分: ${JSON.stringify(lorebooks)}${lorebooks.primary === undefined ? ', 主要世界书保持不变' : ''}${lorebooks.additional === undefined ? ', 附加世界书保持不变' : ''}`);
+      console.info(
+        `${getLogPrefix(event)}修改角色卡绑定的世界书, 要修改的部分: ${JSON.stringify(lorebooks)}${
+          lorebooks.primary === undefined ? ', 主要世界书保持不变' : ''
+        }${lorebooks.additional === undefined ? ', 附加世界书保持不变' : ''}`,
+      );
     },
   );
 

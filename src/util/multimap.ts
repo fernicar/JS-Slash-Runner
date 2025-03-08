@@ -1,7 +1,6 @@
-export { SetMultimap, ArrayMultimap }
+export { SetMultimap, ArrayMultimap };
 
-abstract class Multimap<K, V, I extends Iterable<V>>
-  implements Iterable<[K, V]> {
+abstract class Multimap<K, V, I extends Iterable<V>> implements Iterable<[K, V]> {
   private size_ = 0;
   private map: Map<K, I> = new Map();
   private operator: CollectionOperator<V, I>;
@@ -61,7 +60,7 @@ abstract class Multimap<K, V, I extends Iterable<V>>
         pushed++;
       }
     } else {
-      throw new TypeError("unexpected arguments");
+      throw new TypeError('unexpected arguments');
     }
     return pushed > 0;
   }
@@ -122,10 +121,7 @@ abstract class Multimap<K, V, I extends Iterable<V>>
     return gen();
   }
 
-  forEach<T>(
-    callback: (this: T | this, value: V, key: K, map: this) => void,
-    thisArg?: T,
-  ): void {
+  forEach<T>(callback: (this: T | this, value: V, key: K, map: this) => void, thisArg?: T): void {
     for (const [key, value] of this.entries()) {
       callback.call(thisArg === undefined ? this : thisArg, value, key, this);
     }
@@ -159,7 +155,7 @@ class ArrayMultimap<K, V> extends Multimap<K, V, V[]> {
   }
 
   get [Symbol.toStringTag](): string {
-    return "ArrayMultimap";
+    return 'ArrayMultimap';
   }
 }
 
@@ -199,7 +195,7 @@ class SetMultimap<K, V> extends Multimap<K, V, Set<V>> {
     super(new SetOperator(), iterable);
   }
   get [Symbol.toStringTag](): string {
-    return "SetMultimap";
+    return 'SetMultimap';
   }
 }
 

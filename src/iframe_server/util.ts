@@ -1,5 +1,5 @@
-import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
-import { substituteParamsExtended } from "../../../../../../script.js";
+import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
+import { substituteParamsExtended } from '../../../../../../script.js';
 
 interface IframeSubstitudeMacros extends IframeMessage {
   request: '[Utils][substitudeMacros]';

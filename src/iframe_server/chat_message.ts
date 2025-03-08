@@ -1,7 +1,14 @@
-import { chat, messageFormatting, reloadCurrentChat, saveChatConditional, substituteParamsExtended, system_message_types } from "../../../../../../script.js";
-import { stringToRange } from "../../../../../utils.js";
-import { handlePartialRender } from "../index.js";
-import { getLogPrefix, IframeMessage, registerIframeHandler } from "./index.js";
+import {
+  chat,
+  messageFormatting,
+  reloadCurrentChat,
+  saveChatConditional,
+  substituteParamsExtended,
+  system_message_types,
+} from '../../../../../../script.js';
+import { stringToRange } from '../../../../../utils.js';
+import { handlePartialRender } from '../component/message_iframe.js';
+import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
 
 interface IframeGetChatMessages extends IframeMessage {
   request: '[ChatMessage][getChatMessages]';
@@ -62,8 +69,12 @@ export function registerIframeChatMessageHandler() {
           return null;
         }
 
-        if (option.hide_state !== 'all' && ((option.hide_state === 'hidden') !== message.is_system)) {
-          console.debug(`${getLogPrefix(event)}筛去了第 ${message_id} 楼的消息因为它${option.hide_state === 'hidden' ? `` : `没`} 被隐藏`);
+        if (option.hide_state !== 'all' && (option.hide_state === 'hidden') !== message.is_system) {
+          console.debug(
+            `${getLogPrefix(event)}筛去了第 ${message_id} 楼的消息因为它${
+              option.hide_state === 'hidden' ? `` : `没`
+            } 被隐藏`,
+          );
           return null;
         }
 
@@ -75,7 +86,7 @@ export function registerIframeChatMessageHandler() {
         return {
           message_id: message_id,
           name: message.name,
-          role: role as ('system' | 'assistant' | 'user'),
+          role: role as 'system' | 'assistant' | 'user',
           is_hidden: message.is_system,
           message: message.mes,
           data: data,
@@ -94,9 +105,13 @@ export function registerIframeChatMessageHandler() {
         promises.push(process_message(i));
       }
 
-      const chat_messages: ChatMessage[] = (await Promise.all(promises)).filter((chat_message) => chat_message !== null);
+      const chat_messages: ChatMessage[] = (await Promise.all(promises)).filter(chat_message => chat_message !== null);
 
-      console.info(`${getLogPrefix(event)}获取${start == end ? `第 ${start} ` : ` ${start}-${end} `}楼的消息, 选项: ${JSON.stringify(option)} `);
+      console.info(
+        `${getLogPrefix(event)}获取${
+          start == end ? `第 ${start} ` : ` ${start}-${end} `
+        }楼的消息, 选项: ${JSON.stringify(option)} `,
+      );
       return chat_messages;
     },
   );
@@ -108,10 +123,12 @@ export function registerIframeChatMessageHandler() {
       const message_id = event.data.message_id;
       const option = event.data.option;
       if (typeof option.swipe_id !== 'number' && option.swipe_id !== 'current') {
-        throw Error(`提供的 swipe_id 无效, 请提供 'current' 或序号, 你提供的是: ${option.swipe_id} `)
+        throw Error(`提供的 swipe_id 无效, 请提供 'current' 或序号, 你提供的是: ${option.swipe_id} `);
       }
       if (!['none', 'display_current', 'display_and_render_current', 'all'].includes(option.refresh)) {
-        throw Error(`提供的 refresh 无效, 请提供 'none', 'display_current', 'display_and_render_current' 或 'all', 你提供的是: ${option.refresh} `)
+        throw Error(
+          `提供的 refresh 无效, 请提供 'none', 'display_current', 'display_and_render_current' 或 'all', 你提供的是: ${option.refresh} `,
+        );
       }
 
       const chat_message = chat[message_id];
@@ -145,7 +162,10 @@ export function registerIframeChatMessageHandler() {
       const swipe_id_previous_index: number = chat_message.swipe_id ?? 0;
       const swipe_id_to_set_index: number = option.swipe_id == 'current' ? swipe_id_previous_index : option.swipe_id;
       const swipe_id_to_use_index: number = option.refresh != 'none' ? swipe_id_to_set_index : swipe_id_previous_index;
-      const message: string = field_values.message ?? (chat_message.swipes ? chat_message.swipes[swipe_id_to_set_index] : undefined) ?? chat_message.mes;
+      const message: string =
+        field_values.message ??
+        (chat_message.swipes ? chat_message.swipes[swipe_id_to_set_index] : undefined) ??
+        chat_message.mes;
 
       const update_chat_message = () => {
         const message_demacroed = substituteParamsExtended(message);
@@ -180,14 +200,17 @@ export function registerIframeChatMessageHandler() {
             .text(`${swipe_id_to_use_index + 1}\u200b/\u200b${chat_message.swipes.length}`);
         }
         if (option.refresh != 'none') {
-          mes_html.find('.mes_text')
+          mes_html
+            .find('.mes_text')
             .empty()
-            .append(messageFormatting(message, chat_message.name, chat_message.is_system, chat_message.is_user, message_id));
+            .append(
+              messageFormatting(message, chat_message.name, chat_message.is_system, chat_message.is_user, message_id),
+            );
           if (option.refresh == 'display_and_render_current') {
-            handlePartialRender(message_id);
+            handlePartialRender(`${message_id}`);
           }
         }
-      }
+      };
 
       const should_update_swipe: boolean = add_swipes_if_required();
       update_chat_message();
@@ -199,7 +222,11 @@ export function registerIframeChatMessageHandler() {
         await saveChatConditional();
       }
 
-      console.info(`${getLogPrefix(event)}设置第 ${message_id} 楼消息, 选项: ${JSON.stringify(option)}, 设置前使用的消息页: ${swipe_id_previous_index}, 设置的消息页: ${swipe_id_to_set_index}, 现在使用的消息页: ${swipe_id_to_use_index} `);
+      console.info(
+        `${getLogPrefix(event)}设置第 ${message_id} 楼消息, 选项: ${JSON.stringify(
+          option,
+        )}, 设置前使用的消息页: ${swipe_id_previous_index}, 设置的消息页: ${swipe_id_to_set_index}, 现在使用的消息页: ${swipe_id_to_use_index} `,
+      );
     },
   );
 }

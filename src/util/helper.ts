@@ -1,4 +1,4 @@
-import { SetMultimap } from "./multimap.js";
+import { SetMultimap } from './multimap.js';
 
 export function partition<T>(array: T[], predicate: (item: T) => boolean): [T[], T[]] {
   return array.reduce(
@@ -10,7 +10,7 @@ export function partition<T>(array: T[], predicate: (item: T) => boolean): [T[],
       }
       return [pass, fail];
     },
-    [[], []] as [T[], T[]]
+    [[], []] as [T[], T[]],
   );
 }
 

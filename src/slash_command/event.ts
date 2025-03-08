@@ -1,7 +1,7 @@
-import { eventSource } from "../../../../../../script.js";
-import { SlashCommand } from "../../../../../slash-commands/SlashCommand.js";
-import { ARGUMENT_TYPE, SlashCommandNamedArgument } from "../../../../../slash-commands/SlashCommandArgument.js";
-import { SlashCommandParser } from "../../../../../slash-commands/SlashCommandParser.js";
+import { eventSource } from '../../../../../../script.js';
+import { SlashCommand } from '../../../../../slash-commands/SlashCommand.js';
+import { ARGUMENT_TYPE, SlashCommandNamedArgument } from '../../../../../slash-commands/SlashCommandArgument.js';
+import { SlashCommandParser } from '../../../../../slash-commands/SlashCommandParser.js';
 
 export async function slashEventEmit(named_args: any): Promise<any> {
   const event: string = named_args.event;
@@ -15,27 +15,28 @@ export async function slashEventEmit(named_args: any): Promise<any> {
 }
 
 export function initSlashEventEmit() {
-  SlashCommandParser.addCommandObject(SlashCommand.fromProps({
-    name: 'event-emit',
-    callback: slashEventEmit,
-    returns: "发送的事件名称",
-    namedArgumentList: [
-      SlashCommandNamedArgument.fromProps({
-        name: 'event',
-        description: '事件名称',
-        typeList: [ARGUMENT_TYPE.STRING],
-        isRequired: true
-      }),
-      SlashCommandNamedArgument.fromProps({
-        name: 'data',
-        description: '要传输的数据',
-        typeList: [ARGUMENT_TYPE.STRING],
-        isRequired: false,
-        acceptsMultiple: true,
-      }),
-    ],
-    unnamedArgumentList: [],
-    helpString: `
+  SlashCommandParser.addCommandObject(
+    SlashCommand.fromProps({
+      name: 'event-emit',
+      callback: slashEventEmit,
+      returns: '发送的事件名称',
+      namedArgumentList: [
+        SlashCommandNamedArgument.fromProps({
+          name: 'event',
+          description: '事件名称',
+          typeList: [ARGUMENT_TYPE.STRING],
+          isRequired: true,
+        }),
+        SlashCommandNamedArgument.fromProps({
+          name: 'data',
+          description: '要传输的数据',
+          typeList: [ARGUMENT_TYPE.STRING],
+          isRequired: false,
+          acceptsMultiple: true,
+        }),
+      ],
+      unnamedArgumentList: [],
+      helpString: `
     <div>
         发送 \`event\` 事件, 同时可以发送一些数据.
         所有正在监听该消息频道的 listener 函数都会自动运行, 并能用函数参数接收发送来的数据.
@@ -55,6 +56,7 @@ export function initSlashEventEmit() {
             </li>
         </ul>
     </div>
-  `
-  }));
+  `,
+    }),
+  );
 }

@@ -5,7 +5,7 @@ import { loadScripts, Script } from '../../util/load_script.js';
 
 let script_map: Map<string, HTMLIFrameElement> = new Map();
 
-function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_promise: Promise<void>; } {
+function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_promise: Promise<void> } {
   const iframe = document.createElement('iframe');
   iframe.style.display = 'none';
   iframe.id = `script-iframe-${script.name}`;
@@ -25,11 +25,11 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
 
   iframe.srcdoc = srcdocContent;
 
-  const load_promise = new Promise<void>((resolve) => {
+  const load_promise = new Promise<void>(resolve => {
     iframe.onload = () => {
       console.info(`[Script](${iframe.id}) 加载完毕`);
       resolve();
-    }
+    };
   });
 
   document.body.appendChild(iframe);
@@ -52,16 +52,16 @@ export async function initialize(): Promise<void> {
   try {
     destroy();
 
-    const scripts = loadScripts("脚本-");
+    const scripts = loadScripts('脚本-');
     console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
 
     const load_promises: Promise<void>[] = [];
 
-    scripts.forEach((script) => {
+    scripts.forEach(script => {
       const { iframe, load_promise } = makeScriptIframe(script);
       script_map.set(script.name, iframe);
       load_promises.push(load_promise);
-    })
+    });
 
     await Promise.allSettled(load_promises);
   } catch (error) {
