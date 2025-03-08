@@ -8,14 +8,16 @@ function get_property_from_path(object, path, default_value) {
         }
         result = result[key];
     }
-    ;
     return result ?? default_value;
 }
 function demacro(event_data) {
     const map = {
         get_global_variable: extension_settings.variables.global,
         get_chat_variable: chat_metadata.variables,
-        get_message_variable: chat.filter(message => message.variables?.[message.swipe_id ?? 0] !== undefined).map(message => message.variables[message.swipe_id ?? 0]).at(-1) ?? {},
+        get_message_variable: chat
+            .filter(message => message.variables?.[message.swipe_id ?? 0] !== undefined)
+            .map(message => message.variables[message.swipe_id ?? 0])
+            .at(-1) ?? {},
     };
     event_data.chat.forEach(messages => {
         messages.content = messages.content.replaceAll(/\{\{(get_global_variable|get_chat_variable|get_message_variable)::(.*?)\}\}/g, (_substring, type, path) => {

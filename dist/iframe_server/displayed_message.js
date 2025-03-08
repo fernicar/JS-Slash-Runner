@@ -1,6 +1,6 @@
-import { getLogPrefix, registerIframeHandler } from "./index.js";
-import { chat, messageFormatting } from "../../../../../../script.js";
-import { getLastMessageId } from "../../../../../macros.js";
+import { getLogPrefix, registerIframeHandler } from './index.js';
+import { chat, messageFormatting } from '../../../../../../script.js';
+import { getLastMessageId } from '../../../../../macros.js';
 export function registerIframeDisplayedMessageHandler() {
     registerIframeHandler('[DisplayedMessage][formatAsDisplayedMessage]', async (event) => {
         const text = event.data.text;

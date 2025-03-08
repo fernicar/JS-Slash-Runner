@@ -1,7 +1,7 @@
-import { eventSource } from "../../../../../../script.js";
-import { SlashCommand } from "../../../../../slash-commands/SlashCommand.js";
-import { ARGUMENT_TYPE, SlashCommandNamedArgument } from "../../../../../slash-commands/SlashCommandArgument.js";
-import { SlashCommandParser } from "../../../../../slash-commands/SlashCommandParser.js";
+import { eventSource } from '../../../../../../script.js';
+import { SlashCommand } from '../../../../../slash-commands/SlashCommand.js';
+import { ARGUMENT_TYPE, SlashCommandNamedArgument } from '../../../../../slash-commands/SlashCommandArgument.js';
+import { SlashCommandParser } from '../../../../../slash-commands/SlashCommandParser.js';
 export async function slashEventEmit(named_args) {
     const event = named_args.event;
     const data = named_args.data ?? [];
@@ -13,13 +13,13 @@ export function initSlashEventEmit() {
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'event-emit',
         callback: slashEventEmit,
-        returns: "发送的事件名称",
+        returns: '发送的事件名称',
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
                 name: 'event',
                 description: '事件名称',
                 typeList: [ARGUMENT_TYPE.STRING],
-                isRequired: true
+                isRequired: true,
             }),
             SlashCommandNamedArgument.fromProps({
                 name: 'data',
@@ -50,7 +50,7 @@ export function initSlashEventEmit() {
             </li>
         </ul>
     </div>
-  `
+  `,
     }));
 }
 //# sourceMappingURL=event.js.map

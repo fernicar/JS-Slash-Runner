@@ -53,7 +53,7 @@ class Multimap {
             }
         }
         else {
-            throw new TypeError("unexpected arguments");
+            throw new TypeError('unexpected arguments');
         }
         return pushed > 0;
     }
@@ -126,7 +126,7 @@ class ArrayMultimap extends Multimap {
         super(new ArrayOperator(), iterable);
     }
     get [Symbol.toStringTag]() {
-        return "ArrayMultimap";
+        return 'ArrayMultimap';
     }
 }
 class ArrayOperator {
@@ -160,7 +160,7 @@ class SetMultimap extends Multimap {
         super(new SetOperator(), iterable);
     }
     get [Symbol.toStringTag]() {
-        return "SetMultimap";
+        return 'SetMultimap';
     }
 }
 class SetOperator {

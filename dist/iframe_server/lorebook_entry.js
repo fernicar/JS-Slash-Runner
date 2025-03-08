@@ -1,30 +1,34 @@
-import { debounce } from "../../../../../utils.js";
-import { createWorldInfoEntry, deleteWIOriginalDataValue, loadWorldInfo, originalWIDataKeyMap, saveWorldInfo, setWIOriginalDataValue, world_names } from "../../../../../world-info.js";
-import { getLogPrefix, registerIframeHandler } from "./index.js";
+import { debounce } from '../../../../../utils.js';
+import { createWorldInfoEntry, deleteWIOriginalDataValue, loadWorldInfo, originalWIDataKeyMap, saveWorldInfo, setWIOriginalDataValue, world_names, } from '../../../../../world-info.js';
+import { getLogPrefix, registerIframeHandler } from './index.js';
 function toLorebookEntry(entry) {
     return {
         uid: entry.uid,
         display_index: entry.displayIndex,
         comment: entry.comment,
         enabled: !entry.disable,
-        type: entry.constant ? 'constant' : (entry.vectorized ? 'vectorized' : 'selective'),
+        type: entry.constant ? 'constant' : entry.vectorized ? 'vectorized' : 'selective',
+        position: 
         // @ts-ignore
-        position: ({
+        {
             0: 'before_character_definition',
             1: 'after_character_definition',
             5: 'before_example_messages',
             6: 'after_example_messages',
             2: 'before_author_note',
             3: 'after_author_note',
-        }[entry.position])
-            ?? (entry.role === 0 ? 'at_depth_as_system' : (entry.role === 1 ? 'at_depth_as_user' : 'at_depth_as_assistant')),
+        }[entry.position] ??
+            (entry.role === 0 ? 'at_depth_as_system' : entry.role === 1 ? 'at_depth_as_user' : 'at_depth_as_assistant'),
         depth: entry.position === 4 ? entry.depth : null,
         order: entry.order,
         probability: entry.probability,
         key: entry.key,
-        logic: ({
-            0: 'and_any', 1: 'and_all', 2: 'not_any', 3: 'not_all',
-        }[entry.selectiveLogic]),
+        logic: {
+            0: 'and_any',
+            1: 'and_all',
+            2: 'not_any',
+            3: 'not_all',
+        }[entry.selectiveLogic],
         filter: entry.keysecondary,
         scan_depth: entry.scanDepth ?? 'same_as_global',
         case_sensitive: entry.caseSensitive ?? 'same_as_global',
@@ -51,26 +55,27 @@ function fromPartialLorebookEntry(entry) {
         enabled: (value) => ({ disable: !value }),
         type: (value) => ({
             constant: value === 'constant',
-            vectorized: value === 'vectorized'
+            vectorized: value === 'vectorized',
         }),
         position: (value) => ({
             position: {
-                'before_character_definition': 0,
-                'after_character_definition': 1,
-                'before_example_messages': 5,
-                'after_example_messages': 6,
-                'before_author_note': 2,
-                'after_author_note': 3,
-                'at_depth_as_system': 4,
-                'at_depth_as_user': 4,
-                'at_depth_as_assistant': 4,
+                before_character_definition: 0,
+                after_character_definition: 1,
+                before_example_messages: 5,
+                after_example_messages: 6,
+                before_author_note: 2,
+                after_author_note: 3,
+                at_depth_as_system: 4,
+                at_depth_as_user: 4,
+                at_depth_as_assistant: 4,
             }[value],
+            role: 
             // @ts-ignore
-            role: {
-                'at_depth_as_system': 0,
-                'at_depth_as_user': 1,
-                'at_depth_as_assistant': 2,
-            }[value] ?? null
+            {
+                at_depth_as_system: 0,
+                at_depth_as_user: 1,
+                at_depth_as_assistant: 2,
+            }[value] ?? null,
         }),
         depth: (value) => ({ depth: value === null ? 4 : value }),
         order: (value) => ({ order: value }),
@@ -78,17 +83,23 @@ function fromPartialLorebookEntry(entry) {
         key: (value) => ({ key: value }),
         logic: (value) => ({
             selectiveLogic: {
-                'and_any': 0,
-                'and_all': 1,
-                'not_any': 2,
-                'not_all': 3,
-            }[value]
+                and_any: 0,
+                and_all: 1,
+                not_any: 2,
+                not_all: 3,
+            }[value],
         }),
         filter: (value) => ({ keysecondary: value }),
         scan_depth: (value) => ({ scanDepth: value === 'same_as_global' ? null : value }),
-        case_sensitive: (value) => ({ caseSensitive: value === 'same_as_global' ? null : value }),
-        match_whole_words: (value) => ({ matchWholeWords: value === 'same_as_global' ? null : value }),
-        use_group_scoring: (value) => ({ useGroupScoring: value === 'same_as_global' ? null : value }),
+        case_sensitive: (value) => ({
+            caseSensitive: value === 'same_as_global' ? null : value,
+        }),
+        match_whole_words: (value) => ({
+            matchWholeWords: value === 'same_as_global' ? null : value,
+        }),
+        use_group_scoring: (value) => ({
+            useGroupScoring: value === 'same_as_global' ? null : value,
+        }),
         automation_id: (value) => ({ automationId: value === null ? '' : value }),
         exclude_recursion: (value) => ({ excludeRecursion: value }),
         prevent_recursion: (value) => ({ preventRecursion: value }),
@@ -106,12 +117,11 @@ function fromPartialLorebookEntry(entry) {
         .reduce((result, [field, value]) => ({
         ...result,
         // @ts-ignore
-        ...transformers[field]?.(value)
+        ...transformers[field]?.(value),
     }), {});
 }
 function assignFieldValuesToWiEntry(data, wi_entry, field_values) {
-    Object.entries(field_values)
-        .forEach(([field, value]) => {
+    Object.entries(field_values).forEach(([field, value]) => {
         wi_entry[field] = value;
         // @ts-ignore
         const original_wi_mapped_key = originalWIDataKeyMap[field];
@@ -137,10 +147,9 @@ export function registerIframeLorebookEntryHandler() {
             throw Error(`未能找到世界书 '${lorebook}'`);
         }
         // @ts-ignore
-        let entries = (Object.values((await loadWorldInfo(lorebook)).entries)).map(toLorebookEntry);
+        let entries = Object.values((await loadWorldInfo(lorebook)).entries).map(toLorebookEntry);
         if (option.filter !== 'none') {
-            entries = entries.filter(entry => Object.entries(option.filter)
-                .every(([field, expected_value]) => {
+            entries = entries.filter(entry => Object.entries(option.filter).every(([field, expected_value]) => {
                 // @ts-ignore
                 const entry_value = entry[field];
                 if (Array.isArray(entry_value)) {

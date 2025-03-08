@@ -1,8 +1,8 @@
-import { characters, reloadCurrentChat, saveChatConditional, saveSettings, this_chid } from "../../../../../../script.js";
-import { extension_settings, writeExtensionField } from "../../../../../extensions.js";
-import { regex_placement } from "../../../../regex/engine.js";
-import { partition } from "../util/helper.js";
-import { getLogPrefix, registerIframeHandler } from "./index.js";
+import { characters, reloadCurrentChat, saveChatConditional, saveSettings, this_chid, } from '../../../../../../script.js';
+import { extension_settings, writeExtensionField } from '../../../../../extensions.js';
+import { regex_placement } from '../../../../regex/engine.js';
+import { partition } from '../util/helper.js';
+import { getLogPrefix, registerIframeHandler } from './index.js';
 export function isCharacterTavernRegexEnabled() {
     // @ts-ignore 2345
     return extension_settings?.character_allowed_regex?.includes(characters?.[this_chid]?.avatar);
@@ -98,8 +98,7 @@ export function registerIframeTavernRegexHandler() {
         if (emptied_regexes.length > 0) {
             throw Error(`不能将酒馆正则的名称设置为空字符串:\n${JSON.stringify(emptied_regexes.map(regex => regex.id))}`);
         }
-        const [global_regexes, character_regexes] = partition(regexes, regex => regex.scope === 'global')
-            .map(regexes => regexes.map(fromTavernRegex));
+        const [global_regexes, character_regexes] = partition(regexes, regex => regex.scope === 'global').map(regexes => regexes.map(fromTavernRegex));
         const character = characters[this_chid];
         if (option.scope === 'all' || option.scope === 'global') {
             extension_settings.regex = global_regexes;
@@ -116,8 +115,12 @@ export function registerIframeTavernRegexHandler() {
         }
         await reloadCurrentChat();
         console.info(`${getLogPrefix(event)}替换酒馆正则\
-${option.scope === 'all' || option.scope === 'global' ? `, 全局正则:\n${JSON.stringify(global_regexes, undefined, 2)}` : ``}\
-${option.scope === 'all' || option.scope === 'character' ? `, 局部正则:\n${JSON.stringify(character_regexes, undefined, 2)}` : ``}`);
+${option.scope === 'all' || option.scope === 'global'
+            ? `, 全局正则:\n${JSON.stringify(global_regexes, undefined, 2)}`
+            : ``}\
+${option.scope === 'all' || option.scope === 'character'
+            ? `, 局部正则:\n${JSON.stringify(character_regexes, undefined, 2)}`
+            : ``}`);
     });
 }
 //# sourceMappingURL=tavern_regex.js.map

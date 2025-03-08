@@ -1,6 +1,6 @@
-import { extract } from "./util/helper.js";
+import { extract } from './util/helper.js';
 function createObjectURLFromScript(code) {
-    return URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
+    return URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
 }
 class ScriptUrl {
     map = new Map();
@@ -19,6 +19,5 @@ class ScriptUrl {
         return url;
     }
 }
-;
 export let script_url = new ScriptUrl();
 //# sourceMappingURL=script_url.js.map

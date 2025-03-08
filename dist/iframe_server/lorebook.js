@@ -1,10 +1,10 @@
-import { characters, getOneCharacter, getRequestHeaders, saveCharacterDebounced, saveSettings, saveSettingsDebounced, this_chid } from "../../../../../../script.js";
+import { characters, getOneCharacter, getRequestHeaders, saveCharacterDebounced, saveSettings, saveSettingsDebounced, this_chid, } from '../../../../../../script.js';
 // @ts-ignore
-import { selected_group } from "../../../../../group-chats.js";
-import { ensureImageFormatSupported, getCharaFilename } from "../../../../../utils.js";
-import { createNewWorldInfo, deleteWorldInfo, getWorldInfoSettings, selected_world_info, setWorldInfoButtonClass, world_info, world_names } from "../../../../../world-info.js";
-import { findChar } from "../compatibility.js";
-import { getLogPrefix, registerIframeHandler } from "./index.js";
+import { selected_group } from '../../../../../group-chats.js';
+import { ensureImageFormatSupported, getCharaFilename } from '../../../../../utils.js';
+import { createNewWorldInfo, deleteWorldInfo, getWorldInfoSettings, selected_world_info, setWorldInfoButtonClass, world_info, world_names, } from '../../../../../world-info.js';
+import { findChar } from '../compatibility.js';
+import { getLogPrefix, registerIframeHandler } from './index.js';
 async function editCurrentCharacter() {
     $('#rm_info_avatar').html('');
     const form_data = new FormData($('#form_create').get(0));
@@ -47,7 +47,7 @@ function toLorebookSettings(world_info_settings) {
         min_activations: world_info_settings.world_info_min_activations,
         max_depth: world_info_settings.world_info_min_activations_depth_max,
         max_recursion_steps: world_info_settings.world_info_max_recursion_steps,
-        insertion_strategy: ({ 0: 'evenly', 1: 'character_first', 2: 'global_first' }[world_info_settings.world_info_character_strategy]),
+        insertion_strategy: { 0: 'evenly', 1: 'character_first', 2: 'global_first' }[world_info_settings.world_info_character_strategy],
         include_names: world_info_settings.world_info_include_names,
         recursive: world_info_settings.world_info_recursive,
         case_sensitive: world_info_settings.world_info_case_sensitive,
@@ -84,7 +84,7 @@ function assignPartialLorebookSettings(settings) {
             $('#world_info_max_recursion_steps').val(value).trigger('input');
         },
         insertion_strategy: (value) => {
-            const converted_value = { 'evenly': 0, 'character_first': 1, 'global_first': 2 }[value];
+            const converted_value = { evenly: 0, character_first: 1, global_first: 2 }[value];
             $(`#world_info_character_strategy option[value='${converted_value}']`).prop('selected', true);
             $('#world_info_character_strategy').val(converted_value).trigger('change');
         },
@@ -148,7 +148,7 @@ export function registerIframeLorebookHandler() {
             books.primary = character.data?.extensions?.world;
         }
         // @ts-ignore
-        const extraCharLore = world_info.charLore?.find((e) => e.name === filename);
+        const extraCharLore = world_info.charLore?.find(e => e.name === filename);
         if (extraCharLore && Array.isArray(extraCharLore.extraBooks)) {
             books.additional = extraCharLore.extraBooks;
         }
@@ -166,7 +166,7 @@ export function registerIframeLorebookHandler() {
             throw Error(`未打开任何角色卡`);
         }
         const inexisting_lorebooks = [
-            ...((lorebooks.primary && !world_names.includes(lorebooks.primary)) ? [lorebooks.primary] : []),
+            ...(lorebooks.primary && !world_names.includes(lorebooks.primary) ? [lorebooks.primary] : []),
             ...(lorebooks.additional ? lorebooks.additional.filter(lorebook => !world_names.includes(lorebook)) : []),
         ];
         if (inexisting_lorebooks.length > 0) {
@@ -175,7 +175,9 @@ export function registerIframeLorebookHandler() {
         if (lorebooks.primary !== undefined) {
             const previous_primary = String($('#character_world').val());
             $('#character_world').val(lorebooks.primary ? lorebooks.primary : '');
-            $('.character_world_info_selector').find('option:selected').val(lorebooks.primary ? world_names.indexOf(lorebooks.primary) : '');
+            $('.character_world_info_selector')
+                .find('option:selected')
+                .val(lorebooks.primary ? world_names.indexOf(lorebooks.primary) : '');
             if (previous_primary && !lorebooks.primary) {
                 const data = JSON.parse(String($('#character_json_data').val()));
                 if (data?.data?.character_book) {
@@ -183,16 +185,15 @@ export function registerIframeLorebookHandler() {
                 }
                 $('#character_json_data').val(JSON.stringify(data));
             }
-            if (!await editCurrentCharacter()) {
+            if (!(await editCurrentCharacter())) {
                 throw Error(`尝试为 '${filename}' 绑定主要世界书, 但在访问酒馆后端时出错`);
             }
             // @ts-ignore
             setWorldInfoButtonClass(undefined, !!lorebooks.primary);
         }
         if (lorebooks.additional !== undefined) {
-            ;
             let char_lore = world_info.charLore ?? [];
-            const existing_char_index = char_lore.findIndex((entry) => entry.name === filename);
+            const existing_char_index = char_lore.findIndex(entry => entry.name === filename);
             if (existing_char_index === -1) {
                 char_lore.push({ name: filename, extraBooks: lorebooks.additional });
             }

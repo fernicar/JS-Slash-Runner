@@ -1,5 +1,5 @@
-import { getLogPrefix, registerIframeHandler } from "./index.js";
-import { substituteParamsExtended } from "../../../../../../script.js";
+import { getLogPrefix, registerIframeHandler } from './index.js';
+import { substituteParamsExtended } from '../../../../../../script.js';
 export function registerIframeUtilHandler() {
     registerIframeHandler('[Utils][substitudeMacros]', async (event) => {
         const text = event.data.text;

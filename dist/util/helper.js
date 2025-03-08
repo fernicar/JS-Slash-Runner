@@ -1,4 +1,4 @@
-import { SetMultimap } from "./multimap.js";
+import { SetMultimap } from './multimap.js';
 export function partition(array, predicate) {
     return array.reduce(([pass, fail], item) => {
         if (predicate(item)) {

@@ -1,5 +1,5 @@
-import { executeSlashCommandsWithOptions } from "../../../../../slash-commands.js";
-import { getLogPrefix, registerIframeHandler } from "./index.js";
+import { executeSlashCommandsWithOptions } from '../../../../../slash-commands.js';
+import { getLogPrefix, registerIframeHandler } from './index.js';
 export function registerIframeSlashHandler() {
     registerIframeHandler('[Slash][triggerSlash]', async (event) => {
         const command = event.data.command;

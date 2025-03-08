@@ -20,7 +20,7 @@ function makeScriptIframe(script) {
     </html>
   `;
     iframe.srcdoc = srcdocContent;
-    const load_promise = new Promise((resolve) => {
+    const load_promise = new Promise(resolve => {
         iframe.onload = () => {
             console.info(`[Script](${iframe.id}) 加载完毕`);
             resolve();
@@ -42,10 +42,10 @@ export function destroy() {
 export async function initialize() {
     try {
         destroy();
-        const scripts = loadScripts("脚本-");
+        const scripts = loadScripts('脚本-');
         console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
         const load_promises = [];
-        scripts.forEach((script) => {
+        scripts.forEach(script => {
             const { iframe, load_promise } = makeScriptIframe(script);
             script_map.set(script.name, iframe);
             load_promises.push(load_promise);
