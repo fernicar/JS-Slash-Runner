@@ -22,6 +22,12 @@ export async function initialize() {
     destroy();
     const scripts = loadScripts("模块-");
     console.info(`[Module] 加载模块: ${JSON.stringify(scripts.map(module => module.name))}`);
+    if (scripts.length > 0) {
+        const error_message = `该功能出于安全性考虑已暂时关闭，请等待前端助手 3.0`;
+        // @ts-expect-error
+        toastr.error(error_message);
+        console.error(error_message);
+    }
     for (const script of scripts) {
         script_url.set(script.name, include_library(script.code));
         const module = await import(script_url.get(script.name));

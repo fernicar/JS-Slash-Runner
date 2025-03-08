@@ -14,6 +14,7 @@ async function parse_message(event_data) {
     }
 }
 async function parse_codeblock(content) {
+    throw Error(`该功能处于安全性考虑已暂时关闭, 请等待前端助手 3.0; 你可以使用提示词模板插件`);
     let matches = [...content.matchAll(codeblock_regex)];
     if (matches.length < 1) {
         return content;
