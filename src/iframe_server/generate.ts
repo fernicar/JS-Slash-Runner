@@ -41,6 +41,7 @@ import {
   countOccurrences,
   saveSettingsDebounced,
   stopGeneration,
+  getMaxContextSize,
 } from '../../../../../../script.js';
 import { extension_settings, getContext } from '../../../../../extensions.js';
 import { Prompt, PromptCollection } from '../../../../../PromptManager.js';
@@ -177,7 +178,6 @@ namespace detail {
   }
 }
 
-let this_max_context = oai_settings.openai_max_tokens;
 const type = 'quiet';
 const dryRun = false;
 
@@ -607,6 +607,7 @@ async function processWorldInfo(
     })
     .reverse();
 
+  const this_max_context = getMaxContextSize();
   const { worldInfoString, worldInfoBefore, worldInfoAfter, worldInfoExamples, worldInfoDepth } =
     await getWorldInfoPrompt(chatForWI, this_max_context, dryRun);
 

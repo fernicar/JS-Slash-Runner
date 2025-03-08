@@ -3,7 +3,7 @@ import { getRegexedString, regex_placement } from '../../../../../extensions/reg
 import { getWorldInfoPrompt, wi_anchor_position, world_info_include_names } from '../../../../../world-info.js';
 import { shouldWIAddPrompt, NOTE_MODULE_NAME, metadata_keys } from '../../../../../authors-note.js';
 import { setupChatCompletionPromptManager, prepareOpenAIMessages, setOpenAIMessageExamples, setOpenAIMessages, sendOpenAIRequest, oai_settings, ChatCompletion, Message, MessageCollection, isImageInliningSupported, } from '../../../../../openai.js';
-import { chat, saveChatConditional, getCharacterCardFields, setExtensionPrompt, getExtensionPromptRoleByName, extension_prompt_roles, extension_prompt_types, baseChatReplace, name1, name2, activateSendButtons, showSwipeButtons, setGenerationProgress, eventSource, getBiasStrings, substituteParams, chat_metadata, this_chid, characters, deactivateSendButtons, MAX_INJECTION_DEPTH, cleanUpMessage, isOdd, countOccurrences, saveSettingsDebounced, stopGeneration, } from '../../../../../../script.js';
+import { chat, saveChatConditional, getCharacterCardFields, setExtensionPrompt, getExtensionPromptRoleByName, extension_prompt_roles, extension_prompt_types, baseChatReplace, name1, name2, activateSendButtons, showSwipeButtons, setGenerationProgress, eventSource, getBiasStrings, substituteParams, chat_metadata, this_chid, characters, deactivateSendButtons, MAX_INJECTION_DEPTH, cleanUpMessage, isOdd, countOccurrences, saveSettingsDebounced, stopGeneration, getMaxContextSize, } from '../../../../../../script.js';
 import { extension_settings, getContext } from '../../../../../extensions.js';
 import { Prompt, PromptCollection } from '../../../../../PromptManager.js';
 import { power_user, persona_description_positions, flushEphemeralStoppingStrings } from '../../../../../power-user.js';
@@ -63,7 +63,6 @@ function fromGenerateRawConfig(config) {
         order: config.ordered_prompts,
     };
 }
-let this_max_context = oai_settings.openai_max_tokens;
 const type = 'quiet';
 const dryRun = false;
 const character_names_behavior = {
@@ -365,6 +364,7 @@ async function processWorldInfo(oaiMessages, config) {
         return world_info_include_names ? `${name}: ${x.content}` : x.content;
     })
         .reverse();
+    const this_max_context = getMaxContextSize();
     const { worldInfoString, worldInfoBefore, worldInfoAfter, worldInfoExamples, worldInfoDepth } = await getWorldInfoPrompt(chatForWI, this_max_context, dryRun);
     await clearInjectionPrompts(['customDepthWI']);
     if (!isPromptFiltered('with_depth_entries', config)) {
