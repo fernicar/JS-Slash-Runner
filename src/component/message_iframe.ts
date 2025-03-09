@@ -174,7 +174,7 @@ function processVhUnits(htmlContent: string) {
       /(\d+)vh/g,
       `calc(var(--viewport-height, ${viewportHeight}px) * $1 / 100)`,
     );
-    return `min-height: ${processedExpression};`;
+    return `${processedExpression};`;
   });
 
   return processedContent;

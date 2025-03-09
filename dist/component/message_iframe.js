@@ -141,7 +141,7 @@ function processVhUnits(htmlContent) {
     const viewportHeight = window.innerHeight;
     const processedContent = htmlContent.replace(/min-height:\s*([^;]*vh[^;]*);/g, expression => {
         const processedExpression = expression.replace(/(\d+)vh/g, `calc(var(--viewport-height, ${viewportHeight}px) * $1 / 100)`);
-        return `min-height: ${processedExpression};`;
+        return `${processedExpression};`;
     });
     return processedContent;
 }
