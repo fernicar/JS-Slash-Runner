@@ -10,8 +10,8 @@ import { charsPath } from '../component/message_iframe.js';
 
 type v1CharData = (typeof characters)[number];
 
-interface IframeGetCharCardData extends IframeMessage {
-  request: '[Character][getCharCardData]';
+interface IframeGetCharData extends IframeMessage {
+  request: '[Character][getCharData]';
   name?: string;
   allowAvatar?: boolean;
 }
@@ -310,11 +310,11 @@ export function registerIframeCharacterHandler() {
     });
   }
 
-  createCharacterHandler<v1CharData, IframeGetCharCardData>(
-    '[Character][getCharCardData]',
+  createCharacterHandler<v1CharData, IframeGetCharData>(
+    '[Character][getCharData]',
     character => character.getCardData(),
     null,
-    (_event, _result, displayName) => `获取角色卡在角色管理器中的数据, 角色: ${displayName || '未知'}`,
+    (_event, _result, displayName) => `获取角色卡数据, 角色: ${displayName || '未知'}`,
   );
 
   createCharacterHandler<string, IframeGetAvatarPath>(

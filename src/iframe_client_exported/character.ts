@@ -1,7 +1,7 @@
 export const iframe_client_character = `
-async function getCharCardData(name, allowAvatar = false) {
+async function getCharData(name, allowAvatar = false) {
     return detail.make_iframe_promise({
-        request: '[Character][getCharCardData]',
+        request: '[Character][getCharData]',
         name: name,
         allowAvatar: allowAvatar,
     });

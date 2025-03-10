@@ -40,10 +40,10 @@ export class Character {
         // 查找所有匹配的角色
         const matchingCharacters = name ? filteredCharacters.filter(matches) : filteredCharacters;
         if (matchingCharacters.length > 1) {
-            console.warn('[Character] 找到多个符合条件的角色，返回导入时间最早的角色');
+            console.warn(`[Character] [findCharacter] 找到多个符合条件的角色，返回导入时间最早的角色: ${name}`);
         }
         if (matchingCharacters.length === 0) {
-            throw new Error(`提供的名称或头像ID为: ${name}，未找到符合条件的角色`);
+            throw new Error(`[Character] [findCharacter] 提供的名称或头像ID为: ${name}，未找到符合条件的角色`);
         }
         return matchingCharacters[0];
     }
@@ -204,7 +204,7 @@ export function registerIframeCharacterHandler() {
             return result;
         });
     }
-    createCharacterHandler('[Character][getCharCardData]', character => character.getCardData(), null, (_event, _result, displayName) => `获取角色卡在角色管理器中的数据, 角色: ${displayName || '未知'}`);
+    createCharacterHandler('[Character][getCharData]', character => character.getCardData(), null, (_event, _result, displayName) => `获取角色卡数据, 角色: ${displayName || '未知'}`);
     createCharacterHandler('[Character][getCharAvatarPath]', character => {
         const thumbnailPath = getThumbnailUrl('avatar', character.getAvatarId());
         const targetAvatarImg = thumbnailPath.substring(thumbnailPath.lastIndexOf('=') + 1);

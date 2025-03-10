@@ -1,6 +1,6 @@
-async function getCharCardData(name: string, allowAvatar: boolean = false): Promise<any> {
+async function getCharData(name: string, allowAvatar: boolean = false): Promise<any> {
   return detail.make_iframe_promise({
-    request: '[Character][getCharCardData]',
+    request: '[Character][getCharData]',
     name: name,
     allowAvatar: allowAvatar,
   });
