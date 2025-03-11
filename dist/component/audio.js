@@ -285,7 +285,7 @@ export function initAudioEventListeners(type) {
  * @param type 音频类型 "bgm" 或 "ambient"
  */
 export function initializeProgressBar(type) {
-    cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
+    cooldownBGM = extension_settings[extensionName].audio.audio_cooldown;
     const $audioElement = $(`#audio_${type}`);
     const $progressSlider = $(`#audio_${type}_progress_slider`);
     $audioElement.on('timeupdate', function () {
@@ -293,7 +293,7 @@ export function initializeProgressBar(type) {
             const progressPercent = (this.currentTime / this.duration) * 100;
             $progressSlider.val(progressPercent);
         }
-        const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
+        const cooldownBGM = extension_settings[extensionName].audio.audio_cooldown;
         const remainingTime = this.duration - this.currentTime;
         if (cooldownBGM > 0 && remainingTime <= cooldownBGM && !this.isFadingOut) {
             const initialVolume = this.volume;
@@ -311,7 +311,7 @@ export function initializeProgressBar(type) {
         }
     });
     $audioElement.on('play', function () {
-        const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
+        const cooldownBGM = extension_settings[extensionName].audio.audio_cooldown;
         const targetVolume = $(`#audio_${type}_volume_slider`).val() / 100;
         if (cooldownBGM <= 0) {
             this.volume = targetVolume;
