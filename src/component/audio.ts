@@ -107,11 +107,41 @@ export async function updateAudio(type = 'bgm', isUserInput = false) {
 
   if (type === 'bgm') {
     audio.src = audio_url;
+    audio.load();
+
+    await new Promise<void>(resolve => {
+      const canPlayHandler = () => {
+        audio.removeEventListener('canplaythrough', canPlayHandler);
+        resolve();
+      };
+
+      if (audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+        resolve();
+      } else {
+        audio.addEventListener('canplaythrough', canPlayHandler);
+      }
+    });
+
     await playAudio(type);
   } else {
     // 对于ambient类型，使用缓存破坏
     const audioUrlWithCacheBusting = getAudioUrlWithCacheBusting(audio_url);
     audio.src = audioUrlWithCacheBusting;
+    audio.load();
+
+    await new Promise<void>(resolve => {
+      const canPlayHandler = () => {
+        audio.removeEventListener('canplaythrough', canPlayHandler);
+        resolve();
+      };
+
+      if (audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+        resolve();
+      } else {
+        audio.addEventListener('canplaythrough', canPlayHandler);
+      }
+    });
+
     await playAudio(type);
   }
 
@@ -302,7 +332,8 @@ export function initializeProgressBar(type: 'bgm' | 'ambient') {
     }
     const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
     const remainingTime = this.duration - this.currentTime;
-    if (remainingTime <= cooldownBGM && !this.isFadingOut) {
+
+    if (cooldownBGM > 0 && remainingTime <= cooldownBGM && !this.isFadingOut) {
       const initialVolume = this.volume;
       const fadeStep = initialVolume / (cooldownBGM * 10);
       this.isFadingOut = true;
@@ -319,9 +350,15 @@ export function initializeProgressBar(type: 'bgm' | 'ambient') {
   });
 
   $audioElement.on('play', function () {
-    this.volume = 0;
     const cooldownBGM = extension_settings[extensionName].audio.bgm_cooldown;
     const targetVolume = $(`#audio_${type}_volume_slider`).val() / 100;
+
+    if (cooldownBGM <= 0) {
+      this.volume = targetVolume;
+      return;
+    }
+
+    this.volume = 0;
     const fadeStep = targetVolume / (cooldownBGM * 10);
     let fadeInInterval = setInterval(() => {
       if (this.volume < targetVolume) {
@@ -447,7 +484,7 @@ async function openUrlManagerPopup(typeKey: 'bgmurl' | 'ambienturl') {
         savedAudioUrl.addClass('empty');
       }
     } catch (error) {
-      console.error(`Failed to parse ${typeKey}:`, error);
+      console.error(`[Audio] Failed to parse ${typeKey}:`, error);
       return null;
     }
   }
@@ -476,7 +513,7 @@ async function openUrlManagerPopup(typeKey: 'bgmurl' | 'ambienturl') {
       const currentUrl = urlHtml.find('.audio_url_name').attr('data-url');
 
       if (!currentUrl) {
-        console.error('No URL found for this element.');
+        console.error('[Audio] No URL found for this element.');
         return;
       }
 
@@ -533,7 +570,7 @@ async function openUrlManagerPopup(typeKey: 'bgmurl' | 'ambienturl') {
     const newUrls = await openUrlImportPopup();
 
     if (!newUrls) {
-      console.debug(`${typeKey} URL导入已取消`);
+      console.debug(`[Audio] ${typeKey} URL导入已取消`);
       return;
     }
 
@@ -599,7 +636,7 @@ async function onEnabledClick() {
       try {
         await bgmAudioElement.play();
       } catch (error) {
-        throw new Error('播放音乐失败：没有提供有效源');
+        throw new Error('[Audio] 播放音乐失败：没有提供有效源');
       }
     }
     if (ambientUrl.length > 0) {
@@ -607,7 +644,7 @@ async function onEnabledClick() {
       try {
         await ambientAudioElement.play();
       } catch (error) {
-        throw new Error('播放音效失败：没有提供有效源');
+        throw new Error('[Audio] 播放音效失败：没有提供有效源');
       }
     }
   } else {
@@ -640,11 +677,16 @@ export async function playAudio(type: 'bgm' | 'ambient') {
     }
 
     audioElement.src = selectedAudio;
+    audioElement.load();
   }
 
-  audioElement.play();
-  playPauseIcon.removeClass('fa-play');
-  playPauseIcon.addClass('fa-pause');
+  try {
+    await audioElement.play();
+    playPauseIcon.removeClass('fa-play');
+    playPauseIcon.addClass('fa-pause');
+  } catch (error) {
+    console.error(`[Audio] 播放 ${type} 音频时出错:`, error);
+  }
 }
 
 /**
@@ -749,7 +791,7 @@ async function handleUrlManagerClick(typeKey: string) {
   const result = await openUrlManagerPopup(typeKey as 'bgmurl' | 'ambienturl');
 
   if (!result) {
-    console.debug(`${typeKey} URL导入已取消`);
+    console.debug(`[Audio] ${typeKey} URL导入已取消`);
     return;
   }
 
@@ -776,7 +818,7 @@ async function openUrlImportPopup(): Promise<string[] | null> {
   const input = await callGenericPopup('输入要导入的网络音频链接（每行一个）', POPUP_TYPE.INPUT, '');
 
   if (!input) {
-    console.debug('URL import cancelled');
+    console.debug('[Audio] URL import cancelled');
     return null;
   }
 
