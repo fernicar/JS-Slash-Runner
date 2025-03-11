@@ -13,8 +13,6 @@ let bgmEnded = true;
 let ambientEnded = true;
 let cooldownBGM = 0;
 
-const audioCache: Record<string, string> = {};
-
 // 定义默认音频设置
 export const defaultAudioSettings = {
   audio_setting: true,
@@ -107,21 +105,14 @@ export async function updateAudio(type = 'bgm', isUserInput = false) {
     ambientEnded = false;
   }
 
-  // 对于bgm类型，使用audioCache
   if (type === 'bgm') {
-    if (audioCache[audio_url]) {
-      audio.src = audioCache[audio_url];
-      audio.play();
-    } else {
-      audio.src = audio_url;
-      audio.play();
-      audioCache[audio_url] = audio_url;
-    }
+    audio.src = audio_url;
+    await playAudio(type);
   } else {
     // 对于ambient类型，使用缓存破坏
     const audioUrlWithCacheBusting = getAudioUrlWithCacheBusting(audio_url);
     audio.src = audioUrlWithCacheBusting;
-    audio.play();
+    await playAudio(type);
   }
 
   // 更新选中的音频
