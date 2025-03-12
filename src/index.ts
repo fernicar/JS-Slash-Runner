@@ -19,10 +19,6 @@ import {
   unregisterAllMacros,
 } from './component/macro.js';
 import {
-  initializeEmbeddedCodeblockOnExtension,
-  destroyEmbeddedCodeblockOnExtension,
-} from './component/embedded_codeblock.js';
-import {
   initializeCharacterLevelOnExtension,
   destroyCharacterLevelOnExtension,
 } from './component/character_level/index.js';
@@ -68,7 +64,6 @@ async function onExtensionToggle() {
 
     registerAllMacros();
     initializeMacroOnExtension();
-    initializeEmbeddedCodeblockOnExtension();
     initializeCharacterLevelOnExtension();
 
     window.addEventListener('message', handleIframe);
@@ -100,7 +95,6 @@ async function onExtensionToggle() {
 
     unregisterAllMacros();
     destroyMacroOnExtension();
-    destroyEmbeddedCodeblockOnExtension();
     destroyCharacterLevelOnExtension();
 
     window.removeEventListener('message', handleIframe);

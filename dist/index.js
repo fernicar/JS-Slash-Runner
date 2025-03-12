@@ -7,7 +7,6 @@ import { handleIframe } from './iframe_server/index.js';
 import { iframe_client } from './iframe_client_exported/index.js';
 import { initSlashEventEmit } from './slash_command/event.js';
 import { initializeMacroOnExtension, destroyMacroOnExtension, registerAllMacros, unregisterAllMacros, } from './component/macro.js';
-import { initializeEmbeddedCodeblockOnExtension, destroyEmbeddedCodeblockOnExtension, } from './component/embedded_codeblock.js';
 import { initializeCharacterLevelOnExtension, destroyCharacterLevelOnExtension, } from './component/character_level/index.js';
 import { clearTempVariables, shouldUpdateVariables, checkVariablesEvents } from './iframe_server/variables.js';
 import { script_url } from './script_url.js';
@@ -36,7 +35,6 @@ async function onExtensionToggle() {
         script_url.set('tampermonkey_script', tampermonkey_script);
         registerAllMacros();
         initializeMacroOnExtension();
-        initializeEmbeddedCodeblockOnExtension();
         initializeCharacterLevelOnExtension();
         window.addEventListener('message', handleIframe);
         fullRenderEvents.forEach(eventType => {
@@ -64,7 +62,6 @@ async function onExtensionToggle() {
         script_url.delete('tampermonkey_script');
         unregisterAllMacros();
         destroyMacroOnExtension();
-        destroyEmbeddedCodeblockOnExtension();
         destroyCharacterLevelOnExtension();
         window.removeEventListener('message', handleIframe);
         fullRenderEvents.forEach(eventType => {
