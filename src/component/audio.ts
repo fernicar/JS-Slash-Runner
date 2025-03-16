@@ -165,31 +165,41 @@ export async function updateAudio(type = 'bgm', isUserInput = false) {
  * 更新音频下拉选择菜单
  * @param type 音频类型 "bgm" 或 "ambient"
  */
-export function updateAudioSelect(type = 'bgm') {
-  if (!$('#audio_enabled').is(':checked')) {
+export async function updateAudioSelect(type = 'bgm') {
+  if (!extension_settings[extensionName].audio[`${type}_enabled`]) {
     return;
   }
 
   const selectElement = $(`#audio_${type}_select`);
   selectElement.empty();
 
+  if (type === 'bgm') {
+    list_BGMS = await getAudioUrl('bgm');
+  } else {
+    list_ambients = await getAudioUrl('ambient');
+  }
+
   const audioList = type === 'bgm' ? list_BGMS : list_ambients;
-  const selectedSetting =
+  let selectedSetting =
     type === 'bgm'
       ? extension_settings[extensionName].audio.bgm_selected
       : extension_settings[extensionName].audio.ambient_selected;
 
   if (audioList && audioList.length > 0) {
-    // 检查当前选择的音频是否在列表中，如果不在则设为第一项
+    // 检查当前选择的音频是否在列表中，如果不在则选择第一个
     if (!audioList.includes(selectedSetting)) {
+      console.warn(`[Audio] 当前选择的音频 ${selectedSetting} 不在列表中，自动选择列表第一个音频`);
+      selectedSetting = audioList[0];
       if (type === 'bgm') {
-        extension_settings[extensionName].audio.bgm_selected = audioList[0];
+        extension_settings[extensionName].audio.bgm_selected = selectedSetting;
       } else {
-        extension_settings[extensionName].audio.ambient_selected = audioList[0];
+        extension_settings[extensionName].audio.ambient_selected = selectedSetting;
       }
+      saveSettingsDebounced();
     }
 
-    audioList.forEach(file => {
+    const audioFiles = Array.isArray(audioList) ? audioList : audioList.split(',').map(file => file.trim());
+    audioFiles.forEach(file => {
       const fileLabel = file.replace(/^.*[\\\/]/, '').replace(/\.[^/.]+$/, '');
       selectElement.append(new Option(fileLabel, file));
     });
@@ -443,8 +453,6 @@ function handleLongPress(volumeControlId, iconId) {
  * 刷新音频资源
  */
 export async function refreshAudioResources() {
-  list_BGMS = await getAudioUrl('bgm');
-  list_ambients = await getAudioUrl('ambient');
   updateAudioSelect('bgm');
   updateAudioSelect('ambient');
 }
@@ -534,28 +542,18 @@ async function openUrlManagerPopup(typeKey: 'bgmurl' | 'ambienturl') {
       updatedUrls[currentUrl] = inputUrl;
     });
 
-    urlHtml.find('.delete_regex').on('click', async function () {
-      const confirmDelete = await callGenericPopup('确认要删除此链接?此操作无法撤回', POPUP_TYPE.CONFIRM);
+    urlHtml.find('.delete_url').on('click', async function () {
+      const confirmDelete = await callGenericPopup('确认要删除此链接?', POPUP_TYPE.CONFIRM);
 
       if (!confirmDelete) {
         return;
       }
 
-      const currentUrl = urlHtml.find('.audio_url_name').attr('data-url');
-
-      if (chat_metadata.variables && chat_metadata.variables[typeKey]) {
-        let urlList = chat_metadata.variables[typeKey];
-
-        urlList = urlList.filter((item: any) => item !== currentUrl);
-
-        chat_metadata.variables[typeKey] = urlList;
-
-        saveMetadataDebounced();
-      }
-
+      // 仅从DOM中移除元素
       urlHtml.remove();
-      newUrlOrder = newUrlOrder.filter(url => url !== currentUrl);
-      if (newUrlOrder.length === 0) {
+
+      // 检查是否需要显示空状态提示
+      if (savedAudioUrl.find('.audio_url_name').length === 0) {
         savedAudioUrl.addClass('empty');
       }
     });
@@ -574,39 +572,51 @@ async function openUrlManagerPopup(typeKey: 'bgmurl' | 'ambienturl') {
       return;
     }
 
-    importedUrls = [...importedUrls, ...newUrls];
     savedAudioUrl.removeClass('empty');
 
     newUrls.forEach(url => {
       renderUrl(savedAudioUrl, url);
-      newUrlOrder.push(url);
     });
   });
   (savedAudioUrl as any).sortable({
     delay: getSortableDelay(),
     handle: '.drag-handle',
-    stop: function () {
-      const newUrlOrder: string[] = [];
-      savedAudioUrl.find('.audio_url_name').each(function () {
-        const newUrl = $(this).attr('data-url') || '';
-        newUrlOrder.push(newUrl);
-      });
-    },
+    stop: function () {},
   });
   const result = await callGenericPopup(urlManager, POPUP_TYPE.CONFIRM, '', {
     okButton: `确认`,
     cancelButton: `取消`,
   });
 
-  if (result) {
-    for (let originalUrl in updatedUrls) {
-      const newUrl = updatedUrls[originalUrl];
-      const index = newUrlOrder.indexOf(originalUrl);
-      if (index !== -1) {
-        newUrlOrder[index] = newUrl;
+  if (!result) {
+    return;
+  } else {
+    // 直接读取所有data-url属性，生成新的URL列表
+    const newUrlList: string[] = [];
+    savedAudioUrl.find('.audio_url_name').each(function () {
+      const url = $(this).attr('data-url');
+      if (url) {
+        newUrlList.push(url);
       }
+    });
+
+    // 检查当前播放的音频是否在新的列表中
+    const currentBgmUrl = extension_settings[extensionName].audio.bgm_selected;
+    const currentAmbientUrl = extension_settings[extensionName].audio.ambient_selected;
+
+    // 如果当前播放的音频不在新的列表中，停止播放
+    if (typeKey === 'bgmurl' && currentBgmUrl && !newUrlList.includes(currentBgmUrl)) {
+      const bgmAudio = $('#audio_bgm')[0] as HTMLAudioElement;
+      bgmAudio.pause();
+      bgmEnded = true;
+    } else if (typeKey === 'ambienturl' && currentAmbientUrl && !newUrlList.includes(currentAmbientUrl)) {
+      const ambientAudio = $('#audio_ambient')[0] as HTMLAudioElement;
+      ambientAudio.pause();
+      ambientEnded = true;
     }
-    chat_metadata.variables[typeKey] = newUrlOrder;
+
+    // 更新并保存新的URL列表
+    chat_metadata.variables[typeKey] = newUrlList;
     saveMetadataDebounced();
     if (typeKey === 'bgmurl') {
       updateAudioSelect('bgm');
@@ -614,8 +624,6 @@ async function openUrlManagerPopup(typeKey: 'bgmurl' | 'ambienturl') {
       updateAudioSelect('ambient');
     }
   }
-
-  return result;
 }
 
 /**
@@ -660,9 +668,15 @@ async function onEnabledClick() {
  * @param type 音频类型 "bgm" 或 "ambient"
  */
 export async function playAudio(type: 'bgm' | 'ambient') {
-  if (!extension_settings[extensionName].audio.audio_setting) {
+  
+  if (
+    !extension_settings[extensionName].activate_setting ||
+    !extension_settings[extensionName].audio.audio_setting ||
+    !extension_settings[extensionName].audio[`${type}_enabled`]
+  ) {
     return;
   }
+
 
   const audioElement = $(`#audio_${type}`)[0] as HTMLAudioElement;
   const playPauseIcon = $(`#audio_${type}_play_pause_icon`);
@@ -779,38 +793,6 @@ export async function togglePlayPause(type: 'bgm' | 'ambient') {
 }
 
 /**
- * 音频管理弹窗中的管理URL
- * @param typeKey 音频类型 "bgm" 或 "ambient"
- */
-async function handleUrlManagerClick(typeKey: string) {
-  if (!chat_metadata.variables) {
-    chat_metadata.variables = {};
-  }
-  const existingUrls = chat_metadata.variables[typeKey] || [];
-
-  const result = await openUrlManagerPopup(typeKey as 'bgmurl' | 'ambienturl');
-
-  if (!result) {
-    console.debug(`[Audio] ${typeKey} URL导入已取消`);
-    return;
-  }
-
-  const newUrls = Array.isArray(result) ? result : [];
-
-  const mergedUrls = [...new Set([...newUrls, ...existingUrls])];
-
-  chat_metadata.variables[typeKey] = mergedUrls;
-  saveMetadataDebounced();
-  if (typeKey === 'bgmurl') {
-    list_BGMS = await getAudioUrl('bgm');
-    await updateAudio('bgm', true);
-  } else if (typeKey === 'ambienturl') {
-    list_ambients = await getAudioUrl('ambient');
-    await updateAudio('ambient', true);
-  }
-}
-
-/**
  * 打开URL导入弹窗
  * @param type 音频类型
  */
@@ -878,6 +860,7 @@ function initAudioStyles(type: 'bgm' | 'ambient') {
     playPauseIcon.removeClass('fa-play');
     playPauseIcon.addClass('fa-pause');
   }
+  updateAudioSelect(type);
   initializeProgressBar(type);
 }
 
@@ -974,7 +957,7 @@ export function initAudioComponents() {
 
   audioTypes.forEach(type => {
     $(`#${type}_manager_button`).on('click', async () => {
-      await handleUrlManagerClick(urlManagerMap[type]);
+      await openUrlManagerPopup(urlManagerMap[type] as 'bgmurl' | 'ambienturl');
       await refreshAudioResources();
     });
   });

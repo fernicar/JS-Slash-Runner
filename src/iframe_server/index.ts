@@ -10,6 +10,7 @@ import { registerIframeTavernRegexHandler } from './tavern_regex.js';
 import { registerIframeUtilHandler } from './util.js';
 import { registerIframeVariableHandler } from './variables.js';
 import { registerIframeCharacterHandler } from './character.js';
+import { registerIframeAudioHandler } from './audio.js';
 
 export interface IframeMessage {
   request: string;
@@ -79,3 +80,4 @@ registerIframeTavernRegexHandler();
 registerIframeUtilHandler();
 registerIframeVariableHandler();
 registerIframeCharacterHandler();
+registerIframeAudioHandler();

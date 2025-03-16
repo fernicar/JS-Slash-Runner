@@ -45,7 +45,7 @@ export const extensionFolderPath = `third-party/${extensionName}`;
 let isScriptLibraryOpen = false;
 
 const defaultSettings = {
-  activate_setting: false,
+  activate_setting: true,
   render: {
     ...defaultIframeSettings,
   },

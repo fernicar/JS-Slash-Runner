@@ -22,14 +22,6 @@ import {
   updateAudio,
 } from '../component/audio.js';
 
-interface AudioCommandArgs {
-  type: string;
-  mode?: string;
-  state?: string;
-  play?: string;
-  [key: string]: any;
-}
-
 interface AudioElement extends HTMLElement {
   pause(): void;
 }
@@ -37,9 +29,9 @@ interface AudioElement extends HTMLElement {
 /**
  * 切换音频播放模式
  */
-async function toggleAudioMode(args: AudioCommandArgs): Promise<string> {
+export async function audioMode(args: { type: string; mode: string }): Promise<void> {
   const type = args.type.toLowerCase();
-  const mode = args.mode?.toLowerCase() || '';
+  const mode = args.mode.toLowerCase();
 
   if (!['bgm', 'ambient'].includes(type) || !['repeat', 'random', 'single', 'stop'].includes(mode)) {
     console.warn('WARN: Invalid arguments for /audiomode command');
@@ -75,15 +67,14 @@ async function toggleAudioMode(args: AudioCommandArgs): Promise<string> {
 /**
  * 切换播放器开关状态
  */
-async function togglePlayer(args: AudioCommandArgs): Promise<string> {
-  const state = args.state ? args.state.toLowerCase() : 'true';
+export async function audioEnable(args: { type: string; state?: string }): Promise<void> {
+  const type = args.type.toLowerCase();
+  const state = (args.state || 'true').toLowerCase();
 
-  if (!args?.type) {
+  if (!type) {
     console.warn('WARN: Missing arguments for /audioenable command');
     return '';
   }
-
-  const type = args.type.toLowerCase();
 
   if (type === 'bgm') {
     if (state === 'true') {
@@ -109,14 +100,14 @@ async function togglePlayer(args: AudioCommandArgs): Promise<string> {
 /**
  * 切换播放/暂停状态
  */
-async function togglePlayPauseCommand(args: AudioCommandArgs): Promise<string> {
-  if (!args?.type) {
+export async function audioPlay(args: { type: string; play?: string }): Promise<void> {
+  const type = args.type.toLowerCase();
+  const play = (args.play || 'true').toLowerCase();
+
+  if (!type) {
     console.warn('WARN: Missing arguments for /audioplaypause command');
     return '';
   }
-
-  const type = args.type.toLowerCase();
-  const play = args.play ? args.play.toLowerCase() : 'true';
 
   if (type === 'bgm') {
     if (play === 'true') {
@@ -140,16 +131,16 @@ async function togglePlayPauseCommand(args: AudioCommandArgs): Promise<string> {
 /**
  * 导入音频链接
  */
-async function handleAudioImportCommand(args: AudioCommandArgs, text?: string): Promise<string> {
-  if (!args?.type || !text) {
+export async function audioImport(args: { type: string; play?: string }, url: string): Promise<void> {
+  const type = args.type.toLowerCase();
+  const play = (args.play || 'true').toLowerCase();
+
+  if (!type || !url) {
     console.warn('WARN: Missing arguments for /audioimport command');
     return '';
   }
 
-  const type = args.type.toLowerCase();
-  const play = args.play ? args.play.toLowerCase() : 'true';
-
-  const urlArray = text
+  const urlArray = url
     .split(',')
     .map((url: string) => url.trim())
     .filter((url: string) => url !== '')
@@ -193,14 +184,13 @@ async function handleAudioImportCommand(args: AudioCommandArgs, text?: string): 
 /**
  * 选择并播放音频
  */
-async function handleAudioSelectCommand(args: AudioCommandArgs, text?: string): Promise<string> {
-  if (!text) {
+export async function audioSelect(args: { type: string }, url: string): Promise<void> {
+  const type = args.type.toLowerCase();
+
+  if (!url) {
     console.warn('WARN: Missing URL for /audioselect command');
     return '';
   }
-
-  const type = args.type.toLowerCase();
-  const url = text.trim();
 
   if (!chat_metadata.variables) {
     chat_metadata.variables = {};
@@ -247,7 +237,7 @@ export function initAudioSlashCommands() {
   SlashCommandParser.addCommandObject(
     SlashCommand.fromProps({
       name: 'audioselect',
-      callback: handleAudioSelectCommand,
+      callback: audioSelect,
       namedArgumentList: [
         SlashCommandNamedArgument.fromProps({
           name: 'type',
@@ -286,7 +276,7 @@ export function initAudioSlashCommands() {
   SlashCommandParser.addCommandObject(
     SlashCommand.fromProps({
       name: 'audioimport',
-      callback: handleAudioImportCommand,
+      callback: audioImport,
       namedArgumentList: [
         SlashCommandNamedArgument.fromProps({
           name: 'type',
@@ -332,7 +322,7 @@ export function initAudioSlashCommands() {
   SlashCommandParser.addCommandObject(
     SlashCommand.fromProps({
       name: 'audioplay',
-      callback: togglePlayPauseCommand,
+      callback: audioPlay,
       namedArgumentList: [
         SlashCommandNamedArgument.fromProps({
           name: 'type',
@@ -379,7 +369,7 @@ export function initAudioSlashCommands() {
   SlashCommandParser.addCommandObject(
     SlashCommand.fromProps({
       name: 'audioenable',
-      callback: togglePlayer,
+      callback: audioEnable,
       namedArgumentList: [
         SlashCommandNamedArgument.fromProps({
           name: 'type',
@@ -426,7 +416,7 @@ export function initAudioSlashCommands() {
   SlashCommandParser.addCommandObject(
     SlashCommand.fromProps({
       name: 'audiomode',
-      callback: toggleAudioMode,
+      callback: audioMode,
       namedArgumentList: [
         SlashCommandNamedArgument.fromProps({
           name: 'type',

@@ -11,9 +11,9 @@ import { list_BGMS, list_ambients, onAudioEnabledClick, playAudio, updateAudioSe
 /**
  * 切换音频播放模式
  */
-async function toggleAudioMode(args) {
+export async function audioMode(args) {
     const type = args.type.toLowerCase();
-    const mode = args.mode?.toLowerCase() || '';
+    const mode = args.mode.toLowerCase();
     if (!['bgm', 'ambient'].includes(type) || !['repeat', 'random', 'single', 'stop'].includes(mode)) {
         console.warn('WARN: Invalid arguments for /audiomode command');
         return '';
@@ -46,13 +46,13 @@ async function toggleAudioMode(args) {
 /**
  * 切换播放器开关状态
  */
-async function togglePlayer(args) {
-    const state = args.state ? args.state.toLowerCase() : 'true';
-    if (!args?.type) {
+export async function audioEnable(args) {
+    const type = args.type.toLowerCase();
+    const state = (args.state || 'true').toLowerCase();
+    if (!type) {
         console.warn('WARN: Missing arguments for /audioenable command');
         return '';
     }
-    const type = args.type.toLowerCase();
     if (type === 'bgm') {
         if (state === 'true') {
             $('#enable_bgm').prop('checked', true);
@@ -78,13 +78,13 @@ async function togglePlayer(args) {
 /**
  * 切换播放/暂停状态
  */
-async function togglePlayPauseCommand(args) {
-    if (!args?.type) {
+export async function audioPlay(args) {
+    const type = args.type.toLowerCase();
+    const play = (args.play || 'true').toLowerCase();
+    if (!type) {
         console.warn('WARN: Missing arguments for /audioplaypause command');
         return '';
     }
-    const type = args.type.toLowerCase();
-    const play = args.play ? args.play.toLowerCase() : 'true';
     if (type === 'bgm') {
         if (play === 'true') {
             await playAudio('bgm');
@@ -108,14 +108,14 @@ async function togglePlayPauseCommand(args) {
 /**
  * 导入音频链接
  */
-async function handleAudioImportCommand(args, text) {
-    if (!args?.type || !text) {
+export async function audioImport(args, url) {
+    const type = args.type.toLowerCase();
+    const play = (args.play || 'true').toLowerCase();
+    if (!type || !url) {
         console.warn('WARN: Missing arguments for /audioimport command');
         return '';
     }
-    const type = args.type.toLowerCase();
-    const play = args.play ? args.play.toLowerCase() : 'true';
-    const urlArray = text
+    const urlArray = url
         .split(',')
         .map((url) => url.trim())
         .filter((url) => url !== '')
@@ -154,13 +154,12 @@ async function handleAudioImportCommand(args, text) {
 /**
  * 选择并播放音频
  */
-async function handleAudioSelectCommand(args, text) {
-    if (!text) {
+export async function audioSelect(args, url) {
+    const type = args.type.toLowerCase();
+    if (!url) {
         console.warn('WARN: Missing URL for /audioselect command');
         return '';
     }
-    const type = args.type.toLowerCase();
-    const url = text.trim();
     if (!chat_metadata.variables) {
         chat_metadata.variables = {};
     }
@@ -200,7 +199,7 @@ export function initAudioSlashCommands() {
     // 注册 audioselect 命令
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'audioselect',
-        callback: handleAudioSelectCommand,
+        callback: audioSelect,
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
                 name: 'type',
@@ -236,7 +235,7 @@ export function initAudioSlashCommands() {
     // 注册 audioimport 命令
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'audioimport',
-        callback: handleAudioImportCommand,
+        callback: audioImport,
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
                 name: 'type',
@@ -279,7 +278,7 @@ export function initAudioSlashCommands() {
     // 注册 audioplay 命令
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'audioplay',
-        callback: togglePlayPauseCommand,
+        callback: audioPlay,
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
                 name: 'type',
@@ -315,7 +314,7 @@ export function initAudioSlashCommands() {
     // 注册 audioenable 命令
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'audioenable',
-        callback: togglePlayer,
+        callback: audioEnable,
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
                 name: 'type',
@@ -351,7 +350,7 @@ export function initAudioSlashCommands() {
     // 注册 audiomode 命令
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'audiomode',
-        callback: toggleAudioMode,
+        callback: audioMode,
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
                 name: 'type',
