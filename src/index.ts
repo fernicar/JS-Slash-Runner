@@ -69,7 +69,9 @@ async function onExtensionToggle() {
     window.addEventListener('message', handleIframe);
 
     fullRenderEvents.forEach(eventType => {
-      eventSource.on(eventType, renderAllIframes);
+      eventSource.on(eventType, async () => {
+        renderAllIframes();
+      });
     });
 
     partialRenderEvents.forEach(eventType => {
@@ -100,7 +102,9 @@ async function onExtensionToggle() {
     window.removeEventListener('message', handleIframe);
 
     fullRenderEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, renderAllIframes);
+      eventSource.removeListener(eventType, async () => {
+        renderAllIframes();
+      });
     });
 
     partialRenderEvents.forEach(eventType => {

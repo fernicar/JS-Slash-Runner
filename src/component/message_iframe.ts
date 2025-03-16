@@ -21,6 +21,8 @@ import { libraries_text } from './character_level/library.js';
 
 let tampermonkeyMessageListener: ((event: MessageEvent) => void) | null = null;
 
+const iframeResizeObservers = new Map();
+
 const RENDER_MODES = {
   FULL: 'FULL',
   PARTIAL: 'PARTIAL',
@@ -55,6 +57,7 @@ export const getCharAvatarPath = () => {
  * 渲染所有iframe
  */
 export async function renderAllIframes() {
+  await clearAllIframe();
   await renderMessagesInIframes(RENDER_MODES.FULL);
   console.log('[Render] 渲染所有iframe');
 }
@@ -383,40 +386,180 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
 }
 
 /**
+ * 观察iframe内容用于自动调整高度
+ * @param iframe iframe元素
+ */
+function observeIframeContent(iframe) {
+  const $iframe = $(iframe);
+  if (!$iframe.length || !$iframe[0].contentWindow || !$iframe[0].contentWindow.document.body) {
+    return;
+  }
+  const docBody = $iframe[0].contentWindow.document.body;
+  const iframeId = $iframe.attr('id');
+
+  let resizeObserver = null;
+
+  adjustIframeHeight(iframe);
+
+  try {
+    if (window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        adjustIframeHeight(iframe);
+      });
+      resizeObserver.observe(docBody);
+
+      if (iframeId) {
+        iframeResizeObservers.set(iframeId, resizeObserver);
+      }
+    }
+  } catch (e) {
+    console.error('ResizeObserver初始化错误:', e);
+  }
+
+  iframe.cleanup = () => {
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      if (iframeId) {
+        iframeResizeObservers.delete(iframeId);
+      }
+    }
+  };
+}
+
+/**
  * 销毁iframe
  * @param iframe iframe元素
  */
-function destroyIframe(iframe: HTMLIFrameElement) {
+function destroyIframe(iframe) {
   const $iframe = $(iframe);
-  const $mediaElements = $iframe.contents().find('audio, video');
+  const iframeId = $iframe.attr('id');
 
-  $mediaElements.each(function () {
-    if (this instanceof HTMLMediaElement) {
-      this.pause();
-      this.src = '';
-      this.load();
+  $iframe.off();
+
+  try {
+    if ($iframe[0].contentWindow) {
+      const iframeDoc = $iframe[0].contentWindow.document;
+      if (iframeDoc) {
+        $(iframeDoc).find('*').off(); 
+        $(iframeDoc).off(); 
+      }
     }
-  });
+  } catch (e) {
+    console.debug('清理iframe内部事件时出错:', e);
+  }
+
+  try {
+    const $mediaElements = $iframe.contents().find('audio, video');
+    $mediaElements.each(function () {
+      if (this instanceof HTMLMediaElement) {
+        this.pause();
+        this.src = '';
+        this.load();
+        $(this).off(); 
+      }
+    });
+  } catch (e) {
+    console.debug('清理媒体元素时出错:', e);
+  }
 
   if ($iframe[0].contentWindow && 'stop' in $iframe[0].contentWindow) {
     $iframe[0].contentWindow.stop();
   }
 
+  // 清空iframe内容
   if ($iframe[0].contentWindow) {
-    $iframe.attr('src', 'about:blank');
+    try {
+      if (iframeId && typeof eventSource.removeListener === 'function') {
+        eventSource.removeListener('message_iframe_render_ended', iframeId);
+        eventSource.removeListener('message_iframe_render_started', iframeId);
+      }
+
+      $iframe.attr('src', 'about:blank');
+    } catch (e) {
+      console.debug('清空iframe内容时出错:', e);
+    }
   }
 
-  const $clone = $iframe.clone(false);
+  // 断开ResizeObserver连接
+  if (iframe.cleanup && typeof iframe.cleanup === 'function') {
+    iframe.cleanup();
+  } else if (iframeId && iframeResizeObservers.has(iframeId)) {
+    const observer = iframeResizeObservers.get(iframeId);
+    observer.disconnect();
+    iframeResizeObservers.delete(iframeId);
+  }
 
+  // 从DOM中移除并清除引用
+  const $clone = $iframe.clone(false);
   if ($iframe.parent().length) {
     $iframe.replaceWith($clone);
   }
-
   if ($clone.parent().length) {
     $clone.remove();
   }
 
+  // 移除jQuery数据缓存
+  try {
+    $iframe.removeData();
+  } catch (e) {
+    console.debug('移除jQuery数据缓存时出错:', e);
+  }
+
+  // 清空iframe的属性
+  for (let prop in iframe) {
+    if (iframe.hasOwnProperty(prop)) {
+      try {
+        iframe[prop] = null;
+      } catch (e) {}
+    }
+  }
+
   return null;
+}
+
+/**
+ * 清理所有iframe
+ * @returns {Promise<void>}
+ */
+export async function clearAllIframe(): Promise<void> {
+
+  // 清理所有残留的ResizeObserver
+  if (iframeResizeObservers.size > 0) {
+    iframeResizeObservers.forEach((observer, id) => {
+      observer.disconnect();
+    });
+    iframeResizeObservers.clear();
+  }
+
+  // 清理相关的事件监听器
+  try {
+    if (typeof eventSource.removeAllListeners === 'function') {
+      eventSource.removeListener('message_iframe_render_started');
+      eventSource.removeListener('message_iframe_render_ended');
+    }
+  } catch (e) {
+    console.debug('清理事件监听器时出错:', e);
+  }
+
+  // 清理全局缓存
+  try {
+    $.cache = {};
+  } catch (e) {}
+
+  // 尝试主动触发垃圾回收
+  try {
+    let arr = [];
+    for (let i = 0; i < 10; i++) {
+      arr.push(new Array(1000000).fill(1));
+    }
+    arr = null;
+
+    if (window.gc) {
+      window.gc();
+    }
+  } catch (e) {
+    console.debug('尝试触发垃圾回收时出错:', e);
+  }
 }
 
 /**
@@ -479,108 +622,32 @@ function createGlobalAudioManager() {
  * 调整iframe高度
  * @param iframe iframe元素
  */
-function adjustIframeHeight(iframe: HTMLIFrameElement) {
+function adjustIframeHeight(iframe) {
   const $iframe = $(iframe);
   if (!$iframe.length || !$iframe[0].contentWindow || !$iframe[0].contentWindow.document.body) {
     return;
   }
+
   const doc = $iframe[0].contentWindow.document;
-  const newHeight = doc.documentElement.offsetHeight;
+
+  const bodyHeight = doc.body.offsetHeight;
+  const htmlHeight = doc.documentElement.offsetHeight;
+
+  const newHeight = Math.max(bodyHeight, htmlHeight);
   const currentHeight = parseFloat($iframe.css('height')) || 0;
-  if (Math.abs(currentHeight - newHeight) > 1) {
+
+  if (Math.abs(currentHeight - newHeight) > 5) {
     $iframe.css('height', newHeight + 'px');
-  }
-}
 
-/**
- * 观察iframe内容用于自动调整高度
- * @param iframe iframe元素
- */
-function observeIframeContent(iframe: HTMLIFrameElement) {
-  const $iframe = $(iframe);
-  if (!$iframe.length || !$iframe[0].contentWindow || !$iframe[0].contentWindow.document.body) {
-    return;
-  }
-
-  const docBody = $iframe[0].contentWindow.document.body;
-  let mutationTimeout: NodeJS.Timeout | null = null;
-
-  adjustIframeHeight(iframe);
-
-  const mutationObserver = new MutationObserver(() => {
-    if (mutationTimeout) {
-      clearTimeout(mutationTimeout);
+    if ($iframe.attr('data-needs-vh') === 'true' && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(
+        {
+          request: 'updateViewportHeight',
+          newHeight: window.innerHeight,
+        },
+        '*',
+      );
     }
-    mutationTimeout = setTimeout(() => {
-      adjustIframeHeight(iframe);
-    }, 100);
-  });
-
-  mutationObserver.observe(docBody, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    characterData: true,
-  });
-
-  const $mesTextParent = $iframe.closest('.mes_text');
-  if ($mesTextParent.length) {
-    const resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
-        if (
-          $iframe.length &&
-          $iframe[0].contentWindow &&
-          $iframe[0].contentWindow.document &&
-          document.body.contains($iframe[0])
-        ) {
-          const updatedHeight = $iframe[0].contentWindow.document.documentElement.offsetHeight;
-          if (updatedHeight > 0) {
-            $iframe.css('height', updatedHeight + 'px');
-          }
-        } else {
-          if (typeof iframe.cleanup === 'function') {
-            iframe.cleanup();
-          }
-        }
-      });
-    });
-
-    resizeObserver.observe($mesTextParent[0]);
-
-    iframe.cleanup = () => {
-      mutationObserver.disconnect();
-      resizeObserver.disconnect();
-      if (mutationTimeout) {
-        clearTimeout(mutationTimeout);
-      }
-    };
-  }
-
-  const $parentNode = $iframe.parent();
-  const removalObserver = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      for (const removedNode of mutation.removedNodes) {
-        if (removedNode === $parentNode[0]) {
-          if (typeof iframe.cleanup === 'function') {
-            iframe.cleanup();
-          }
-        }
-      }
-    }
-  });
-
-  if ($parentNode.length && $parentNode.parent().length) {
-    removalObserver.observe($parentNode.parent()[0], { childList: true });
-  }
-
-  if (!iframe.cleanup) {
-    iframe.cleanup = () => {
-      mutationObserver.disconnect();
-      removalObserver.disconnect();
-      if (mutationTimeout) {
-        clearTimeout(mutationTimeout);
-      }
-    };
   }
 }
 

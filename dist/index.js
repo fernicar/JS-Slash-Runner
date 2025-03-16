@@ -38,7 +38,9 @@ async function onExtensionToggle() {
         initializeCharacterLevelOnExtension();
         window.addEventListener('message', handleIframe);
         fullRenderEvents.forEach(eventType => {
-            eventSource.on(eventType, renderAllIframes);
+            eventSource.on(eventType, async () => {
+                renderAllIframes();
+            });
         });
         partialRenderEvents.forEach(eventType => {
             eventSource.on(eventType, mesId => {
@@ -65,7 +67,9 @@ async function onExtensionToggle() {
         destroyCharacterLevelOnExtension();
         window.removeEventListener('message', handleIframe);
         fullRenderEvents.forEach(eventType => {
-            eventSource.removeListener(eventType, renderAllIframes);
+            eventSource.removeListener(eventType, async () => {
+                renderAllIframes();
+            });
         });
         partialRenderEvents.forEach(eventType => {
             eventSource.removeListener(eventType, renderPartialIframes);
