@@ -355,23 +355,19 @@ function observeIframeContent(iframe) {
 function destroyIframe(iframe) {
     const $iframe = $(iframe);
     const iframeId = $iframe.attr('id');
-    // 移除所有事件监听器
     $iframe.off();
-    // 移除iframe内部的所有事件监听器
     try {
         if ($iframe[0].contentWindow) {
             const iframeDoc = $iframe[0].contentWindow.document;
             if (iframeDoc) {
-                $(iframeDoc).find('*').off(); // 移除所有元素的事件处理器
-                $(iframeDoc).off(); // 移除文档级事件处理器
+                $(iframeDoc).find('*').off();
+                $(iframeDoc).off();
             }
         }
     }
     catch (e) {
-        // 跨域iframe可能无法访问
         console.debug('清理iframe内部事件时出错:', e);
     }
-    // 停止所有媒体元素
     try {
         const $mediaElements = $iframe.contents().find('audio, video');
         $mediaElements.each(function () {
@@ -379,33 +375,30 @@ function destroyIframe(iframe) {
                 this.pause();
                 this.src = '';
                 this.load();
-                $(this).off(); // 移除媒体元素的事件监听器
+                $(this).off();
             }
         });
     }
     catch (e) {
         console.debug('清理媒体元素时出错:', e);
     }
-    // 停止所有活动
     if ($iframe[0].contentWindow && 'stop' in $iframe[0].contentWindow) {
         $iframe[0].contentWindow.stop();
     }
     // 清空iframe内容
     if ($iframe[0].contentWindow) {
         try {
-            // 从事件系统中移除与此iframe相关的事件
             if (iframeId && typeof eventSource.removeListener === 'function') {
                 eventSource.removeListener('message_iframe_render_ended', iframeId);
                 eventSource.removeListener('message_iframe_render_started', iframeId);
             }
-            // 断开所有网络连接
             $iframe.attr('src', 'about:blank');
         }
         catch (e) {
             console.debug('清空iframe内容时出错:', e);
         }
     }
-    // 调用cleanup方法断开ResizeObserver连接
+    // 断开ResizeObserver连接
     if (iframe.cleanup && typeof iframe.cleanup === 'function') {
         iframe.cleanup();
     }
@@ -454,7 +447,6 @@ export async function clearAllIframe() {
     }
     // 清理相关的事件监听器
     try {
-        // 如果eventSource支持removeAllListeners方法
         if (typeof eventSource.removeAllListeners === 'function') {
             eventSource.removeListener('message_iframe_render_started');
             eventSource.removeListener('message_iframe_render_ended');
@@ -465,19 +457,16 @@ export async function clearAllIframe() {
     }
     // 清理全局缓存
     try {
-        // 清除jQuery缓存，可能存储了对iframe的引用
         $.cache = {};
     }
     catch (e) { }
     // 尝试主动触发垃圾回收
     try {
-        // 释放内存的常用技巧 - 创建一些大对象然后释放
         let arr = [];
         for (let i = 0; i < 10; i++) {
             arr.push(new Array(1000000).fill(1));
         }
         arr = null;
-        // 如果浏览器支持gc方法（需要特殊启动标志），则调用它
         if (window.gc) {
             window.gc();
         }
