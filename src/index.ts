@@ -206,7 +206,7 @@ function addQuickButton() {
   const buttonHtml = $(`
   <div id="js_slash_runner_container" class="list-group-item flex-container flexGap5 interactable">
       <div class="fa-solid fa-puzzle-piece extensionsMenuExtensionButton" /></div>
-      <span id="js_slash_runner_text">${extensionEnabled ? '关闭渲染状态' : '开启渲染状态'}</span>
+      <span id="js_slash_runner_text">${extensionEnabled ? '关闭前端渲染' : '开启前端渲染'}</span>
   </div>`);
   buttonHtml.css('display', 'flex');
   $('#extensionsMenu').append(buttonHtml);
@@ -215,7 +215,7 @@ function addQuickButton() {
     $('#activate_setting').prop('checked', !currentChecked);
     onExtensionToggle();
     // 更新按钮文本
-    $('#js_slash_runner_text').text(extensionEnabled ? '关闭渲染状态' : '开启渲染状态');
+    $('#js_slash_runner_text').text(extensionEnabled ? '关闭前端渲染' : '开启前端渲染');
   });
 }
 /**
