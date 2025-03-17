@@ -554,7 +554,7 @@ async function openUrlManagerPopup(typeKey) {
  */
 async function onEnabledClick() {
     const isEnabled = $('#audio_enabled').prop('checked');
-    extension_settings[extensionName].audio.enabled = isEnabled;
+    extension_settings[extensionName].audio.audio_setting = isEnabled;
     saveSettingsDebounced();
     if (isEnabled) {
         toggleAudioControls('bgm', 'enable');
