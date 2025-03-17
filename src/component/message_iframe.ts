@@ -893,7 +893,7 @@ function addCodeToggleButtons(mesId: string) {
   if (!$chat.length) {
     return;
   }
-  const $mesText = $chat.find(`#chat div[mesid="${mesId}"] .mes_block .mes_text`);
+  const $mesText = $chat.find(`div[mesid="${mesId}"] .mes_block .mes_text`);
   addToggleButtonsToMessage($mesText);
 }
 
@@ -937,9 +937,7 @@ function renderingOptimizationChange(userInput: boolean = true) {
     injectCodeBlockHideStyles();
     addCodeToggleButtonsToAllMessages();
     // 干掉高亮！！卡死了
-    hljs.highlightElement = function (element) {
-      console.log('已拦截代码高亮请求');
-    };
+    hljs.highlightElement = function (element) {};
     renderAllIframes();
   } else {
     removeCodeBlockHideStyles();
