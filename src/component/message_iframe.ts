@@ -10,9 +10,10 @@ import {
   getThumbnailUrl,
   characters,
   this_chid,
+  addCopyToCodeBlocks,
 } from '../../../../../../script.js';
 
-import { extensionName } from '../index.js';
+import { extensionName, extensionEnabled } from '../index.js';
 
 import { extension_settings, getContext } from '../../../../../extensions.js';
 import { script_url } from '../script_url.js';
@@ -22,6 +23,9 @@ import { libraries_text } from './character_level/library.js';
 let tampermonkeyMessageListener: ((event: MessageEvent) => void) | null = null;
 
 const iframeResizeObservers = new Map();
+
+// 保存原始高亮方法
+const originalHighlightElement = hljs.highlightElement;
 
 const RENDER_MODES = {
   FULL: 'FULL',
@@ -42,6 +46,7 @@ export const defaultIframeSettings = {
   auto_disable_incompatible_options: true,
   tampermonkey_compatibility: false,
   process_depth: 0,
+  rendering_optimize: false,
 };
 
 // 获取头像原图
@@ -212,7 +217,7 @@ function updateIframeViewportHeight() {
  * @param specificMesId 指定消息ID
  */
 async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: string | null = null) {
-  if (!$('#activate_setting').prop('checked')) {
+  if (!extensionEnabled) {
     return;
   }
 
@@ -249,6 +254,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
         }),
       );
       updateMessageBlock(messageId, message);
+      addCodeToggleButtons(messageId);
     }
   }
 
@@ -382,6 +388,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
     });
 
     renderedMessages.push(messageId);
+    removeCodeToggleButtonsByMesId(messageId);
   }
 }
 
@@ -440,8 +447,8 @@ function destroyIframe(iframe) {
     if ($iframe[0].contentWindow) {
       const iframeDoc = $iframe[0].contentWindow.document;
       if (iframeDoc) {
-        $(iframeDoc).find('*').off(); 
-        $(iframeDoc).off(); 
+        $(iframeDoc).find('*').off();
+        $(iframeDoc).off();
       }
     }
   } catch (e) {
@@ -455,7 +462,7 @@ function destroyIframe(iframe) {
         this.pause();
         this.src = '';
         this.load();
-        $(this).off(); 
+        $(this).off();
       }
     });
   } catch (e) {
@@ -522,7 +529,6 @@ function destroyIframe(iframe) {
  * @returns {Promise<void>}
  */
 export async function clearAllIframe(): Promise<void> {
-
   // 清理所有残留的ResizeObserver
   if (iframeResizeObservers.size > 0) {
     iframeResizeObservers.forEach((observer, id) => {
@@ -695,6 +701,11 @@ async function onTampermonkeyCompatibilityChange() {
   const isEnabled = Boolean($('#tampermonkey_compatibility').prop('checked'));
   extension_settings[extensionName].render.tampermonkey_compatibility = isEnabled;
   saveSettingsDebounced();
+
+  if (!extensionEnabled) {
+    return;
+  }
+
   if (isEnabled) {
     if (!tampermonkeyMessageListener) {
       tampermonkeyMessageListener = handleTampermonkeyMessages;
@@ -784,9 +795,175 @@ function injectLoadingStyles() {
 }
 
 /**
+ * 注入代码块隐藏样式
+ */
+function injectCodeBlockHideStyles() {
+  var styleId = 'hidden-code-block-styles';
+  var style = document.getElementById(styleId);
+  if (!style) {
+    style = document.createElement('style');
+    style.setAttribute('type', 'text/css');
+    style.setAttribute('id', styleId);
+    document.head.appendChild(style);
+  }
+  style.innerHTML = `
+    pre {
+      display: none;
+    }
+    .code-toggle-button {
+      display: inline-block;
+      margin: 5px 0;
+      padding: 5px 10px;
+      background-color: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      user-select: none;
+      transition: background-color 0.3s;
+    }
+    .code-toggle-button:hover {
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+  `;
+}
+
+/**
+ * 移除代码块隐藏样式
+ */
+function removeCodeBlockHideStyles() {
+  var styleId = 'hidden-code-block-styles';
+  var style = document.getElementById(styleId);
+  if (style) {
+    style.remove();
+  }
+}
+
+/**
+ * 为消息添加折叠控件
+ * @param $mesText 消息文本元素
+ */
+function addToggleButtonsToMessage($mesText) {
+  // 检查是否已有折叠按钮或没有pre标签
+  if ($mesText.find('.code-toggle-button').length > 0 || $mesText.find('pre').length === 0) {
+    return;
+  }
+
+  // 为每个pre前添加折叠按钮
+  $mesText.find('pre').each(function () {
+    const $pre = $(this);
+    const $toggleButton = $('<div class="code-toggle-button">显示代码块</div>');
+
+    $toggleButton.on('click', function () {
+      const isVisible = $pre.is(':visible');
+
+      if (isVisible) {
+        $pre.hide();
+        $(this).text('显示代码块');
+      } else {
+        $pre.show();
+        $(this).text('隐藏代码块');
+      }
+    });
+
+    $pre.before($toggleButton);
+  });
+}
+
+/**
+ * 给所有消息添加折叠控件
+ */
+export function addCodeToggleButtonsToAllMessages() {
+  const $chat = $('#chat');
+  if (!$chat.length) {
+    return;
+  }
+
+  $chat.find('.mes .mes_block .mes_text').each(function () {
+    const $mesText = $(this);
+    addToggleButtonsToMessage($mesText);
+  });
+}
+
+/**
+ * 根据mesId为消息添加折叠控件
+ * @param mesId 消息ID
+ */
+function addCodeToggleButtons(mesId: string) {
+  const $chat = $('#chat');
+  if (!$chat.length) {
+    return;
+  }
+  const $mesText = $chat.find(`#chat div[mesid="${mesId}"] .mes_block .mes_text`);
+  addToggleButtonsToMessage($mesText);
+}
+
+/**
+ * 根据mesId移除折叠控件
+ * @param mesId 消息ID
+ */
+function removeCodeToggleButtonsByMesId(mesId: string) {
+  $(`div[mesid="${mesId}"] .code-toggle-button`).each(function () {
+    $(this).off('click').remove();
+  });
+}
+
+/**
+ * 移除所有折叠控件
+ */
+export function removeAllCodeToggleButtons() {
+  $('.code-toggle-button').each(function () {
+    $(this).off('click').remove();
+  });
+  // 去掉所有pre的display:none
+  $('pre').css('display', 'block');
+}
+
+/**
+ * 处理重型前端卡渲染优化
+ * @param userInput 是否由用户手动触发
+ */
+function renderingOptimizationChange(userInput: boolean = true) {
+  const isEnabled = Boolean($('#rendering_optimize').prop('checked'));
+  if (userInput) {
+    extension_settings[extensionName].render.rendering_optimize = isEnabled;
+    saveSettingsDebounced();
+  }
+
+  if (!extensionEnabled) {
+    return;
+  }
+
+  if (isEnabled) {
+    injectCodeBlockHideStyles();
+    addCodeToggleButtonsToAllMessages();
+    // 干掉高亮！！卡死了
+    hljs.highlightElement = function (element) {
+      console.log('已拦截代码高亮请求');
+    };
+    renderAllIframes();
+  } else {
+    removeCodeBlockHideStyles();
+    removeAllCodeToggleButtons();
+    // 恢复原始高亮方法
+    hljs.highlightElement = originalHighlightElement;
+    renderAllIframes();
+  }
+}
+
+/**
  * 初始化iframe控制面板
  */
 export const initIframePanel = () => {
+  // 处理重型前端卡渲染优化
+  const renderingOptimizeEnabled = extension_settings[extensionName].render.rendering_optimize;
+  $('#rendering_optimize')
+    .prop('checked', renderingOptimizeEnabled)
+    .on('click', () => renderingOptimizationChange(true));
+
+  if (renderingOptimizeEnabled) {
+    renderingOptimizationChange(false);
+  }
+
   // 处理油猴兼容性设置
   const tampermonkeyEnabled = extension_settings[extensionName].render.tampermonkey_compatibility;
   $('#tampermonkey_compatibility').prop('checked', tampermonkeyEnabled).on('click', onTampermonkeyCompatibilityChange);

@@ -36,6 +36,8 @@ import {
   tampermonkey_script,
   fullRenderEvents,
   partialRenderEvents,
+  addCodeToggleButtonsToAllMessages,
+  removeAllCodeToggleButtons,
 } from './component/message_iframe.js';
 import { initAutoSettings } from './component/script_repository.js';
 
@@ -43,6 +45,7 @@ export const extensionName = 'JS-Slash-Runner';
 export const extensionFolderPath = `third-party/${extensionName}`;
 
 let isScriptLibraryOpen = false;
+export let extensionEnabled;
 
 const defaultSettings = {
   activate_setting: true,
@@ -58,6 +61,7 @@ async function onExtensionToggle() {
   const isEnabled = Boolean($('#activate_setting').prop('checked'));
   extension_settings[extensionName].activate_setting = isEnabled;
   if (isEnabled) {
+    extensionEnabled = true;
     script_url.set('iframe_client', iframe_client);
     script_url.set('viewport_adjust_script', viewport_adjust_script);
     script_url.set('tampermonkey_script', tampermonkey_script);
@@ -70,6 +74,7 @@ async function onExtensionToggle() {
 
     fullRenderEvents.forEach(eventType => {
       eventSource.on(eventType, async () => {
+        addCodeToggleButtonsToAllMessages();
         renderAllIframes();
       });
     });
@@ -91,6 +96,7 @@ async function onExtensionToggle() {
 
     await renderAllIframes();
   } else {
+    extensionEnabled = false;
     script_url.delete('iframe_client');
     script_url.delete('viewport_adjust_script');
     script_url.delete('tampermonkey_script');
@@ -98,6 +104,7 @@ async function onExtensionToggle() {
     unregisterAllMacros();
     destroyMacroOnExtension();
     destroyCharacterLevelOnExtension();
+    removeAllCodeToggleButtons();
 
     window.removeEventListener('message', handleIframe);
 

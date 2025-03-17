@@ -12,11 +12,12 @@ import { clearTempVariables, shouldUpdateVariables, checkVariablesEvents } from 
 import { script_url } from './script_url.js';
 import { third_party } from './third_party.js';
 import { defaultAudioSettings, initAudioComponents } from './component/audio.js';
-import { defaultIframeSettings, renderAllIframes, renderPartialIframes, formattedLastMessage, initIframePanel, viewport_adjust_script, tampermonkey_script, fullRenderEvents, partialRenderEvents, } from './component/message_iframe.js';
+import { defaultIframeSettings, renderAllIframes, renderPartialIframes, formattedLastMessage, initIframePanel, viewport_adjust_script, tampermonkey_script, fullRenderEvents, partialRenderEvents, addCodeToggleButtonsToAllMessages, removeAllCodeToggleButtons, } from './component/message_iframe.js';
 import { initAutoSettings } from './component/script_repository.js';
 export const extensionName = 'JS-Slash-Runner';
 export const extensionFolderPath = `third-party/${extensionName}`;
 let isScriptLibraryOpen = false;
+export let extensionEnabled;
 const defaultSettings = {
     activate_setting: true,
     render: {
@@ -30,6 +31,7 @@ async function onExtensionToggle() {
     const isEnabled = Boolean($('#activate_setting').prop('checked'));
     extension_settings[extensionName].activate_setting = isEnabled;
     if (isEnabled) {
+        extensionEnabled = true;
         script_url.set('iframe_client', iframe_client);
         script_url.set('viewport_adjust_script', viewport_adjust_script);
         script_url.set('tampermonkey_script', tampermonkey_script);
@@ -39,6 +41,7 @@ async function onExtensionToggle() {
         window.addEventListener('message', handleIframe);
         fullRenderEvents.forEach(eventType => {
             eventSource.on(eventType, async () => {
+                addCodeToggleButtonsToAllMessages();
                 renderAllIframes();
             });
         });
@@ -59,12 +62,14 @@ async function onExtensionToggle() {
         await renderAllIframes();
     }
     else {
+        extensionEnabled = false;
         script_url.delete('iframe_client');
         script_url.delete('viewport_adjust_script');
         script_url.delete('tampermonkey_script');
         unregisterAllMacros();
         destroyMacroOnExtension();
         destroyCharacterLevelOnExtension();
+        removeAllCodeToggleButtons();
         window.removeEventListener('message', handleIframe);
         fullRenderEvents.forEach(eventType => {
             eventSource.removeListener(eventType, async () => {
