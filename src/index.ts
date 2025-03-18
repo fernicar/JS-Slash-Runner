@@ -30,14 +30,13 @@ import {
   defaultIframeSettings,
   renderAllIframes,
   renderPartialIframes,
-  formattedLastMessage,
   initIframePanel,
   viewport_adjust_script,
   tampermonkey_script,
-  fullRenderEvents,
   partialRenderEvents,
   addCodeToggleButtonsToAllMessages,
   removeAllCodeToggleButtons,
+  renderMessageAfterDelete,
 } from './component/message_iframe.js';
 import { initAutoSettings } from './component/script_repository.js';
 
@@ -72,11 +71,9 @@ async function onExtensionToggle() {
 
     window.addEventListener('message', handleIframe);
 
-    fullRenderEvents.forEach(eventType => {
-      eventSource.on(eventType, async () => {
-        addCodeToggleButtonsToAllMessages();
-        renderAllIframes();
-      });
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+      addCodeToggleButtonsToAllMessages();
+      renderAllIframes(false);
     });
 
     partialRenderEvents.forEach(eventType => {
@@ -89,12 +86,13 @@ async function onExtensionToggle() {
         shouldUpdateVariables(mesId);
       });
     });
-    eventSource.on(event_types.MESSAGE_DELETED, () => {
+    eventSource.on(event_types.MESSAGE_DELETED, (mesId) => {
       clearTempVariables();
-      formattedLastMessage();
+      renderMessageAfterDelete(mesId);
+      addCodeToggleButtonsToAllMessages();
     });
 
-    await renderAllIframes();
+    await renderAllIframes(true);
   } else {
     extensionEnabled = false;
     script_url.delete('iframe_client');
@@ -108,10 +106,9 @@ async function onExtensionToggle() {
 
     window.removeEventListener('message', handleIframe);
 
-    fullRenderEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, async () => {
-        renderAllIframes();
-      });
+    eventSource.removeListener(event_types.CHAT_CHANGED, () => {
+      addCodeToggleButtonsToAllMessages();
+      renderAllIframes(false);
     });
 
     partialRenderEvents.forEach(eventType => {
@@ -122,9 +119,10 @@ async function onExtensionToggle() {
         shouldUpdateVariables(mesId);
       });
     });
-    eventSource.removeListener(event_types.MESSAGE_DELETED, () => {
+    eventSource.removeListener(event_types.MESSAGE_DELETED, (mesId) => {
       clearTempVariables();
-      formattedLastMessage();
+      renderMessageAfterDelete(mesId);
+      addCodeToggleButtonsToAllMessages();
     });
     await reloadCurrentChat();
   }

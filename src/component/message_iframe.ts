@@ -32,8 +32,6 @@ const RENDER_MODES = {
   PARTIAL: 'PARTIAL',
 };
 
-export const fullRenderEvents = [event_types.CHAT_CHANGED, event_types.MESSAGE_DELETED];
-
 export const partialRenderEvents = [
   event_types.CHARACTER_MESSAGE_RENDERED,
   event_types.USER_MESSAGE_RENDERED,
@@ -61,8 +59,11 @@ export const getCharAvatarPath = () => {
 /**
  * 渲染所有iframe
  */
-export async function renderAllIframes() {
+export async function renderAllIframes(reload: boolean = false) {
   await clearAllIframe();
+  if (reload) {
+    await reloadCurrentChat();
+  }
   await renderMessagesInIframes(RENDER_MODES.FULL);
   console.log('[Render] 渲染所有iframe');
 }
@@ -529,13 +530,10 @@ function destroyIframe(iframe) {
  * @returns {Promise<void>}
  */
 export async function clearAllIframe(): Promise<void> {
-  // 清理所有残留的ResizeObserver
-  if (iframeResizeObservers.size > 0) {
-    iframeResizeObservers.forEach((observer, id) => {
-      observer.disconnect();
-    });
-    iframeResizeObservers.clear();
-  }
+  const $iframes = $('iframe[id^="message-iframe"]');
+  $iframes.each(function () {
+    destroyIframe(this);
+  });
 
   // 清理相关的事件监听器
   try {
@@ -679,19 +677,23 @@ function extractTextFromCode(codeElement: HTMLElement) {
 }
 
 /**
- * 重新渲染最后一条消息
+ * 删除消息后重新渲染
+ * @param mesId 消息ID
  */
-export async function formattedLastMessage() {
-  const lastIndex = getContext().chat.length - 1;
-  const lastMessage = getContext()?.chat?.[lastIndex];
-  const mes = lastMessage.mes;
-  const isUser = lastMessage.is_user;
-  const isSystem = lastMessage.is_system;
-  const chName = lastMessage.name;
-  const messageId = lastIndex;
-  const mesBlock = $(`div[mesid="${messageId}"]`);
-  mesBlock.find('.mes_text').empty();
-  mesBlock.find('.mes_text').append(messageFormatting(mes, chName, isSystem, isUser, messageId));
+export async function renderMessageAfterDelete(mesId: string) {
+  const context = getContext();
+  const processDepth = parseInt($('#process_depth').val() as string, 10);
+  const totalMessages = context.chat.length;
+  const maxRemainId = parseInt(mesId, 10) - 1;
+  if (processDepth === 0) {
+    await renderAllIframes(true);
+  } else {
+    const startRenderIndex = totalMessages - processDepth;
+    for (let i = startRenderIndex; i <= maxRemainId; i++) {
+      updateMessageBlock(i.toString(), context.chat[i]);
+      await renderPartialIframes(i.toString());
+    }
+  }
 }
 
 /**
@@ -718,8 +720,7 @@ async function onTampermonkeyCompatibilityChange() {
       tampermonkeyMessageListener = null;
     }
   }
-  await reloadCurrentChat();
-  await renderAllIframes();
+  await renderAllIframes(true);
 }
 
 /**
@@ -729,7 +730,7 @@ async function onDepthInput() {
   const processDepth = parseInt($('#process_depth').val() as string, 10);
   extension_settings[extensionName].render.process_depth = processDepth;
 
-  await renderAllIframes();
+  await renderAllIframes(true);
 
   saveSettingsDebounced();
 }
@@ -938,13 +939,13 @@ function renderingOptimizationChange(userInput: boolean = true) {
     addCodeToggleButtonsToAllMessages();
     // 干掉高亮！！卡死了
     hljs.highlightElement = function (element) {};
-    renderAllIframes();
+    renderAllIframes(true);
   } else {
     removeCodeBlockHideStyles();
     removeAllCodeToggleButtons();
     // 恢复原始高亮方法
     hljs.highlightElement = originalHighlightElement;
-    renderAllIframes();
+    renderAllIframes(true);
   }
 }
 

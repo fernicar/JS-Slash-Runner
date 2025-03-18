@@ -12,7 +12,7 @@ import { clearTempVariables, shouldUpdateVariables, checkVariablesEvents } from 
 import { script_url } from './script_url.js';
 import { third_party } from './third_party.js';
 import { defaultAudioSettings, initAudioComponents } from './component/audio.js';
-import { defaultIframeSettings, renderAllIframes, renderPartialIframes, formattedLastMessage, initIframePanel, viewport_adjust_script, tampermonkey_script, fullRenderEvents, partialRenderEvents, addCodeToggleButtonsToAllMessages, removeAllCodeToggleButtons, } from './component/message_iframe.js';
+import { defaultIframeSettings, renderAllIframes, renderPartialIframes, initIframePanel, viewport_adjust_script, tampermonkey_script, partialRenderEvents, addCodeToggleButtonsToAllMessages, removeAllCodeToggleButtons, renderMessageAfterDelete, } from './component/message_iframe.js';
 import { initAutoSettings } from './component/script_repository.js';
 export const extensionName = 'JS-Slash-Runner';
 export const extensionFolderPath = `third-party/${extensionName}`;
@@ -39,11 +39,9 @@ async function onExtensionToggle() {
         initializeMacroOnExtension();
         initializeCharacterLevelOnExtension();
         window.addEventListener('message', handleIframe);
-        fullRenderEvents.forEach(eventType => {
-            eventSource.on(eventType, async () => {
-                addCodeToggleButtonsToAllMessages();
-                renderAllIframes();
-            });
+        eventSource.on(event_types.CHAT_CHANGED, () => {
+            addCodeToggleButtonsToAllMessages();
+            renderAllIframes(false);
         });
         partialRenderEvents.forEach(eventType => {
             eventSource.on(eventType, mesId => {
@@ -55,11 +53,12 @@ async function onExtensionToggle() {
                 shouldUpdateVariables(mesId);
             });
         });
-        eventSource.on(event_types.MESSAGE_DELETED, () => {
+        eventSource.on(event_types.MESSAGE_DELETED, (mesId) => {
             clearTempVariables();
-            formattedLastMessage();
+            renderMessageAfterDelete(mesId);
+            addCodeToggleButtonsToAllMessages();
         });
-        await renderAllIframes();
+        await renderAllIframes(true);
     }
     else {
         extensionEnabled = false;
@@ -71,10 +70,9 @@ async function onExtensionToggle() {
         destroyCharacterLevelOnExtension();
         removeAllCodeToggleButtons();
         window.removeEventListener('message', handleIframe);
-        fullRenderEvents.forEach(eventType => {
-            eventSource.removeListener(eventType, async () => {
-                renderAllIframes();
-            });
+        eventSource.removeListener(event_types.CHAT_CHANGED, () => {
+            addCodeToggleButtonsToAllMessages();
+            renderAllIframes(false);
         });
         partialRenderEvents.forEach(eventType => {
             eventSource.removeListener(eventType, renderPartialIframes);
@@ -84,9 +82,10 @@ async function onExtensionToggle() {
                 shouldUpdateVariables(mesId);
             });
         });
-        eventSource.removeListener(event_types.MESSAGE_DELETED, () => {
+        eventSource.removeListener(event_types.MESSAGE_DELETED, (mesId) => {
             clearTempVariables();
-            formattedLastMessage();
+            renderMessageAfterDelete(mesId);
+            addCodeToggleButtonsToAllMessages();
         });
         await reloadCurrentChat();
     }
