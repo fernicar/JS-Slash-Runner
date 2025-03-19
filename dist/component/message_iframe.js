@@ -361,6 +361,9 @@ function observeIframeContent(iframe) {
  */
 function destroyIframe(iframe) {
     const $iframe = $(iframe);
+    if (!$iframe.length) {
+        return;
+    }
     const iframeId = $iframe.attr('id');
     $iframe.off();
     try {
@@ -581,13 +584,29 @@ export async function renderMessageAfterDelete(mesId) {
     const processDepth = parseInt($('#process_depth').val(), 10);
     const totalMessages = context.chat.length;
     const maxRemainId = parseInt(mesId, 10) - 1;
+    // 考虑到高楼层的情况，深度为0时，只渲染最后一个消息
     if (processDepth === 0) {
-        await renderAllIframes(true);
+        const message = context.chat[maxRemainId];
+        const hasCodeBlock = /```[\s\S]*?```/.test(message);
+        const $iframe = $('[id^="message-iframe-' + maxRemainId + '-"]');
+        if (!hasCodeBlock && $iframe.length === 0) {
+            return;
+        }
+        destroyIframe($iframe);
+        updateMessageBlock(maxRemainId.toString(), message);
+        await renderPartialIframes(maxRemainId);
     }
     else {
         const startRenderIndex = totalMessages - processDepth;
         for (let i = startRenderIndex; i <= maxRemainId; i++) {
-            updateMessageBlock(i.toString(), context.chat[i]);
+            const message = context.chat[i];
+            const hasCodeBlock = /```[\s\S]*?```/.test(message);
+            const $iframe = $('[id^="message-iframe-' + i + '-"]');
+            if (!hasCodeBlock && $iframe.length === 0) {
+                continue;
+            }
+            destroyIframe($iframe);
+            updateMessageBlock(i.toString(), message);
             await renderPartialIframes(i.toString());
         }
     }
@@ -753,6 +772,9 @@ function addToggleButtonsToMessage($mesText) {
  * 给所有消息添加折叠控件
  */
 export function addCodeToggleButtonsToAllMessages() {
+    if (!extension_settings[extensionName].render.rendering_optimize) {
+        return;
+    }
     const $chat = $('#chat');
     if (!$chat.length) {
         return;

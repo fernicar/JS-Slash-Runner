@@ -41,6 +41,7 @@ async function onExtensionToggle() {
         window.addEventListener('message', handleIframe);
         eventSource.on(event_types.CHAT_CHANGED, () => {
             addCodeToggleButtonsToAllMessages();
+            // 切换聊天本身就会触发一次重载
             renderAllIframes(false);
         });
         partialRenderEvents.forEach(eventType => {
