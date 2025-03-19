@@ -35,8 +35,9 @@ import {
   tampermonkey_script,
   partialRenderEvents,
   addCodeToggleButtonsToAllMessages,
-  removeAllCodeToggleButtons,
   renderMessageAfterDelete,
+  addRenderingOptimizeSettings,
+  removeRenderingOptimizeSettings,
 } from './component/message_iframe.js';
 import { initAutoSettings } from './component/script_repository.js';
 
@@ -44,6 +45,7 @@ export const extensionName = 'JS-Slash-Runner';
 export const extensionFolderPath = `third-party/${extensionName}`;
 
 let isScriptLibraryOpen = false;
+
 export let extensionEnabled;
 
 const defaultSettings = {
@@ -56,7 +58,30 @@ const defaultSettings = {
   },
 };
 
-async function onExtensionToggle() {
+const handleChatChanged = () => {
+  renderAllIframes(false);
+  if (getSettingValue('render.rendering_optimize')) {
+    addCodeToggleButtonsToAllMessages();
+  }
+};
+
+const handlePartialRender = (mesId: string) => {
+  renderPartialIframes(mesId);
+};
+
+const handleMessageDeleted = (mesId: string) => {
+  clearTempVariables();
+  renderMessageAfterDelete(mesId);
+  if (getSettingValue('render.rendering_optimize')) {
+    addCodeToggleButtonsToAllMessages();
+  }
+};
+
+const handleVariableUpdated = (mesId: string) => {
+  shouldUpdateVariables(mesId);
+};
+
+async function onExtensionToggle(userAction: boolean = true) {
   const isEnabled = Boolean($('#activate_setting').prop('checked'));
   extension_settings[extensionName].activate_setting = isEnabled;
   if (isEnabled) {
@@ -69,31 +94,25 @@ async function onExtensionToggle() {
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
 
+    // 重新注入前端卡优化的样式和设置
+    if (userAction && getSettingValue('render.rendering_optimize')) {
+      addRenderingOptimizeSettings();
+    }
+
     window.addEventListener('message', handleIframe);
 
-    eventSource.on(event_types.CHAT_CHANGED, () => {
-      addCodeToggleButtonsToAllMessages();
-      // 切换聊天本身就会触发一次重载
-      renderAllIframes(false);
-    });
+    eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
 
     partialRenderEvents.forEach(eventType => {
-      eventSource.on(eventType, mesId => {
-        renderPartialIframes(mesId);
-      });
-    });
-    checkVariablesEvents.forEach(eventType => {
-      eventSource.on(eventType, mesId => {
-        shouldUpdateVariables(mesId);
-      });
-    });
-    eventSource.on(event_types.MESSAGE_DELETED, (mesId) => {
-      clearTempVariables();
-      renderMessageAfterDelete(mesId);
-      addCodeToggleButtonsToAllMessages();
+      eventSource.on(eventType, handlePartialRender);
     });
 
-    await renderAllIframes(true);
+    checkVariablesEvents.forEach(eventType => {
+      eventSource.on(eventType, handleVariableUpdated);
+    });
+    eventSource.on(event_types.MESSAGE_DELETED, handleMessageDeleted);
+
+    await reloadCurrentChat();
   } else {
     extensionEnabled = false;
     script_url.delete('iframe_client');
@@ -103,31 +122,25 @@ async function onExtensionToggle() {
     unregisterAllMacros();
     destroyMacroOnExtension();
     destroyCharacterLevelOnExtension();
-    removeAllCodeToggleButtons();
+
+    if (getSettingValue('render.rendering_optimize')) {
+      removeRenderingOptimizeSettings();
+    }
 
     window.removeEventListener('message', handleIframe);
 
-    eventSource.removeListener(event_types.CHAT_CHANGED, () => {
-      addCodeToggleButtonsToAllMessages();
-      renderAllIframes(false);
-    });
+    eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
 
     partialRenderEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, renderPartialIframes);
+      eventSource.removeListener(eventType, handlePartialRender);
     });
     checkVariablesEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, mesId => {
-        shouldUpdateVariables(mesId);
-      });
+      eventSource.removeListener(eventType, handleVariableUpdated);
     });
-    eventSource.removeListener(event_types.MESSAGE_DELETED, (mesId) => {
-      clearTempVariables();
-      renderMessageAfterDelete(mesId);
-      addCodeToggleButtonsToAllMessages();
-    });
+    eventSource.removeListener(event_types.MESSAGE_DELETED, handleMessageDeleted);
     await reloadCurrentChat();
   }
-
+  $('#js_slash_runner_text').text(extensionEnabled ? '关闭前端渲染' : '开启前端渲染');
   saveSettingsDebounced();
 }
 
@@ -201,6 +214,24 @@ function formatSlashCommands(): string {
     .join('\n');
 }
 
+/**
+ * 获取设置变量的值
+ * @returns 设置变量的值
+ */
+export function getSettingValue(key: string) {
+  const keys = key.split('.');
+  let value = extension_settings[extensionName];
+
+  for (const k of keys) {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    value = value[k];
+  }
+
+  return value;
+}
+
 function addQuickButton() {
   const buttonHtml = $(`
   <div id="js_slash_runner_container" class="list-group-item flex-container flexGap5 interactable">
@@ -212,9 +243,7 @@ function addQuickButton() {
   $('#js_slash_runner_container').on('click', function () {
     const currentChecked = $('#activate_setting').prop('checked');
     $('#activate_setting').prop('checked', !currentChecked);
-    onExtensionToggle();
-    // 更新按钮文本
-    $('#js_slash_runner_text').text(extensionEnabled ? '关闭前端渲染' : '开启前端渲染');
+    onExtensionToggle(true);
   });
 }
 /**
@@ -236,14 +265,14 @@ jQuery(async () => {
     saveSettingsDebounced();
   }
 
-  addQuickButton();
-
   extensionEnabled = extension_settings[extensionName].activate_setting;
   $('#activate_setting').prop('checked', extensionEnabled);
-  $('#activate_setting').on('click', onExtensionToggle);
+  $('#activate_setting').on('click', () => onExtensionToggle(true));
   if (extensionEnabled) {
-    onExtensionToggle();
+    onExtensionToggle(false);
   }
+
+  addQuickButton();
 
   $('#scriptLibraryButton')
     .off('click')

@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { eventSource, event_types, saveSettingsDebounced, updateMessageBlock, user_avatar, reloadCurrentChat, getThumbnailUrl, characters, this_chid, } from '../../../../../../script.js';
-import { extensionName, extensionEnabled } from '../index.js';
+import { extensionName, extensionEnabled, getSettingValue } from '../index.js';
 import { extension_settings, getContext } from '../../../../../extensions.js';
 import { script_url } from '../script_url.js';
 import { third_party } from '../third_party.js';
 import { libraries_text } from './character_level/library.js';
 let tampermonkeyMessageListener = null;
-let renderingOptimizeEnabled;
+let renderingOptimizeEnabled = false;
 const iframeResizeObservers = new Map();
 // 保存原始高亮方法
 const originalHighlightElement = hljs.highlightElement;
@@ -36,13 +36,17 @@ export const getCharAvatarPath = () => {
     return charsPath + targetAvatarImg;
 };
 /**
+ * 清理后，重新渲染所有iframe
+ */
+export async function clearAndRenderAllIframes() {
+    await clearAllIframe();
+    await reloadCurrentChat();
+    await renderAllIframes();
+}
+/**
  * 渲染所有iframe
  */
-export async function renderAllIframes(reload = false) {
-    await clearAllIframe();
-    if (reload) {
-        await reloadCurrentChat();
-    }
+export async function renderAllIframes() {
     await renderMessagesInIframes(RENDER_MODES.FULL);
     console.log('[Render] 渲染所有iframe');
 }
@@ -312,7 +316,9 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId =
                     }
                 }
                 eventSource.emitAndWait('message_iframe_render_ended', this.id);
-                removeCodeToggleButtonsByMesId(messageId);
+                if (renderingOptimizeEnabled) {
+                    removeCodeToggleButtonsByMesId(messageId);
+                }
                 if (loadingTimeout) {
                     clearTimeout(loadingTimeout);
                 }
@@ -638,7 +644,7 @@ async function onTampermonkeyCompatibilityChange() {
             tampermonkeyMessageListener = null;
         }
     }
-    await renderAllIframes(true);
+    await clearAndRenderAllIframes();
 }
 /**
  * 处理深度输入改变时
@@ -651,7 +657,7 @@ async function onDepthInput() {
         return;
     }
     extension_settings[extensionName].render.process_depth = processDepth;
-    await renderAllIframes(true);
+    await clearAndRenderAllIframes();
     saveSettingsDebounced();
 }
 export const handlePartialRender = (mesId) => {
@@ -673,7 +679,7 @@ export const handlePartialRender = (mesId) => {
 /**
  * 注入加载样式
  */
-function injectLoadingStyles() {
+export function injectLoadingStyles() {
     if ($('#iframe-loading-styles').length)
         return;
     const styleSheet = $('<style>', {
@@ -711,7 +717,7 @@ function injectLoadingStyles() {
 /**
  * 注入代码块隐藏样式
  */
-function injectCodeBlockHideStyles() {
+export function injectCodeBlockHideStyles() {
     var styleId = 'hidden-code-block-styles';
     var style = document.getElementById(styleId);
     if (!style) {
@@ -815,7 +821,7 @@ function removeCodeToggleButtonsByMesId(mesId) {
 /**
  * 移除所有折叠控件
  */
-export function removeAllCodeToggleButtons() {
+function removeAllCodeToggleButtons() {
     $('.code-toggle-button').each(function () {
         $(this).off('click').remove();
     });
@@ -823,10 +829,26 @@ export function removeAllCodeToggleButtons() {
     $('pre').css('display', 'block');
 }
 /**
+ * 添加前端卡渲染优化设置
+ */
+export function addRenderingOptimizeSettings() {
+    injectCodeBlockHideStyles();
+    hljs.highlightElement = function (element) { };
+    addCodeToggleButtonsToAllMessages();
+}
+/**
+ * 移除前端卡渲染优化设置
+ */
+export function removeRenderingOptimizeSettings() {
+    hljs.highlightElement = originalHighlightElement;
+    removeCodeBlockHideStyles();
+    removeAllCodeToggleButtons();
+}
+/**
  * 处理重型前端卡渲染优化
  * @param userInput 是否由用户手动触发
  */
-function renderingOptimizationChange(userInput = true) {
+async function renderingOptimizationChange(userInput = true) {
     const isEnabled = Boolean($('#rendering_optimize').prop('checked'));
     if (userInput) {
         extension_settings[extensionName].render.rendering_optimize = isEnabled;
@@ -837,18 +859,16 @@ function renderingOptimizationChange(userInput = true) {
         return;
     }
     if (isEnabled) {
-        injectCodeBlockHideStyles();
-        //addCodeToggleButtonsToAllMessages();
-        // 干掉高亮！！卡死了
-        hljs.highlightElement = function (element) { };
-        renderAllIframes(true);
+        addRenderingOptimizeSettings();
+        if (userInput) {
+            await clearAndRenderAllIframes();
+        }
     }
     else {
-        removeCodeBlockHideStyles();
-        removeAllCodeToggleButtons();
-        // 恢复原始高亮方法
-        hljs.highlightElement = originalHighlightElement;
-        renderAllIframes(true);
+        removeRenderingOptimizeSettings();
+        if (userInput) {
+            await clearAndRenderAllIframes();
+        }
     }
 }
 /**
@@ -856,7 +876,7 @@ function renderingOptimizationChange(userInput = true) {
  */
 export const initIframePanel = () => {
     // 处理重型前端卡渲染优化
-    const renderingOptimizeEnabled = extension_settings[extensionName].render.rendering_optimize;
+    const renderingOptimizeEnabled = getSettingValue('render.rendering_optimize');
     $('#rendering_optimize')
         .prop('checked', renderingOptimizeEnabled)
         .on('click', () => renderingOptimizationChange(true));
