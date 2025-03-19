@@ -21,6 +21,7 @@ import { third_party } from '../third_party.js';
 import { libraries_text } from './character_level/library.js';
 
 let tampermonkeyMessageListener: ((event: MessageEvent) => void) | null = null;
+let renderingOptimizeEnabled;
 
 const iframeResizeObservers = new Map();
 
@@ -277,6 +278,9 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
     $codeElements.each(function () {
       let extractedText = extractTextFromCode(this);
       if (!extractedText.includes('<body') || !extractedText.includes('</body>')) {
+        if (renderingOptimizeEnabled) {
+          addCodeToggleButtons(messageId);
+        }
         return;
       }
       const disableLoading = /<!--\s*disable-default-loading\s*-->/.test(extractedText);
@@ -379,6 +383,8 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
 
         eventSource.emitAndWait('message_iframe_render_ended', this.id);
 
+        removeCodeToggleButtonsByMesId(messageId);
+
         if (loadingTimeout) {
           clearTimeout(loadingTimeout);
         }
@@ -389,7 +395,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
     });
 
     renderedMessages.push(messageId);
-    removeCodeToggleButtonsByMesId(messageId);
   }
 }
 
@@ -752,6 +757,13 @@ async function onTampermonkeyCompatibilityChange() {
  */
 async function onDepthInput() {
   const processDepth = parseInt($('#process_depth').val() as string, 10);
+
+  if (processDepth < 0) {
+    toastr.warning('处理深度不能为负数');
+    $('#process_depth').val(extension_settings[extensionName].render.process_depth);
+    return;
+  }
+
   extension_settings[extensionName].render.process_depth = processDepth;
 
   await renderAllIframes(true);
@@ -868,15 +880,13 @@ function removeCodeBlockHideStyles() {
  * @param $mesText 消息文本元素
  */
 function addToggleButtonsToMessage($mesText) {
-  // 检查是否已有折叠按钮或没有pre标签
   if ($mesText.find('.code-toggle-button').length > 0 || $mesText.find('pre').length === 0) {
     return;
   }
 
-  // 为每个pre前添加折叠按钮
   $mesText.find('pre').each(function () {
     const $pre = $(this);
-    const $toggleButton = $('<div class="code-toggle-button">显示代码块</div>');
+    const $toggleButton = $('<div class="code-toggle-button" title="取消选中‘前端卡渲染优化’关闭此折叠功能">显示代码块</div>');
 
     $toggleButton.on('click', function () {
       const isVisible = $pre.is(':visible');
@@ -955,6 +965,7 @@ function renderingOptimizationChange(userInput: boolean = true) {
   const isEnabled = Boolean($('#rendering_optimize').prop('checked'));
   if (userInput) {
     extension_settings[extensionName].render.rendering_optimize = isEnabled;
+    renderingOptimizeEnabled = isEnabled;
     saveSettingsDebounced();
   }
 
@@ -964,7 +975,7 @@ function renderingOptimizationChange(userInput: boolean = true) {
 
   if (isEnabled) {
     injectCodeBlockHideStyles();
-    addCodeToggleButtonsToAllMessages();
+    //addCodeToggleButtonsToAllMessages();
     // 干掉高亮！！卡死了
     hljs.highlightElement = function (element) {};
     renderAllIframes(true);
