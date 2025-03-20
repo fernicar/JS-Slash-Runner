@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { eventSource, event_types, saveSettingsDebounced, updateMessageBlock, user_avatar, reloadCurrentChat, getThumbnailUrl, characters, this_chid, } from '../../../../../../script.js';
-import { extensionName, extensionEnabled, getSettingValue } from '../index.js';
+import { extensionName, getSettingValue } from '../index.js';
 import { extension_settings, getContext } from '../../../../../extensions.js';
 import { script_url } from '../script_url.js';
 import { third_party } from '../third_party.js';
@@ -182,7 +182,7 @@ function updateIframeViewportHeight() {
  * @param specificMesId 指定消息ID
  */
 async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId = null) {
-    if (!extensionEnabled) {
+    if (!getSettingValue('activate_setting')) {
         return;
     }
     const context = getContext();
@@ -628,7 +628,7 @@ async function onTampermonkeyCompatibilityChange() {
     const isEnabled = Boolean($('#tampermonkey_compatibility').prop('checked'));
     extension_settings[extensionName].render.tampermonkey_compatibility = isEnabled;
     saveSettingsDebounced();
-    if (!extensionEnabled) {
+    if (!getSettingValue('activate_setting')) {
         return;
     }
     if (isEnabled) {
@@ -855,7 +855,7 @@ async function renderingOptimizationChange(userInput = true) {
         renderingOptimizeEnabled = isEnabled;
         saveSettingsDebounced();
     }
-    if (!extensionEnabled) {
+    if (!getSettingValue('activate_setting')) {
         return;
     }
     if (isEnabled) {

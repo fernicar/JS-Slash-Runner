@@ -13,7 +13,7 @@ import {
   addCopyToCodeBlocks,
 } from '../../../../../../script.js';
 
-import { extensionName, extensionEnabled, getSettingValue } from '../index.js';
+import { extensionName, getSettingValue } from '../index.js';
 
 import { extension_settings, getContext } from '../../../../../extensions.js';
 import { script_url } from '../script_url.js';
@@ -224,7 +224,7 @@ function updateIframeViewportHeight() {
  * @param specificMesId 指定消息ID
  */
 async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: string | null = null) {
-  if (!extensionEnabled) {
+  if (!getSettingValue('activate_setting')) {
     return;
   }
 
@@ -740,7 +740,7 @@ async function onTampermonkeyCompatibilityChange() {
   extension_settings[extensionName].render.tampermonkey_compatibility = isEnabled;
   saveSettingsDebounced();
 
-  if (!extensionEnabled) {
+  if (!getSettingValue('activate_setting')) {
     return;
   }
 
@@ -996,7 +996,7 @@ async function renderingOptimizationChange(userInput: boolean = true) {
     saveSettingsDebounced();
   }
 
-  if (!extensionEnabled) {
+  if (!getSettingValue('activate_setting')) {
     return;
   }
 

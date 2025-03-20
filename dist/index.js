@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { eventSource, event_types, saveSettingsDebounced, reloadCurrentChat } from '../../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, reloadCurrentChat, this_chid, } from '../../../../../script.js';
 import { extension_settings, renderExtensionTemplateAsync } from '../../../../extensions.js';
 import { executeSlashCommandsWithOptions } from '../../../../slash-commands.js';
 import { SlashCommandParser } from '../../../../slash-commands/SlashCommandParser.js';
@@ -17,7 +17,6 @@ import { initAutoSettings } from './component/script_repository.js';
 export const extensionName = 'JS-Slash-Runner';
 export const extensionFolderPath = `third-party/${extensionName}`;
 let isScriptLibraryOpen = false;
-export let extensionEnabled;
 const defaultSettings = {
     activate_setting: true,
     render: {
@@ -50,7 +49,6 @@ async function onExtensionToggle(userAction = true) {
     const isEnabled = Boolean($('#activate_setting').prop('checked'));
     extension_settings[extensionName].activate_setting = isEnabled;
     if (isEnabled) {
-        extensionEnabled = true;
         script_url.set('iframe_client', iframe_client);
         script_url.set('viewport_adjust_script', viewport_adjust_script);
         script_url.set('tampermonkey_script', tampermonkey_script);
@@ -70,10 +68,11 @@ async function onExtensionToggle(userAction = true) {
             eventSource.on(eventType, handleVariableUpdated);
         });
         eventSource.on(event_types.MESSAGE_DELETED, handleMessageDeleted);
-        await reloadCurrentChat();
+        if (userAction && this_chid !== undefined) {
+            await reloadCurrentChat();
+        }
     }
     else {
-        extensionEnabled = false;
         script_url.delete('iframe_client');
         script_url.delete('viewport_adjust_script');
         script_url.delete('tampermonkey_script');
@@ -92,9 +91,11 @@ async function onExtensionToggle(userAction = true) {
             eventSource.removeListener(eventType, handleVariableUpdated);
         });
         eventSource.removeListener(event_types.MESSAGE_DELETED, handleMessageDeleted);
-        await reloadCurrentChat();
+        if (userAction && this_chid !== undefined) {
+            await reloadCurrentChat();
+        }
     }
-    $('#js_slash_runner_text').text(extensionEnabled ? '关闭前端渲染' : '开启前端渲染');
+    $('#js_slash_runner_text').text(getSettingValue('activate_setting') ? '关闭前端渲染' : '开启前端渲染');
     saveSettingsDebounced();
 }
 function formatSlashCommands() {
@@ -165,7 +166,7 @@ function addQuickButton() {
     const buttonHtml = $(`
   <div id="js_slash_runner_container" class="list-group-item flex-container flexGap5 interactable">
       <div class="fa-solid fa-puzzle-piece extensionsMenuExtensionButton" /></div>
-      <span id="js_slash_runner_text">${extensionEnabled ? '关闭前端渲染' : '开启前端渲染'}</span>
+      <span id="js_slash_runner_text">${getSettingValue('activate_setting') ? '关闭前端渲染' : '开启前端渲染'}</span>
   </div>`);
     buttonHtml.css('display', 'flex');
     $('#extensionsMenu').append(buttonHtml);
@@ -189,10 +190,9 @@ jQuery(async () => {
         Object.assign(extension_settings[extensionName], defaultSettings);
         saveSettingsDebounced();
     }
-    extensionEnabled = extension_settings[extensionName].activate_setting;
-    $('#activate_setting').prop('checked', extensionEnabled);
+    $('#activate_setting').prop('checked', getSettingValue('activate_setting'));
     $('#activate_setting').on('click', () => onExtensionToggle(true));
-    if (extensionEnabled) {
+    if (getSettingValue('activate_setting')) {
         onExtensionToggle(false);
     }
     addQuickButton();
