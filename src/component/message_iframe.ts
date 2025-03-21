@@ -893,9 +893,8 @@ function addToggleButtonsToMessage($mesText) {
 
   $mesText.find('pre').each(function () {
     const $pre = $(this);
-    const $toggleButton = $(
-      '<div class="code-toggle-button" title="取消选中‘前端卡渲染优化’关闭此折叠功能">显示代码块</div>',
-    );
+    const $toggleButton = $('<div class="code-toggle-button">显示代码块</div>');
+    const $tooltip = $('<div style="display: none; font-size: 0.8em; opacity: 0.8;">取消选中前端助手的‘前端卡渲染优化’选项以关闭此折叠功能</div>');
 
     $toggleButton.on('click', function () {
       const isVisible = $pre.is(':visible');
@@ -903,13 +902,16 @@ function addToggleButtonsToMessage($mesText) {
       if (isVisible) {
         $pre.hide();
         $(this).text('显示代码块');
+        $tooltip.hide();
       } else {
         $pre.show();
         $(this).text('隐藏代码块');
+        $tooltip.show();
       }
     });
 
     $pre.before($toggleButton);
+    $toggleButton.after($tooltip);
   });
 }
 
