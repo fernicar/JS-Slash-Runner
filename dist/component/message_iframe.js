@@ -597,7 +597,7 @@ export async function renderMessageAfterDelete(mesId) {
     // 考虑到高楼层的情况，深度为0时，只渲染最后一个消息
     if (processDepth === 0) {
         const message = context.chat[maxRemainId];
-        const hasCodeBlock = /```[\s\S]*?```/.test(message);
+        const hasCodeBlock = $(`div[mesid="${mesId}"] .mes_block .mes_text`).find('pre').length > 0;
         const $iframe = $('[id^="message-iframe-' + maxRemainId + '-"]');
         if (!hasCodeBlock && $iframe.length === 0) {
             return;
@@ -610,7 +610,7 @@ export async function renderMessageAfterDelete(mesId) {
         const startRenderIndex = totalMessages - processDepth;
         for (let i = startRenderIndex; i <= maxRemainId; i++) {
             const message = context.chat[i];
-            const hasCodeBlock = /```[\s\S]*?```/.test(message);
+            const hasCodeBlock = $(`div[mesid="${i}"] .mes_block .mes_text`).find('pre').length > 0;
             const $iframe = $('[id^="message-iframe-' + i + '-"]');
             if (!hasCodeBlock && $iframe.length === 0) {
                 continue;

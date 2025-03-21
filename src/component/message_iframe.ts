@@ -706,7 +706,7 @@ export async function renderMessageAfterDelete(mesId: string) {
   if (processDepth === 0) {
     const message = context.chat[maxRemainId];
 
-    const hasCodeBlock = /```[\s\S]*?```/.test(message);
+    const hasCodeBlock = $(`div[mesid="${mesId}"] .mes_block .mes_text`).find('pre').length > 0;
     const $iframe = $('[id^="message-iframe-' + maxRemainId + '-"]');
 
     if (!hasCodeBlock && $iframe.length === 0) {
@@ -719,7 +719,7 @@ export async function renderMessageAfterDelete(mesId: string) {
     const startRenderIndex = totalMessages - processDepth;
     for (let i = startRenderIndex; i <= maxRemainId; i++) {
       const message = context.chat[i];
-      const hasCodeBlock = /```[\s\S]*?```/.test(message);
+      const hasCodeBlock = $(`div[mesid="${i}"] .mes_block .mes_text`).find('pre').length > 0;
       const $iframe = $('[id^="message-iframe-' + i + '-"]');
 
       if (!hasCodeBlock && $iframe.length === 0) {

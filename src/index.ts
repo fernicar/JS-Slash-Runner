@@ -63,7 +63,7 @@ const defaultSettings = {
 };
 
 const handleChatChanged = () => {
-  renderAllIframes(false);
+  renderAllIframes();
   if (getSettingValue('render.rendering_optimize')) {
     addCodeToggleButtonsToAllMessages();
   }
@@ -87,7 +87,9 @@ const handleVariableUpdated = (mesId: string) => {
 
 async function onExtensionToggle(userAction: boolean = true) {
   const isEnabled = Boolean($('#activate_setting').prop('checked'));
-  extension_settings[extensionName].activate_setting = isEnabled;
+  if (userAction) {
+    extension_settings[extensionName].activate_setting = isEnabled;
+  }
   if (isEnabled) {
     script_url.set('iframe_client', iframe_client);
     script_url.set('viewport_adjust_script', viewport_adjust_script);
@@ -107,16 +109,16 @@ async function onExtensionToggle(userAction: boolean = true) {
     eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
 
     partialRenderEvents.forEach(eventType => {
-      eventSource.on(eventType, handlePartialRender);
+      eventSource.on(eventType, (mesId: string) => handlePartialRender(mesId));
     });
 
     checkVariablesEvents.forEach(eventType => {
-      eventSource.on(eventType, handleVariableUpdated);
+      eventSource.on(eventType, (mesId: string) => handleVariableUpdated(mesId));
     });
-    eventSource.on(event_types.MESSAGE_DELETED, handleMessageDeleted);
+    eventSource.on(event_types.MESSAGE_DELETED, (mesId: string) => handleMessageDeleted(mesId));
 
-    if (userAction && this_chid !== undefined) {
-      await reloadCurrentChat();
+    if (userAction) {
+      await renderAllIframes();
     }
   } else {
     script_url.delete('iframe_client');
@@ -136,12 +138,12 @@ async function onExtensionToggle(userAction: boolean = true) {
     eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
 
     partialRenderEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, handlePartialRender);
+      eventSource.removeListener(eventType, (mesId: string) => handlePartialRender(mesId));
     });
     checkVariablesEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, handleVariableUpdated);
+      eventSource.removeListener(eventType, (mesId: string) => handleVariableUpdated(mesId));
     });
-    eventSource.removeListener(event_types.MESSAGE_DELETED, handleMessageDeleted);
+    eventSource.removeListener(event_types.MESSAGE_DELETED, (mesId: string) => handleMessageDeleted(mesId));
     if (userAction && this_chid !== undefined) {
       await reloadCurrentChat();
     }

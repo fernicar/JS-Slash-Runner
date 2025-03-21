@@ -27,7 +27,7 @@ const defaultSettings = {
     },
 };
 const handleChatChanged = () => {
-    renderAllIframes(false);
+    renderAllIframes();
     if (getSettingValue('render.rendering_optimize')) {
         addCodeToggleButtonsToAllMessages();
     }
@@ -47,7 +47,9 @@ const handleVariableUpdated = (mesId) => {
 };
 async function onExtensionToggle(userAction = true) {
     const isEnabled = Boolean($('#activate_setting').prop('checked'));
-    extension_settings[extensionName].activate_setting = isEnabled;
+    if (userAction) {
+        extension_settings[extensionName].activate_setting = isEnabled;
+    }
     if (isEnabled) {
         script_url.set('iframe_client', iframe_client);
         script_url.set('viewport_adjust_script', viewport_adjust_script);
@@ -62,14 +64,14 @@ async function onExtensionToggle(userAction = true) {
         window.addEventListener('message', handleIframe);
         eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
         partialRenderEvents.forEach(eventType => {
-            eventSource.on(eventType, handlePartialRender);
+            eventSource.on(eventType, (mesId) => handlePartialRender(mesId));
         });
         checkVariablesEvents.forEach(eventType => {
-            eventSource.on(eventType, handleVariableUpdated);
+            eventSource.on(eventType, (mesId) => handleVariableUpdated(mesId));
         });
-        eventSource.on(event_types.MESSAGE_DELETED, handleMessageDeleted);
-        if (userAction && this_chid !== undefined) {
-            await reloadCurrentChat();
+        eventSource.on(event_types.MESSAGE_DELETED, (mesId) => handleMessageDeleted(mesId));
+        if (userAction) {
+            await renderAllIframes();
         }
     }
     else {
@@ -85,12 +87,12 @@ async function onExtensionToggle(userAction = true) {
         window.removeEventListener('message', handleIframe);
         eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
         partialRenderEvents.forEach(eventType => {
-            eventSource.removeListener(eventType, handlePartialRender);
+            eventSource.removeListener(eventType, (mesId) => handlePartialRender(mesId));
         });
         checkVariablesEvents.forEach(eventType => {
-            eventSource.removeListener(eventType, handleVariableUpdated);
+            eventSource.removeListener(eventType, (mesId) => handleVariableUpdated(mesId));
         });
-        eventSource.removeListener(event_types.MESSAGE_DELETED, handleMessageDeleted);
+        eventSource.removeListener(event_types.MESSAGE_DELETED, (mesId) => handleMessageDeleted(mesId));
         if (userAction && this_chid !== undefined) {
             await reloadCurrentChat();
         }
