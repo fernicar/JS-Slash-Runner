@@ -1,5 +1,3 @@
-export { SetMultimap, ArrayMultimap };
-
 abstract class Multimap<K, V, I extends Iterable<V>> implements Iterable<[K, V]> {
   private size_ = 0;
   private map: Map<K, I> = new Map();
@@ -149,7 +147,7 @@ interface CollectionOperator<V, I> {
   has(value: V, collection: I): boolean;
 }
 
-class ArrayMultimap<K, V> extends Multimap<K, V, V[]> {
+export class ArrayMultimap<K, V> extends Multimap<K, V, V[]> {
   constructor(iterable?: Iterable<[K, V]>) {
     super(new ArrayOperator(), iterable);
   }
@@ -190,7 +188,7 @@ class ArrayOperator<V> implements CollectionOperator<V, V[]> {
   }
 }
 
-class SetMultimap<K, V> extends Multimap<K, V, Set<V>> {
+export class SetMultimap<K, V> extends Multimap<K, V, Set<V>> {
   constructor(iterable?: Iterable<[K, V]>) {
     super(new SetOperator(), iterable);
   }

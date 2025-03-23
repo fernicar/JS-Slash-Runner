@@ -1,11 +1,15 @@
-// @ts-nocheck
-import { eventSource, event_types, saveSettingsDebounced, chat_metadata } from '../../../../../../script.js';
-import { extension_settings, saveMetadataDebounced, renderExtensionTemplateAsync } from '../../../../../extensions.js';
-import { extensionName, extensionFolderPath } from '../index.js';
-import { getSortableDelay } from '../../../../../utils.js';
-import { POPUP_TYPE, callGenericPopup } from '../../../../../popup.js';
-import { isMobile } from '../../../../../RossAscends-mods.js';
-import { initAudioSlashCommands } from '../slash_command/audio.js';
+import { extensionFolderPath, extensionName } from '@/index';
+import { initAudioSlashCommands } from '@/slash_command/audio';
+
+import { chat_metadata, eventSource, event_types, saveSettingsDebounced } from '@sillytavern/script';
+import {
+  extension_settings,
+  renderExtensionTemplateAsync,
+  saveMetadataDebounced,
+} from '@sillytavern/scripts/extensions';
+import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
+import { isMobile } from '@sillytavern/scripts/RossAscends-mods';
+import { getSortableDelay } from '@sillytavern/scripts/utils';
 
 export let list_BGMS: string[] = [];
 export let list_ambients: string[] = [];
@@ -668,7 +672,6 @@ async function onEnabledClick() {
  * @param type 音频类型 "bgm" 或 "ambient"
  */
 export async function playAudio(type: 'bgm' | 'ambient') {
-  
   if (
     !extension_settings[extensionName].activate_setting ||
     !extension_settings[extensionName].audio.audio_setting ||
@@ -676,7 +679,6 @@ export async function playAudio(type: 'bgm' | 'ambient') {
   ) {
     return;
   }
-
 
   const audioElement = $(`#audio_${type}`)[0] as HTMLAudioElement;
   const playPauseIcon = $(`#audio_${type}_play_pause_icon`);

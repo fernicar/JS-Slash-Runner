@@ -1,51 +1,40 @@
-// @ts-nocheck
+import { defaultAudioSettings, initAudioComponents } from '@/component/audio';
 import {
-  eventSource,
-  event_types,
-  saveSettingsDebounced,
-  reloadCurrentChat,
-  this_chid,
-} from '../../../../../script.js';
-import { selected_group } from '../../../../group-chats.js';
-import { extension_settings, renderExtensionTemplateAsync } from '../../../../extensions.js';
-import { executeSlashCommandsWithOptions } from '../../../../slash-commands.js';
-import { SlashCommandParser } from '../../../../slash-commands/SlashCommandParser.js';
-import { SlashCommand } from '../../../../slash-commands/SlashCommand.js';
-import { SlashCommandArgument, SlashCommandNamedArgument } from '../../../../slash-commands/SlashCommandArgument.js';
-import { SlashCommandEnumValue } from '../../../../slash-commands/SlashCommandEnumValue.js';
-
-import { handleIframe } from './iframe_server/index.js';
-import { iframe_client } from './iframe_client_exported/index.js';
-import { initSlashEventEmit } from './slash_command/event.js';
-import { libraries_text } from './component/character_level/library.js';
+  destroyCharacterLevelOnExtension,
+  initializeCharacterLevelOnExtension,
+} from '@/component/character_level/index';
 import {
-  initializeMacroOnExtension,
   destroyMacroOnExtension,
+  initializeMacroOnExtension,
   registerAllMacros,
   unregisterAllMacros,
-} from './component/macro.js';
+} from '@/component/macro';
 import {
-  initializeCharacterLevelOnExtension,
-  destroyCharacterLevelOnExtension,
-} from './component/character_level/index.js';
-import { clearTempVariables, shouldUpdateVariables, checkVariablesEvents } from './iframe_server/variables.js';
-import { script_url } from './script_url.js';
-import { third_party } from './third_party.js';
-import { defaultAudioSettings, initAudioComponents } from './component/audio.js';
-import {
-  defaultIframeSettings,
-  renderAllIframes,
-  renderPartialIframes,
-  initIframePanel,
-  viewport_adjust_script,
-  tampermonkey_script,
-  partialRenderEvents,
   addCodeToggleButtonsToAllMessages,
-  renderMessageAfterDelete,
   addRenderingOptimizeSettings,
+  defaultIframeSettings,
+  initIframePanel,
+  partialRenderEvents,
   removeRenderingOptimizeSettings,
-} from './component/message_iframe.js';
-import { initAutoSettings } from './component/script_repository.js';
+  renderAllIframes,
+  renderMessageAfterDelete,
+  renderPartialIframes,
+  tampermonkey_script,
+  viewport_adjust_script,
+} from '@/component/message_iframe';
+import { initAutoSettings } from '@/component/script_repository';
+import { iframe_client } from '@/iframe_client/index';
+import { handleIframe } from '@/iframe_server/index';
+import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from '@/iframe_server/variables';
+import { script_url } from '@/script_url';
+import { initSlashEventEmit } from '@/slash_command/event';
+import third_party from '@/third_party.html';
+
+import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
+import { extension_settings, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
+import { executeSlashCommandsWithOptions } from '@sillytavern/scripts/slash-commands';
+import { SlashCommandNamedArgument } from '@sillytavern/scripts/slash-commands/SlashCommandArgument';
+import { SlashCommandParser } from '@sillytavern/scripts/slash-commands/SlashCommandParser';
 
 export const extensionName = 'JS-Slash-Runner';
 export const extensionFolderPath = `third-party/${extensionName}`;

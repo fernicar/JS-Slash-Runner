@@ -1,7 +1,7 @@
-import { chat, chat_metadata, event_types, eventSource } from '../../../../../../script.js';
-import { extension_settings } from '../../../../../extensions.js';
-import { MacroFunction, MacrosParser } from '../../../../../macros.js';
-import { getUserAvatarPath, getCharAvatarPath } from './message_iframe.js';
+import { getCharAvatarPath, getUserAvatarPath } from '@/component/message_iframe';
+import { chat, chat_metadata, event_types, eventSource } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
+import { MacroFunction, MacrosParser } from '@sillytavern/scripts/macros';
 
 const predefinedMacros = new Map<string, string | MacroFunction>([
   ['userAvatarPath', getUserAvatarPath],
@@ -47,17 +47,6 @@ export function unregisterAllMacros() {
   }
 }
 
-function get_property_from_path(object: Record<string, any>, path: string, default_value: any) {
-  let result: Record<string, any> | undefined = object;
-  for (const key of path.split('.')) {
-    if (result === undefined) {
-      return default_value;
-    }
-    result = result[key];
-  }
-  return result ?? default_value;
-}
-
 function demacro(event_data: Parameters<ListenerType['chat_completion_prompt_ready']>[0]) {
   const map = {
     get_global_variable: extension_settings.variables.global,
@@ -72,7 +61,7 @@ function demacro(event_data: Parameters<ListenerType['chat_completion_prompt_rea
     messages.content = messages.content.replaceAll(
       /\{\{(get_global_variable|get_chat_variable|get_message_variable)::(.*?)\}\}/g,
       (_substring, type: keyof typeof map, path: string) => {
-        return JSON.stringify(get_property_from_path(map[type], path, null));
+        return JSON.stringify(_.get(map[type], path, null));
       },
     );
   });
@@ -85,4 +74,3 @@ export function initializeMacroOnExtension() {
 export function destroyMacroOnExtension() {
   eventSource.removeListener(event_types.CHAT_COMPLETION_PROMPT_READY, demacro);
 }
-

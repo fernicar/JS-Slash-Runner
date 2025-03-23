@@ -1,6 +1,7 @@
-import { getLogPrefix, IframeMessage, registerIframeHandler } from './index.js';
-import { getRequestHeaders } from '../../../../../../script.js';
-import { t } from '../../../../../i18n.js';
+import { getLogPrefix, IframeMessage, registerIframeHandler } from '@/iframe_server/index';
+
+import { getRequestHeaders } from '@sillytavern/script';
+import { t } from '@sillytavern/scripts/i18n';
 
 interface IframeUpdateFrontendVersion extends IframeMessage {
   request: '[FrontendVersion][updateFrontendVersion]';

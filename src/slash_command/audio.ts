@@ -1,26 +1,24 @@
-// @ts-nocheck
-import { saveSettingsDebounced, chat_metadata } from '../../../../../../script.js';
-import { SlashCommand } from '../../../../../slash-commands/SlashCommand.js';
-import {
-  ARGUMENT_TYPE,
-  SlashCommandArgument,
-  SlashCommandNamedArgument,
-} from '../../../../../slash-commands/SlashCommandArgument.js';
-import { SlashCommandParser } from '../../../../../slash-commands/SlashCommandParser.js';
-import { SlashCommandEnumValue, enumTypes } from '../../../../../slash-commands/SlashCommandEnumValue.js';
-import { enumIcons, commonEnumProviders } from '../../../../../slash-commands/SlashCommandCommonEnumsProvider.js';
-import { extension_settings, saveMetadataDebounced } from '../../../../../extensions.js';
-
-import { extensionName } from '../index.js';
-
 import {
   list_BGMS,
   list_ambients,
   onAudioEnabledClick,
   playAudio,
-  updateAudioSelect,
   updateAudio,
-} from '../component/audio.js';
+  updateAudioSelect,
+} from '@/component/audio';
+import { extensionName } from '@/index';
+
+import { chat_metadata, saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings, saveMetadataDebounced } from '@sillytavern/scripts/extensions';
+import { SlashCommand } from '@sillytavern/scripts/slash-commands/SlashCommand';
+import {
+  ARGUMENT_TYPE,
+  SlashCommandArgument,
+  SlashCommandNamedArgument,
+} from '@sillytavern/scripts/slash-commands/SlashCommandArgument';
+import { commonEnumProviders, enumIcons } from '@sillytavern/scripts/slash-commands/SlashCommandCommonEnumsProvider';
+import { SlashCommandEnumValue, enumTypes } from '@sillytavern/scripts/slash-commands/SlashCommandEnumValue';
+import { SlashCommandParser } from '@sillytavern/scripts/slash-commands/SlashCommandParser';
 
 interface AudioElement extends HTMLElement {
   pause(): void;
@@ -35,7 +33,6 @@ export async function audioMode(args: { type: string; mode: string }): Promise<v
 
   if (!['bgm', 'ambient'].includes(type) || !['repeat', 'random', 'single', 'stop'].includes(mode)) {
     console.warn('WARN: Invalid arguments for /audiomode command');
-    return '';
   }
 
   if (type === 'bgm') {
@@ -61,7 +58,6 @@ export async function audioMode(args: { type: string; mode: string }): Promise<v
   }
 
   saveSettingsDebounced();
-  return '';
 }
 
 /**
@@ -73,7 +69,6 @@ export async function audioEnable(args: { type: string; state?: string }): Promi
 
   if (!type) {
     console.warn('WARN: Missing arguments for /audioenable command');
-    return '';
   }
 
   if (type === 'bgm') {
@@ -93,8 +88,6 @@ export async function audioEnable(args: { type: string; state?: string }): Promi
       await onAudioEnabledClick('ambient');
     }
   }
-
-  return '';
 }
 
 /**
@@ -106,7 +99,6 @@ export async function audioPlay(args: { type: string; play?: string }): Promise<
 
   if (!type) {
     console.warn('WARN: Missing arguments for /audioplaypause command');
-    return '';
   }
 
   if (type === 'bgm') {
@@ -124,8 +116,6 @@ export async function audioPlay(args: { type: string; play?: string }): Promise<
       audioElement.pause();
     }
   }
-
-  return '';
 }
 
 /**
@@ -137,7 +127,6 @@ export async function audioImport(args: { type: string; play?: string }, url: st
 
   if (!type || !url) {
     console.warn('WARN: Missing arguments for /audioimport command');
-    return '';
   }
 
   const urlArray = url
@@ -147,7 +136,6 @@ export async function audioImport(args: { type: string; play?: string }, url: st
     .filter((url: string, index: number, self: string[]) => self.indexOf(url) === index);
   if (urlArray.length === 0) {
     console.warn('WARN: Invalid or empty URLs provided.');
-    return '';
   }
 
   if (!chat_metadata.variables) {
@@ -177,8 +165,6 @@ export async function audioImport(args: { type: string; play?: string }, url: st
       await updateAudio('ambient', true);
     }
   }
-
-  return '';
 }
 
 /**
@@ -189,7 +175,6 @@ export async function audioSelect(args: { type: string }, url: string): Promise<
 
   if (!url) {
     console.warn('WARN: Missing URL for /audioselect command');
-    return '';
   }
 
   if (!chat_metadata.variables) {
@@ -207,7 +192,6 @@ export async function audioSelect(args: { type: string }, url: string): Promise<
       extension_settings[extensionName].audio.ambient_selected = url;
       await updateAudio('ambient', true);
     }
-    return '';
   }
 
   const existingUrls = chat_metadata.variables[typeKey] || [];
@@ -225,8 +209,6 @@ export async function audioSelect(args: { type: string }, url: string): Promise<
     extension_settings[extensionName].audio.ambient_selected = url;
     await updateAudio('ambient', true);
   }
-
-  return '';
 }
 
 /**

@@ -1,3 +1,5 @@
+import { extensionName } from '@/index';
+
 import {
   eventSource,
   event_types,
@@ -5,11 +7,10 @@ import {
   reloadCurrentChat,
   this_chid,
   characters,
-} from '../../../../../../script.js';
-import { selected_group } from '../../../../../group-chats.js';
-import { extension_settings } from '../../../../../extensions.js';
-import { power_user } from '../../../../../power-user.js';
-import { extensionName } from '../index.js';
+} from '@sillytavern/script';
+import { selected_group } from '@sillytavern/scripts/group-chats';
+import { extension_settings } from '@sillytavern/scripts/extensions';
+import { power_user } from '@sillytavern/scripts/power-user';
 
 /**
  * 自动为当前角色启用正则表达式规则

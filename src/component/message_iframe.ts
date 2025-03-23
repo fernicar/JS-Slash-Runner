@@ -1,24 +1,20 @@
-// @ts-nocheck
+import { libraries_text } from '@/component/character_level/library';
+import { extensionName, getSettingValue } from '@/index';
+import { script_url } from '@/script_url';
+import third_party from '@/third_party.html';
+
 import {
+  characters,
   eventSource,
   event_types,
+  getThumbnailUrl,
+  reloadCurrentChat,
   saveSettingsDebounced,
+  this_chid,
   updateMessageBlock,
   user_avatar,
-  messageFormatting,
-  reloadCurrentChat,
-  getThumbnailUrl,
-  characters,
-  this_chid,
-  addCopyToCodeBlocks,
-} from '../../../../../../script.js';
-
-import { extensionName, getSettingValue } from '../index.js';
-
-import { extension_settings, getContext } from '../../../../../extensions.js';
-import { script_url } from '../script_url.js';
-import { third_party } from '../third_party.js';
-import { libraries_text } from './character_level/library.js';
+} from '@sillytavern/script';
+import { extension_settings, getContext } from '@sillytavern/scripts/extensions';
 
 let tampermonkeyMessageListener: ((event: MessageEvent) => void) | null = null;
 let renderingOptimizeEnabled = false;
@@ -894,7 +890,9 @@ function addToggleButtonsToMessage($mesText) {
   $mesText.find('pre').each(function () {
     const $pre = $(this);
     const $toggleButton = $('<div class="code-toggle-button">显示代码块</div>');
-    const $tooltip = $('<div style="display: none; font-size: 0.8em; opacity: 0.8;">取消选中前端助手的‘前端卡渲染优化’选项以关闭此折叠功能</div>');
+    const $tooltip = $(
+      '<div style="display: none; font-size: 0.8em; opacity: 0.8;">取消选中前端助手的‘前端卡渲染优化’选项以关闭此折叠功能</div>',
+    );
 
     $toggleButton.on('click', function () {
       const isVisible = $pre.is(':visible');
