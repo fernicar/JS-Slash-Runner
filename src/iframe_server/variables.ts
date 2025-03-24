@@ -1,6 +1,6 @@
 import { getLogPrefix, IframeMessage, registerIframeHandler } from '@/iframe_server/index';
 
-import { chat_metadata, event_types, saveSettingsDebounced } from '@sillytavern/script';
+import { chat_metadata, event_types, eventSource, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings, getContext, saveMetadataDebounced } from '@sillytavern/scripts/extensions';
 
 interface IframeGetVariables extends IframeMessage {
@@ -73,6 +73,8 @@ export function registerIframeVariableHandler() {
           saveSettingsDebounced();
           break;
       }
+
+      await eventSource.emit('variables_updated', option.type, variables);
 
       console.info(
         `${getLogPrefix(event)}将${option.type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(

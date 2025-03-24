@@ -554,7 +554,7 @@ async function deleteVariable(variable_path: string, option: VariableOption = {}
 }
 ```
 
-##### 在提示词中获取全局、聊天和消息楼层变量
+#### 在提示词中获取全局、聊天和消息楼层变量
 
 对于变量:
 
@@ -585,6 +585,18 @@ const 消息楼层变量 = {
 - `{{get_global_variable::神乐光.好感度}}`: `'50'`;
 - `{{get_global_variable::神乐光}}`: `'{"好感度":50}'`;
 - `{{get_chat_variable::商品}}`: `'[{"内容":"..."},{"内容":"..."}]'`;
+
+#### 监听变量更新
+
+通过 `iframe_events.VARIABLES_UPDATED`, 你可以监听通过 `replaceVariables` 或 `setChatMessage` 进行的变量修改操作, 从而触发对应的事件:
+
+```typescript
+eventOn(iframe_events.VARIABLES_UPDATED, (type, variables) => {
+  if (type === 'chat' && variables.好感度 > 10) {
+    /* ... */
+  }
+});
+```
 
 ### 楼层消息操作
 
@@ -1298,6 +1310,7 @@ eventOn(tavern_events.MESSAGE_UPDATED, detectMessageEdited);
 const iframe_events = {
   MESSAGE_IFRAME_RENDER_STARTED: 'message_iframe_render_started',
   MESSAGE_IFRAME_RENDER_ENDED: 'message_iframe_render_ended',
+  VARIABLES_UPDATED: 'variables_updated',  // 全局/聊天/随楼变量通过前端助手的函数得到更新
   GENERATION_STARTED: 'js_generation_started',  // `generate` 函数开始生成
   STREAM_TOKEN_RECEIVED_FULLY: 'js_stream_token_received_fully',  // 启用流式传输的 `generate` 函数传输当前完整文本: "这是", "这是一条", "这是一条流式传输"
   STREAM_TOKEN_RECEIVED_INCREMENTALLY: 'js_stream_token_received_incrementally',  // 启用流式传输的 `generate` 函数传输当前增量文本: "这是", "一条", "流式传输"
@@ -1387,6 +1400,7 @@ const tavern_events = {
 type ListenerType = {
   [iframe_events.MESSAGE_IFRAME_RENDER_STARTED]: (iframe_name: string) => void;
   [iframe_events.MESSAGE_IFRAME_RENDER_ENDED]: (iframe_name: string) => void;
+  [iframe_events.VARIABLES_UPDATED]: (type: 'global' | 'chat' | 'message', variables:Record<string, any>, message_info?: {message_id:number , swipe_id: number}) => void;
   [iframe_events.GENERATION_STARTED]: () => void;
   [iframe_events.STREAM_TOKEN_RECEIVED_FULLY]: (full_text: string) => void;
   [iframe_events.STREAM_TOKEN_RECEIVED_INCREMENTALLY]: (incremental_text: string) => void;

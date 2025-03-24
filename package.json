@@ -1,6 +1,6 @@
 {
   "name": "js_slash_runner",
-  "version": "2.5.4",
+  "version": "2.5.5",
   "main": "./dist/index.js",
   "scripts": {
     "build:dev": "webpack --mode development",

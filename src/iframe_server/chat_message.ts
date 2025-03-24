@@ -3,6 +3,7 @@ import { getLogPrefix, IframeMessage, registerIframeHandler } from '@/iframe_ser
 
 import {
   chat,
+  eventSource,
   messageFormatting,
   reloadCurrentChat,
   saveChatConditional,
@@ -221,6 +222,13 @@ export function registerIframeChatMessageHandler() {
         update_partial_html(should_update_swipe);
         // QUESTION: saveChatDebounced 还是 await saveChatConditional?
         await saveChatConditional();
+      }
+
+      if (field_values.data) {
+        await eventSource.emit('variables_updated', 'message', field_values.data, {
+          message_id: message_id,
+          swipe_id: swipe_id_to_set_index,
+        });
       }
 
       console.info(
