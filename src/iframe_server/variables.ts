@@ -65,16 +65,21 @@ export function registerIframeVariableHandler() {
 
       switch (option.type) {
         case 'chat':
+          await eventSource.emit(
+            'variables_updated',
+            option.type,
+            (chat_metadata as { variables: Object }).variables,
+            variables,
+          );
           (chat_metadata as { variables: Object }).variables = variables;
           saveMetadataDebounced();
           break;
         case 'global':
+          await eventSource.emit('variables_updated', option.type, extension_settings.variables.global, variables);
           extension_settings.variables.global = variables;
           saveSettingsDebounced();
           break;
       }
-
-      await eventSource.emit('variables_updated', option.type, variables);
 
       console.info(
         `${getLogPrefix(event)}将${option.type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(

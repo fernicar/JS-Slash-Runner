@@ -591,8 +591,8 @@ const 消息楼层变量 = {
 通过 `iframe_events.VARIABLES_UPDATED`, 你可以监听通过 `replaceVariables` 或 `setChatMessage` 进行的变量修改操作, 从而触发对应的事件:
 
 ```typescript
-eventOn(iframe_events.VARIABLES_UPDATED, (type, variables) => {
-  if (type === 'chat' && variables.好感度 > 10) {
+eventOn(iframe_events.VARIABLES_UPDATED, (type, old_variables, new_variables) => {
+  if (type === 'chat' && old_variables.好感度 <= 10 && new_variables.好感度 > 10) {
     /* ... */
   }
 });
@@ -1400,7 +1400,7 @@ const tavern_events = {
 type ListenerType = {
   [iframe_events.MESSAGE_IFRAME_RENDER_STARTED]: (iframe_name: string) => void;
   [iframe_events.MESSAGE_IFRAME_RENDER_ENDED]: (iframe_name: string) => void;
-  [iframe_events.VARIABLES_UPDATED]: (type: 'global' | 'chat' | 'message', variables:Record<string, any>, message_info?: {message_id:number , swipe_id: number}) => void;
+  [iframe_events.VARIABLES_UPDATED]: (type: 'global' | 'chat' | 'message', old_variables: Record<string, any>, new_variables: Record<string, any>, message_info?: { message_id: number, swipe_id: number }) => void;
   [iframe_events.GENERATION_STARTED]: () => void;
   [iframe_events.STREAM_TOKEN_RECEIVED_FULLY]: (full_text: string) => void;
   [iframe_events.STREAM_TOKEN_RECEIVED_INCREMENTALLY]: (incremental_text: string) => void;

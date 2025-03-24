@@ -169,13 +169,23 @@ export function registerIframeChatMessageHandler() {
         (chat_message.swipes ? chat_message.swipes[swipe_id_to_set_index] : undefined) ??
         chat_message.mes;
 
-      const update_chat_message = () => {
+      const update_chat_message = async () => {
         const message_demacroed = substituteParamsExtended(message);
 
         if (field_values.data) {
           if (!chat_message.variables) {
             chat_message.variables = [];
           }
+          await eventSource.emit(
+            'variables_updated',
+            'message',
+            chat_message.variables[swipe_id_to_set_index] ?? {},
+            field_values.data,
+            {
+              message_id: message_id,
+              swipe_id: swipe_id_to_set_index,
+            },
+          );
           chat_message.variables[swipe_id_to_set_index] = field_values.data;
         }
 
@@ -215,20 +225,13 @@ export function registerIframeChatMessageHandler() {
       };
 
       const should_update_swipe: boolean = add_swipes_if_required();
-      update_chat_message();
+      await update_chat_message();
       if (option.refresh == 'all') {
         await reloadCurrentChat();
       } else {
         update_partial_html(should_update_swipe);
         // QUESTION: saveChatDebounced 还是 await saveChatConditional?
         await saveChatConditional();
-      }
-
-      if (field_values.data) {
-        await eventSource.emit('variables_updated', 'message', field_values.data, {
-          message_id: message_id,
-          swipe_id: swipe_id_to_set_index,
-        });
       }
 
       console.info(
