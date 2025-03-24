@@ -1,4 +1,4 @@
-import { getLogPrefix, IframeMessage, registerIframeHandler } from '@/iframe_server/index';
+import { getLogPrefix, IframeMessage, registerIframeHandler } from '@/iframe_server/_impl';
 
 import { chat_metadata, event_types, eventSource, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings, getContext, saveMetadataDebounced } from '@sillytavern/scripts/extensions';
