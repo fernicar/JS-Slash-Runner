@@ -1,5 +1,5 @@
 {
-  "name": "js_slash_runner",
+  "name": "JS-Slash-Runner",
   "version": "2.5.5",
   "main": "./dist/index.js",
   "scripts": {
