@@ -227,7 +227,7 @@ export function registerIframeLorebookHandler() {
       if (selected_group && !option.name) {
         throw Error(`不要在群组中调用这个功能`);
       }
-      const filename = option.name ?? getCharaFilename(this_chid) ?? null;
+      const filename = option.name ?? characters[this_chid]?.avatar ?? null;
       // @ts-ignore
       const character = findChar({ name: filename });
       if (!character) {
