@@ -811,7 +811,7 @@ export class ScriptRepository {
       // eslint-disable-next-line no-control-regex
       const fileName = `${getScript?.name.replace(/[\s.<>:"/\\|?*\x00-\x1F\x7F]/g, '_').toLowerCase()}.json`;
       const { id, enabled, ...scriptData } = getScript;
-      const fileData = JSON.stringify(scriptData, null, 4);
+      const fileData = JSON.stringify(scriptData, null, 2);
       download(fileData, fileName, 'application/json');
     });
     scriptHtml.find('.delete-script').on('click', async () => {
