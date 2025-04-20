@@ -1,3 +1,4 @@
+//import eslintWebpackPlugin from 'eslint-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,14 +16,12 @@ const bundled_script_path = path.dirname(
 );
 const relative_sillytavern_path = path.relative(bundled_script_path, sillytavern_path);
 
-const config = (_env: any, _argv: any): webpack.Configuration => {
+const config = (_env: any, argv: any): webpack.Configuration => {
   return {
     experiments: {
       outputModule: true,
     },
-    // FIXME: fix to support 'eval-source-map'
-    // devtool: argv.mode === 'production' ? 'source-map' : 'eval-source-map',
-    devtool: 'source-map',
+    devtool: argv.mode === 'production' ? 'source-map' : 'eval-source-map',
     entry: './src/index.ts',
     target: 'browserslist',
     output: {
@@ -36,6 +35,7 @@ const config = (_env: any, _argv: any): webpack.Configuration => {
         type: 'module',
       },
     },
+    // plugins: [new eslintWebpackPlugin({ extensions: ['ts', 'js', 'tsx', '.jsx'] })],
     resolve: {
       extensions: ['.ts', '.js', '.tsx', '.jsx'],
       plugins: [

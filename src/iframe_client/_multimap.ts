@@ -1,6 +1,5 @@
 // 命名为 _multimap.ts, 保证它被插入在开头, 虽然最好换一种 iframe 内代码的做法
-abstract class Multimap<K, V, I extends Iterable<V>>
-  implements Iterable<[K, V]> {
+abstract class Multimap<K, V, I extends Iterable<V>> implements Iterable<[K, V]> {
   private size_ = 0;
   private map: Map<K, I> = new Map();
   private operator: CollectionOperator<V, I>;
@@ -60,7 +59,7 @@ abstract class Multimap<K, V, I extends Iterable<V>>
         pushed++;
       }
     } else {
-      throw new TypeError("unexpected arguments");
+      throw new TypeError('unexpected arguments');
     }
     return pushed > 0;
   }
@@ -98,7 +97,6 @@ abstract class Multimap<K, V, I extends Iterable<V>>
   }
 
   entries(): IterableIterator<[K, V]> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     function* gen(): IterableIterator<[K, V]> {
       for (const [key, values] of self.map.entries()) {
@@ -111,7 +109,6 @@ abstract class Multimap<K, V, I extends Iterable<V>>
   }
 
   values(): IterableIterator<V> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     function* gen(): IterableIterator<V> {
       for (const [, value] of self.entries()) {
@@ -121,10 +118,7 @@ abstract class Multimap<K, V, I extends Iterable<V>>
     return gen();
   }
 
-  forEach<T>(
-    callback: (this: T | this, value: V, key: K, map: this) => void,
-    thisArg?: T,
-  ): void {
+  forEach<T>(callback: (this: T | this, value: V, key: K, map: this) => void, thisArg?: T): void {
     for (const [key, value] of this.entries()) {
       callback.call(thisArg === undefined ? this : thisArg, value, key, this);
     }
@@ -158,7 +152,7 @@ class ArrayMultimap<K, V> extends Multimap<K, V, V[]> {
   }
 
   get [Symbol.toStringTag](): string {
-    return "ArrayMultimap";
+    return 'ArrayMultimap';
   }
 }
 
@@ -198,7 +192,7 @@ class SetMultimap<K, V> extends Multimap<K, V, Set<V>> {
     super(new SetOperator(), iterable);
   }
   get [Symbol.toStringTag](): string {
-    return "SetMultimap";
+    return 'SetMultimap';
   }
 }
 

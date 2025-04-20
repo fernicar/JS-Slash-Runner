@@ -1,4 +1,4 @@
-import { extract } from '@/util/helper';
+import { extract } from '@/util/map_util';
 
 function createObjectURLFromScript(code: string): string {
   return URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
@@ -23,4 +23,4 @@ class ScriptUrl {
   }
 }
 
-export let script_url = new ScriptUrl();
+export const script_url = new ScriptUrl();

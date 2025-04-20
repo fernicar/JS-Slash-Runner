@@ -1,0 +1,97 @@
+interface LorebookEntry {
+  /** uid 是相对于世界书内部的, 不要跨世界书使用 */
+  uid: number;
+  /** 酒馆中将排序设置为 "自定义" 时的显示顺序 */
+  display_index: number;
+
+  comment: string;
+  enabled: boolean;
+  type: 'constant' | 'selective' | 'vectorized';
+  position:
+    | 'before_character_definition'
+    | 'after_character_definition'
+    | 'before_example_messages'
+    | 'after_example_messages'
+    | 'before_author_note'
+    | 'after_author_note'
+    | 'at_depth_as_system'
+    | 'at_depth_as_assistant'
+    | 'at_depth_as_user';
+
+  /** 仅对于 `position === 'at_depth_as_???'` 有意义; 其他情况为 null */
+  depth: number | null;
+  order: number;
+  probability: number;
+
+  key: string[];
+  logic: 'and_any' | 'and_all' | 'not_all' | 'not_any';
+  filter: string[];
+
+  scan_depth: 'same_as_global' | number;
+  case_sensitive: 'same_as_global' | boolean;
+  match_whole_words: 'same_as_global' | boolean;
+  use_group_scoring: 'same_as_global' | boolean;
+  automation_id: string | null;
+
+  exclude_recursion: boolean;
+  prevent_recursion: boolean;
+  /** 启用则是 true, 如果设置了具体的 Recursion Level 则是数字 (具体参考酒馆中勾选这个选项后的变化) */
+  delay_until_recursion: boolean | number;
+
+  content: string;
+
+  group: string;
+  group_prioritized: boolean;
+  group_weight: number;
+  sticky: number | null;
+  cooldown: number | null;
+  delay: number | null;
+}
+
+interface GetLorebookEntriesOption {
+  /** 按照指定字段值筛选条目, 如 `{position: 'at_depth_as_system'}` 表示仅获取处于 @D⚙ 的条目; 默认为不进行筛选. 由于实现限制, 只能做到这样的简单筛选; 如果需要更复杂的筛选, 请获取所有条目然后自己筛选. */
+  filter?: 'none' | Partial<LorebookEntry>;
+}
+
+/**
+ * 获取世界书中的条目信息. **请务必阅读示例**.
+ *
+ * @param lorebook 世界书名称
+ * @param option 可选选项
+ *   - `filter:'none'|LorebookEntry的一个子集`: 按照指定字段值筛选条目, 要求对应字段值包含制定的内容; 默认为不进行筛选.
+ *                                       如 `{content: '神乐光'}` 表示内容中必须有 `'神乐光'`, `{type: 'selective'}` 表示仅获取绿灯条目.
+ *                                       由于实现限制, 只能做到这样的简单筛选; 如果需要更复杂的筛选, 请获取所有条目然后自己筛选.
+ *
+ * @returns 一个数组, 元素是各条目信息.
+ */
+function getLorebookEntries(lorebook: string, { filter }?: GetLorebookEntriesOption): Promise<LorebookEntry[]>;
+
+/**
+ * 将条目信息修改回对应的世界书中, 如果某个字段不存在, 则该字段采用原来的值.
+ *
+ * 这只是修改信息, 不能创建新的条目, 因此要求条目必须已经在世界书中.
+ *
+ * @param lorebook 条目所在的世界书名称
+ * @param entries 一个数组, 元素是各条目信息. 其中必须有 "uid", 而其他字段可选.
+ */
+function setLorebookEntries(lorebook: string, entries: LorebookEntry[]): Promise<void>;
+
+/**
+ * 向世界书中新增一个条目
+ *
+ * @param lorebook 世界书名称
+ * @param field_values 要对新条目设置的字段值, 如果不设置则采用酒馆给的默认值. **不能设置 `uid`**.
+ *
+ * @returns 新条目的 uid
+ */
+function createLorebookEntry(lorebook: string, field_values: Partial<LorebookEntry>): Promise<number>;
+
+/**
+ * 删除世界书中的某个条目
+ *
+ * @param lorebook 世界书名称
+ * @param uid 要删除的条目 uid
+ *
+ * @returns 是否成功删除, 可能因世界书不存在、对应条目不存在等原因失败
+ */
+function deleteLorebookEntry(lorebook: string, lorebook_uid: number): Promise<boolean>;

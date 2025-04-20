@@ -1,96 +1,16 @@
 import { getLogPrefix, IframeMessage, registerIframeHandler } from '@/iframe_server/_impl';
 
-import { chat_metadata, event_types, eventSource, saveSettingsDebounced } from '@sillytavern/script';
-import { extension_settings, getContext, saveMetadataDebounced } from '@sillytavern/scripts/extensions';
+import { chat_metadata, event_types } from '@sillytavern/script';
+import { getContext, saveMetadataDebounced } from '@sillytavern/scripts/extensions';
 
-interface IframeGetVariables extends IframeMessage {
-  request: '[Variables][getVariables]';
-  option: Required<VariableOption>;
-}
-
-interface IframeReplaceVariables extends IframeMessage {
-  request: '[Variables][replaceVariables]';
-  option: Required<VariableOption>;
-  variables: Record<string, any>;
-}
-
-// for compatibility
 interface IframeSetVariables extends IframeMessage {
   request: '[Variables][setVariables]';
   message_id: number;
   variables: Record<string, any>;
 }
-
-function getVariablesByType(type: 'chat' | 'global'): Record<string, any> {
-  switch (type) {
-    case 'chat':
-      const metadata = chat_metadata as {
-        variables: Record<string, any> | undefined;
-      };
-      if (!metadata.variables) {
-        metadata.variables = {};
-      }
-      return metadata.variables;
-    case 'global':
-      return extension_settings.variables.global;
-  }
-}
-
 let latest_set_variables_message_id: number | null = null;
 
 export function registerIframeVariableHandler() {
-  registerIframeHandler(
-    '[Variables][getVariables]',
-    async (event: MessageEvent<IframeGetVariables>): Promise<Record<string, any>> => {
-      const option = event.data.option;
-
-      const result = getVariablesByType(option.type);
-
-      console.info(
-        `${getLogPrefix(event)}获取${option.type == 'chat' ? `聊天` : `全局`}变量表:\n${JSON.stringify(
-          result,
-          undefined,
-          2,
-        )}`,
-      );
-      return result;
-    },
-  );
-
-  registerIframeHandler(
-    '[Variables][replaceVariables]',
-    async (event: MessageEvent<IframeReplaceVariables>): Promise<void> => {
-      const variables = event.data.variables;
-      const option = event.data.option;
-
-      switch (option.type) {
-        case 'chat':
-          await eventSource.emit(
-            'variables_updated',
-            option.type,
-            (chat_metadata as { variables: Object }).variables,
-            variables,
-          );
-          (chat_metadata as { variables: Object }).variables = variables;
-          saveMetadataDebounced();
-          break;
-        case 'global':
-          await eventSource.emit('variables_updated', option.type, extension_settings.variables.global, variables);
-          extension_settings.variables.global = variables;
-          saveSettingsDebounced();
-          break;
-      }
-
-      console.info(
-        `${getLogPrefix(event)}将${option.type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(
-          variables,
-          undefined,
-          2,
-        )}`,
-      );
-    },
-  );
-
   registerIframeHandler('[Variables][setVariables]', async (event: MessageEvent<IframeSetVariables>): Promise<void> => {
     const variables = event.data.variables;
     const message_id = event.data.message_id;
@@ -130,7 +50,7 @@ export function registerIframeVariableHandler() {
       // @ts-ignore
       chat_metadata.variables.tempVariables = {};
     }
-    if (variables.hasOwnProperty('tempVariables')) {
+    if (_.has(variables, 'tempVariables')) {
       // @ts-ignore
       delete variables.tempVariables;
     }
@@ -196,8 +116,8 @@ function updateVariables(newVariables: Record<string, any>) {
 
   const currentVariables = chat_metadata.variables;
 
-  for (let key in newVariables) {
-    if (newVariables.hasOwnProperty(key)) {
+  for (const key in newVariables) {
+    if (_.has(newVariables, key)) {
       currentVariables[key] = newVariables[key];
     }
   }

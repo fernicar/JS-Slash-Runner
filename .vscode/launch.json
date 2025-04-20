@@ -7,7 +7,7 @@
       "request": "launch",
       "preLaunchTask": "开始监听源代码并编译",
       "postDebugTask": "结束监听源代码并编译",
-      "url": "http://localhost:8999",
+      "url": "http://localhost:8000",
       "webRoot": "${workspaceFolder}/../../../../",
       "sourceMapPathOverrides": {
         "webpack-internal:///*": "${webRoot}/scripts/extensions/third-party/*",

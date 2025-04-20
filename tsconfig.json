@@ -7,6 +7,7 @@
     "types": [
       "highlight.js",
       "jquery",
+      "jqueryui",
       "lodash",
       "toastr",
     ],
@@ -19,7 +20,7 @@
       ]
     },
     "moduleDetection": "auto",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
     "isolatedModules": true,
     "importHelpers": true,
     "allowUmdGlobalAccess": true,
