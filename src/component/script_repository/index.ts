@@ -850,8 +850,13 @@ export class ScriptRepository {
       const template = $(await renderExtensionTemplateAsync(`${templatePath}`, 'script_import_target'));
       template.find('#script-import-target-global').on('input', () => (target = 'global'));
       template.find('#script-import-target-scoped').on('input', () => (target = 'scoped'));
-      await callGenericPopup(template, POPUP_TYPE.TEXT);
-
+      const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
+        okButton: '确认',
+        cancelButton: '取消',
+      });
+      if (!result) {
+        return;
+      }
       const convertedScript = new Script({
         id: script.id,
         name: script.name,
