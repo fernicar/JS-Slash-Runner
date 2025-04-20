@@ -142,7 +142,9 @@ export class ScriptRepository {
     isScopedScriptEnabled = charactersWithScripts?.includes(characters?.[this_chid]?.avatar) || false;
     // @ts-ignore
     const scopedScriptArray = characters[this_chid]?.data?.extensions?.TavernHelper_scripts ?? [];
-    this.handleScriptToggle(ScriptType.CHARACTER, isScopedScriptEnabled, false);
+    if (scopedScriptArray.length > 0) {
+      this.handleScriptToggle(ScriptType.CHARACTER, isScopedScriptEnabled, false);
+    }
     $('#scoped-script-enable-toggle')
       .prop('checked', isScopedScriptEnabled)
       .on('click', (event: JQuery.ClickEvent) =>
@@ -1012,6 +1014,21 @@ export class ScriptRepository {
    * 初始化按钮容器
    */
   initButtonContainer() {
+    // 检查全局和局部脚本是否有可见按钮
+    const hasGlobalVisibleButtons = this.globalScripts.some(
+      script =>
+        script.enabled && script.buttons && script.buttons.length > 0 && script.buttons.some(button => button.visible),
+    );
+
+    const hasCharacterVisibleButtons = this.characterScripts.some(
+      script =>
+        script.enabled && script.buttons && script.buttons.length > 0 && script.buttons.some(button => button.visible),
+    );
+
+    if (!hasGlobalVisibleButtons && !hasCharacterVisibleButtons) {
+      return;
+    }
+
     const $qrBar = $('#qr--bar');
     if (!$qrBar.length) {
       $('#send_form').append(
@@ -1132,6 +1149,7 @@ export async function initScriptRepository(scriptRepo: ScriptRepository) {
   const $script_container = $(await renderExtensionTemplateAsync(`${templatePath}`, 'index'));
   $('#script-settings-content').append($script_container);
 
+  await scriptRepo.loadScriptLibrary();
   scriptRepo.initButtonContainer();
 
   isGlobalScriptEnabled = getSettingValue('script.global_script_enabled');
@@ -1160,11 +1178,14 @@ export async function initScriptRepository(scriptRepo: ScriptRepository) {
     });
 
     if (result) {
-    const inputElement = this instanceof HTMLInputElement && this;
-    if (inputElement && inputElement.files) {
-      for (const file of inputElement.files) {
-        await scriptRepo.onScriptImportFileChange(file, target === 'global' ? ScriptType.GLOBAL : ScriptType.CHARACTER);
-      }
+      const inputElement = this instanceof HTMLInputElement && this;
+      if (inputElement && inputElement.files) {
+        for (const file of inputElement.files) {
+          await scriptRepo.onScriptImportFileChange(
+            file,
+            target === 'global' ? ScriptType.GLOBAL : ScriptType.CHARACTER,
+          );
+        }
         inputElement.value = '';
       }
     }

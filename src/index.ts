@@ -126,14 +126,14 @@ jQuery(async () => {
   $('#render-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
   $('#script-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
   $('#audio-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
-
-  handleVersionUpdate();
+  
   initExtensionMainPanel();
-  initIframePanel();
+  handleVersionUpdate();
   initScriptRepository(scriptRepo);
   initAudioComponents();
   initAudioSlashCommands();
   initSlashEventEmit();
+  initIframePanel();
   initReference();
   initListener();
 

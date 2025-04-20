@@ -145,6 +145,9 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
 
     MutationObserverQrBarCreated();
     scriptRepo = ScriptRepository.getInstance();
+    if (userAction) {
+      await scriptRepo.loadScriptLibrary();
+    }
     await scriptRepo.runScriptsByType(ScriptType.GLOBAL);
     scriptRepo.addButtonsByType(ScriptType.GLOBAL);
 
