@@ -1,7 +1,7 @@
 import { getRequestHeaders } from '@sillytavern/script';
+import { extensionTypes } from '@sillytavern/scripts/extensions';
 import { t } from '@sillytavern/scripts/i18n';
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
-import { extensionTypes } from '@sillytavern/scripts/extensions';
 import { extensionFolderPath, extensionName } from './extension_variables';
 import { renderMarkdown } from './render_markdown';
 
@@ -325,14 +325,16 @@ function getExtensionType(externalId: string) {
 
 // 旧版更新后用
 /**
- * 
+ *
  */
 
 export async function showNewFeature() {
   let changelogContent = await fetchRawFileContentFromGitLab(CHANGELOG_FILE_PATH_GITLAB);
-  changelogContent = changelogContent + "\n\n*前端助手旧版配置已清除，请重新配置扩展设置*";
+  changelogContent = changelogContent + '\n\n*前端助手旧版配置已清除，请重新配置扩展设置*';
   const logs = parseChangelogBetweenVersions(changelogContent, '3.0.0', '3.0.0');
+
   if (logs) {
-    await callGenericPopup(logs, POPUP_TYPE.TEXT);
+    const modifiedLogs = logs.replace(/<h2([^>]*)>([^<]*)<\/h2>/g, '<h2$1>酒馆助手 $2</h2>');
+    await callGenericPopup(modifiedLogs, POPUP_TYPE.TEXT);
   }
 }
