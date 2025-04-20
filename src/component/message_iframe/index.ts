@@ -285,11 +285,10 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
       continue;
     }
 
-    let iframeCounter = 1; // iframe计数器
+    let iframeCounter = 1; 
 
     $codeElements.each(function () {
       let extractedText = extractTextFromCode(this);
-      console.log(extractedText);
 
       const shouldHaveButton = shouldHaveCodeToggle(this);
       const shouldRenderAsIframe = !shouldHaveButton;
