@@ -39,9 +39,6 @@ export function getGlobalRegexes(): RegexScriptData[] {
 }
 
 export function getCharacterRegexes(): RegexScriptData[] {
-  if (this_chid === undefined) {
-    throw new Error('当前没有选中角色，无法获取角色正则');
-  }
   // @ts-ignore
   return characters[this_chid]?.data?.extensions?.regex_scripts ?? [];
 }

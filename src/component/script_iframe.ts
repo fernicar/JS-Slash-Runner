@@ -22,15 +22,11 @@ function loadScripts(): Script[] {
   const enabled_global_regexes = getGlobalRegexes().filter(filterScriptFromRegex).filter(isEnabled);
   scripts.push(...enabled_global_regexes);
 
-  try {
   const enabled_character_regexes = getCharacterRegexes()
     .filter(filterScriptFromRegex)
     .filter(isEnabled)
     .filter(script => (isCharacterTavernRegexEnabled() ? true : script.runOnEdit));
     scripts.push(...enabled_character_regexes);
-  } catch (error) {
-    console.info('[(deprecated)Script] 加载角色正则失败:', error);
-  }
 
   const to_script = (script: RegexScriptData) => ({ name: toName(script), code: script.replaceString });
   return scripts.map(to_script);
