@@ -36,7 +36,7 @@ interface VariableOption {
  * // 获取倒数第二楼层的聊天变量
  * const variables = getVariables({type: 'message', message_id: -2});
  */
-function getVariables({ type, message_id }?: VariableOptio): Record<string, any>;
+function getVariables({ type, message_id }?: VariableOption): Record<string, any>;
 
 /**
  * 完全替换变量表为 `variables`
@@ -86,7 +86,7 @@ type VariablesUpdater =
  */
 function updateVariablesWith(
   updater: VariablesUpdater,
-  { type, message_id }?: VariableOptio,
+  { type, message_id }?: VariableOption,
 ): Promise<Record<string, any>>;
 
 /**
@@ -104,7 +104,7 @@ function updateVariablesWith(
  * await insertOrAssignVariables({爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}});
  * // 执行后变量: `{爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}}`
  */
-function insertOrAssignVariables(variables: Record<string, any>, { type, message_id }?: VariableOptio): Promise<void>;
+function insertOrAssignVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
 
 /**
  * 插入新变量, 如果变量已经存在则什么也不做
@@ -121,7 +121,7 @@ function insertOrAssignVariables(variables: Record<string, any>, { type, message
  * await insertVariables({爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}});
  * // 执行后变量: `{爱城华恋: {好感度: 5}, 神乐光: {好感度: 5, 认知度: 0}}`
  */
-function insertVariables(variables: Record<string, any>, { type, message_id }?: VariableOptio): Promise<void>;
+function insertVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
 
 /**
  * 删除变量, 如果变量不存在则什么也不做
@@ -140,4 +140,4 @@ function insertVariables(variables: Record<string, any>, { type, message_id }?: 
  * await deleteVariable("爱城华恋.好感度");
  * // 执行后变量: `{爱城华恋: {}}`
  */
-function deleteVariable(variable_path: string, { type, message_id }?: VariableOptio): Promise<boolean>;
+function deleteVariable(variable_path: string, { type, message_id }?: VariableOption): Promise<boolean>;
