@@ -29,7 +29,7 @@ type EventType = IframeEventType | TavernEventType | string;
 function eventOn<T extends EventType>(event_type: T, listener: ListenerType[T]): void {
   if (detail.try_get_wrapper(listener, event_type)) {
     console.warn(
-      `[Event][eventOn](${getIframeName()}) 函数已经在监听 '${event_type}' 事件, 调用无效\n\n  ${detail.format_function_to_string(
+      `[Event][eventOn] 函数已经在监听 '${event_type}' 事件, 调用无效\n\n  ${detail.format_function_to_string(
         listener,
       )}`,
     );
@@ -37,7 +37,7 @@ function eventOn<T extends EventType>(event_type: T, listener: ListenerType[T]):
   }
   SillyTavern.eventSource.on(event_type, detail.get_or_make_wrapper(listener, event_type, false));
   console.info(
-    `[Event][eventOn](${getIframeName()}) 函数开始监听 '${event_type}' 事件并将随事件触发\n\n  ${detail.format_function_to_string(
+    `[Event][eventOn] 函数开始监听 '${event_type}' 事件并将随事件触发\n\n  ${detail.format_function_to_string(
       listener,
     )}`,
   );
@@ -56,8 +56,7 @@ function eventOn<T extends EventType>(event_type: T, listener: ListenerType[T]):
  * eventOnButton(对应的按钮名称, hello);
  */
 function eventOnButton<T extends EventType>(event_type: T, listener: ListenerType[T]): void {
-  const frameElement = window.frameElement;
-  const script_id = frameElement ? $(frameElement).attr('script-id') ?? 'unknown_script' : 'unknown_script';
+  const script_id = getScriptId();
   if (detail.try_get_wrapper(listener, event_type)) {
     console.warn(
       `[Event][eventOnButton](id为${String(
@@ -66,7 +65,7 @@ function eventOnButton<T extends EventType>(event_type: T, listener: ListenerTyp
     );
     return;
   }
-  const event_type_with_script_id = `${event_type}_${String(script_id)}`;
+  const event_type_with_script_id = `${String(script_id)}_${event_type}`;
   SillyTavern.eventSource.on(
     event_type_with_script_id,
     detail.get_or_make_wrapper(listener, event_type_with_script_id, false),

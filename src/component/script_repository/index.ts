@@ -1089,12 +1089,13 @@ export class ScriptRepository {
 
       script.buttons.forEach(button => {
         if (button.visible) {
+          const event_type = `${script.id}_${button.name}`;
           $('#TH-script-buttons').append(
-            `<div class="qr--button menu_button interactable" id="${button.name}_${script.id}">${button.name}</div>`,
+            `<div class="qr--button menu_button interactable" id="${event_type}">${button.name}</div>`,
           );
-          $(`#${button.name}_${script.id}`).on('click', () => {
-            eventSource.emit(`${button.name}_${script.id}`);
-            console.log(`[Script] 点击按钮：${button.name}_${script.id}`);
+          $(`#${event_type}`).on('click', () => {
+            eventSource.emit(`${event_type}`);
+            console.log(`[Script] 点击按钮：${event_type}`);
           });
         }
       });

@@ -1,10 +1,19 @@
 /**
  * 获取 iframe 的名称
  *
- * @returns 对于楼层消息是 `message-iframe-楼层id-是该楼层第几个iframe`; 对于全局脚本是 `script-iframe-脚本名称`
+ * @returns 对于楼层消息是 `message-iframe-楼层id-是该楼层第几个iframe`; 对于全局脚本是 `script-iframe-脚本名称`; 对于脚本库是 `tavern-helper-script-脚本名称`
  */
 function getIframeName(): string {
   return (window.frameElement as Element).id;
+}
+
+/**
+ * 获取脚本库的 id, **只能对脚本库使用**
+ *
+ * @returns 脚本库的 id
+ */
+function getScriptId(): string {
+  return $(window.frameElement as Element).attr('script-id') ?? 'unknown_script';
 }
 
 /**
