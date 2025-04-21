@@ -52,7 +52,7 @@ class Script {
   enabled: boolean;
 
   constructor(data?: Partial<Script>) {
-    this.id = data?.id || uuidv4();
+    this.id = data?.id && data.id.trim() !== '' ? data.id : uuidv4();
     this.name = data?.name || '';
     this.content = data?.content || '';
     this.info = data?.info || '';
@@ -460,7 +460,6 @@ export class ScriptRepository {
         }
       } else {
         const newScript = new Script({
-          id: uuidv4(),
           name: scriptName,
           content: scriptContent,
           info: scriptInfo,
@@ -603,7 +602,7 @@ export class ScriptRepository {
   }
 
   /**
-   * 保存单个脚本到设置中
+   * 保存单个脚本到设置中，不存在则添加，存在则覆盖
    * @param script 脚本
    * @param type 脚本类型
    */
@@ -812,7 +811,7 @@ export class ScriptRepository {
       }
       // eslint-disable-next-line no-control-regex
       const fileName = `${getScript?.name.replace(/[\s.<>:"/\\|?*\x00-\x1F\x7F]/g, '_').toLowerCase()}.json`;
-      const { id, enabled, ...scriptData } = getScript;
+      const { enabled, ...scriptData } = getScript;
       const fileData = JSON.stringify(scriptData, null, 2);
       download(fileData, fileName, 'application/json');
     });
@@ -956,9 +955,39 @@ export class ScriptRepository {
       }
 
       const newScript = new Script(script);
-      // 分配一个新的id
-      newScript.id = uuidv4();
+
+      if (!newScript.id) {
+        newScript.id = uuidv4();
+      }
       newScript.enabled = false;
+
+      // 检查是否已存在相同ID的脚本
+      const existingScript = this.getScriptById(newScript.id);
+      if (existingScript) {
+        const confirm = await callGenericPopup(
+          `脚本 ${existingScript.name} 已存在，是否要覆盖？`,
+          POPUP_TYPE.CONFIRM,
+          '',
+          {
+            okButton: '确认',
+            cancelButton: '取消',
+          },
+        );
+        if (!confirm) {
+          return;
+        }
+
+        const scriptType = this.globalScripts.find(s => s.id === existingScript.id)
+          ? ScriptType.GLOBAL
+          : ScriptType.CHARACTER;
+
+        $(`#${existingScript.id}`).remove();
+
+        if (existingScript.enabled) {
+          await this.cancelRunScript(existingScript, scriptType, false);
+          this.removeButton(existingScript);
+        }
+      }
 
       await this.saveScript(newScript, type);
       await this.renderScript(newScript, type);
@@ -1094,7 +1123,7 @@ export class ScriptRepository {
   }
 
   /**
-   * 移除按钮
+   * 根据类型移除按钮
    * @param type 类型
    */
   removeButtonsByType(type: ScriptType) {
