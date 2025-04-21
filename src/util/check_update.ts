@@ -176,6 +176,11 @@ export function addVersionUpdateElement() {
       New!
     </span>
   `);
+  $('#version-update-text').closest('.flex-container .alignItemsCenter').append(`
+      <div style='background-color: var(--SmartThemeQuoteColor);border-radius: 50px;padding: 0 5px;height: 50%; font-size: calc(var(--mainFontSize) * 0.7);'>
+        最新：Ver ${LATEST_VERSION}
+      </div>
+    `);
 }
 
 /**
@@ -319,7 +324,7 @@ function getExtensionType(externalId: string) {
     // eslint-disable-next-line no-shadow
     (id: string) => id === externalId || (id.startsWith('third-party') && id.endsWith(externalId)),
   );
-  return id ? extensionTypes[id] : '';
+  return id ? extensionTypes[id] : 'local';
 }
 
 // 旧版更新后用
