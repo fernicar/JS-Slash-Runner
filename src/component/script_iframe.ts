@@ -1,7 +1,40 @@
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
-import { loadScripts, Script } from '@/util/load_script';
+import { getCharacterRegexes, getGlobalRegexes, isCharacterTavernRegexEnabled } from '@/function/tavern_regex';
+
 import { event_types, eventSource } from '@sillytavern/script';
+import { RegexScriptData } from '@sillytavern/scripts/char-data';
+
+interface Script {
+  name: string;
+  code: string;
+}
+
+function loadScripts(): Script[] {
+  const prefix = '脚本-'
+  const filterScriptFromRegex = (script: RegexScriptData) =>
+    script.scriptName.replace(/^【.*】/, '').startsWith(prefix);
+  const isEnabled = (script: RegexScriptData) => !script.disabled;
+  const toName = (script: RegexScriptData) => script.scriptName.replace(/^【.*】/, '').replace(prefix, '');
+
+  const scripts: RegexScriptData[] = [];
+
+  const enabled_global_regexes = getGlobalRegexes().filter(filterScriptFromRegex).filter(isEnabled);
+  scripts.push(...enabled_global_regexes);
+
+  try {
+  const enabled_character_regexes = getCharacterRegexes()
+    .filter(filterScriptFromRegex)
+    .filter(isEnabled)
+    .filter(script => (isCharacterTavernRegexEnabled() ? true : script.runOnEdit));
+    scripts.push(...enabled_character_regexes);
+  } catch (error) {
+    console.info('[(deprecated)Script] 加载角色正则失败:', error);
+  }
+
+  const to_script = (script: RegexScriptData) => ({ name: toName(script), code: script.replaceString });
+  return scripts.map(to_script);
+}
 
 const script_map: Map<string, HTMLIFrameElement> = new Map();
 
@@ -26,7 +59,7 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
 
   const load_promise = new Promise<void>(resolve => {
     iframe.onload = () => {
-      console.info(`[Script](${iframe.id}) 加载完毕`);
+      console.info(`[(deprecated)Script](${iframe.id}) 加载完毕`);
       resolve();
     };
   });
@@ -38,12 +71,12 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
 
 function destroy(): void {
   if (script_map.size !== 0) {
-    console.log(`[Script] 清理全局脚本...`);
+    console.log(`[(deprecated)Script] 清理全局脚本...`);
     script_map.forEach((iframe, _) => {
       iframe.remove();
     });
     script_map.clear();
-    console.log(`[Script] 全局脚本清理完成!`);
+    console.log(`[(deprecated)Script] 全局脚本清理完成!`);
   }
 }
 
@@ -51,8 +84,8 @@ async function initialize(): Promise<void> {
   try {
     destroy();
 
-    const scripts = loadScripts('脚本-');
-    console.info(`[Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
+    const scripts = loadScripts();
+    console.info(`[(deprecated)Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
 
     const load_promises: Promise<void>[] = [];
 
@@ -64,7 +97,7 @@ async function initialize(): Promise<void> {
 
     await Promise.allSettled(load_promises);
   } catch (error) {
-    console.error('[Script] 全局脚本加载失败:', error);
+    console.error('[(deprecated)Script] 全局脚本加载失败:', error);
     throw error;
   }
 }
