@@ -1120,7 +1120,7 @@ export class ScriptRepository {
    * @param script 脚本
    */
   removeButton(script: Script) {
-    $(`[id$=_${script.id}]`).remove();
+    $(`[id$^${script.id}_]`).remove();
   }
 
   /**
