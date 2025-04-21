@@ -9,7 +9,7 @@ const GITLAB_INSTANCE_URL = 'gitlab.com';
 const GITLAB_PROJECT_PATH = 'novi028/JS-Slash-Runner';
 const GITLAB_BRANCH = 'main';
 const VERSION_FILE_PATH_GITLAB = 'manifest.json';
-const CHANGELOG_FILE_PATH_GITLAB = 'doc/CHANGELOG.md';
+const CHANGELOG_FILE_PATH_GITLAB = 'CHANGELOG.md';
 export const VERSION_FILE_PATH = `/scripts/extensions/${extensionFolderPath}/manifest.json`;
 let CURRENT_VERSION: string;
 let LATEST_VERSION: string;

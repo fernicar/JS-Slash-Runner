@@ -30,11 +30,11 @@ export async function loadScriptContent(scriptId: string): Promise<string> {
   try {
     // 优先尝试加载TypeScript文件
     try {
-      const tsModule = await import(`./${scriptId}/index.ts?raw`);
+      const tsModule = await import(`@/builtin_scripts/${scriptId}/index.ts?raw`);
       return tsModule.default;
     } catch (tsError) {
       // 如果TypeScript文件不存在，尝试加载JavaScript文件
-      const jsModule = await import(`./${scriptId}/index.js?raw`);
+      const jsModule = await import(`@/builtin_scripts/${scriptId}/index.js?raw`);
       return jsModule.default;
     }
   } catch (error) {
@@ -51,7 +51,7 @@ export async function loadScriptContent(scriptId: string): Promise<string> {
 export async function loadScriptInfo(scriptId: string): Promise<string> {
   try {
     const response = await fetch(
-      `/scripts/extensions/third-party/JS-Slash-Runner/src/component/script_repository/builtin_scripts/${scriptId}/index.md`,
+      `/scripts/extensions/third-party/JS-Slash-Runner/src/builtin_scripts/${scriptId}/index.md`,
     );
     if (!response.ok) {
       throw new Error(`[Script] 加载默认脚本信息失败: ${response.statusText}`);

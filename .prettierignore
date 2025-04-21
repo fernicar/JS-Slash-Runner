@@ -1,2 +1,2 @@
 dist
-src/component/script_repository/builtin_scripts/**/*.js
+src/builtin_scripts/**/*.js
