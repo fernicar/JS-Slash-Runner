@@ -378,13 +378,8 @@ class StreamingProcessor {
     const newText = text.slice(this.messageBuffer.length);
     this.messageBuffer = text;
 
-    let processedText = cleanUpMessage({
-      getMessage: newText,
-      isImpersonate: false,
-      isContinue: false,
-      displayIncompleteSentences: !isFinal,
-      stoppingStrings: this.stoppingStrings,
-    });
+    // @ts-expect-error
+    let processedText = cleanUpMessage(newText, false, false, !isFinal, this.stoppingStrings);
 
     const charsToBalance = ['*', '"', '```'];
     for (const char of charsToBalance) {
@@ -398,13 +393,8 @@ class StreamingProcessor {
     eventSource.emit('js_stream_token_received_incrementally', processedText);
 
     if (isFinal) {
-      const fullText = cleanUpMessage({
-        getMessage: text,
-        isImpersonate: false,
-        isContinue: false,
-        displayIncompleteSentences: false,
-        stoppingStrings: this.stoppingStrings,
-      });
+      // @ts-expect-error
+      const fullText = cleanUpMessage(text, false, false, false, this.stoppingStrings);
       eventSource.emit('js_generation_ended', fullText);
     }
   }
