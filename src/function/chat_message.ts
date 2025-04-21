@@ -41,7 +41,7 @@ function string_to_range(input: string, min: number, max: number) {
 
   if (input.match(/^(-\d+)$/)) {
     const value = Number(input);
-    start = end = value < 0 ? max - (value + 1) : value;
+    start = end = value < 0 ? max + value + 1 : value;
   } else {
     const match = input.match(/^(-?\d+)-(-?\d+)$/);
     if (!match) {
@@ -49,7 +49,7 @@ function string_to_range(input: string, min: number, max: number) {
     }
 
     [start, end] = _.sortBy(
-      [match[1], match[2]].map(value => Number(value)).map(value => (value < 0 ? max - (value + 1) : value)),
+      [match[1], match[2]].map(value => Number(value)).map(value => (value < 0 ? max + value + 1 : value)),
     );
   }
 
