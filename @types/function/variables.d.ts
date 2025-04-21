@@ -1,18 +1,27 @@
 interface VariableOption {
-  type?: 'chat' | 'global';
+  /**
+   * 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+   */
+  type?: 'message' | 'chat' | 'character' | 'global';
+
+  /**
+   * 当 `type` 为 `'message'` 时, 该参数指定要获取变量的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
+   */
+  message_id?: number | 'latest';
 }
 
 /**
  * 获取变量表
  *
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @returns 变量表
  *
  * @example
  * // 获取所有聊天变量并弹窗输出结果
- * const variables = getVariables();
+ * const variables = getVariables({type: 'chat'});
  * alert(variables);
  *
  * @example
@@ -22,8 +31,12 @@ interface VariableOption {
  * if (_.has(variables, "神乐光.好感度")) {
  *   ...
  * }
+ *
+ * @example
+ * // 获取倒数第二楼层的聊天变量
+ * const variables = getVariables({type: 'message', message_id: -2});
  */
-function getVariables(option?: VariableOption): Record<string, any>;
+function getVariables({ type, message_id }?: VariableOptio): Record<string, any>;
 
 /**
  * 完全替换变量表为 `variables`
@@ -33,7 +46,8 @@ function getVariables(option?: VariableOption): Record<string, any>;
  *
  * @param variables 要用于替换的变量表
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @example
  * // 执行前的聊天变量: `{爱城华恋: {好感度: 5}}`
@@ -46,7 +60,7 @@ function getVariables(option?: VariableOption): Record<string, any>;
  * _.unset(variables, "神乐光.好感度");
  * await replaceVariables(variables);
  */
-function replaceVariables(variables: Record<string, any>, { type }?: VariableOption): Promise<void>;
+function replaceVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
 
 type VariablesUpdater =
   | ((variables: Record<string, any>) => Record<string, any>)
@@ -57,7 +71,8 @@ type VariablesUpdater =
  *
  * @param updater 用于更新变量表的函数. 它应该接收变量表作为参数, 并返回更新后的变量表.
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @returns 更新后的变量表
  *
@@ -69,7 +84,10 @@ type VariablesUpdater =
  * // 更新 "爱城华恋.好感度" 为原来的 2 倍, 如果该变量不存在则设置为 0
  * await updateVariablesWith(variables => _.update(variables, "爱城华恋.好感度", value => value ? value * 2 : 0));
  */
-function updateVariablesWith(updater: VariablesUpdater, { type }?: VariableOption): Promise<Record<string, any>>;
+function updateVariablesWith(
+  updater: VariablesUpdater,
+  { type, message_id }?: VariableOptio,
+): Promise<Record<string, any>>;
 
 /**
  * 插入或修改变量值, 取决于变量是否存在.
@@ -78,14 +96,15 @@ function updateVariablesWith(updater: VariablesUpdater, { type }?: VariableOptio
  *   - 如果变量不存在, 则新增该变量
  *   - 如果变量已经存在, 则修改该变量的值
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 聊天变量或全局变量, 默认为聊天变量 'chat'
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @example
  * // 执行前变量: `{爱城华恋: {好感度: 5}}`
  * await insertOrAssignVariables({爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}});
  * // 执行后变量: `{爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}}`
  */
-function insertOrAssignVariables(variables: Record<string, any>, { type }?: VariableOption): Promise<void>;
+function insertOrAssignVariables(variables: Record<string, any>, { type, message_id }?: VariableOptio): Promise<void>;
 
 /**
  * 插入新变量, 如果变量已经存在则什么也不做
@@ -94,14 +113,15 @@ function insertOrAssignVariables(variables: Record<string, any>, { type }?: Vari
  *   - 如果变量不存在, 则新增该变量
  *   - 如果变量已经存在, 则什么也不做
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 聊天变量或全局变量, 默认为聊天变量 'chat'
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @example
  * // 执行前变量: `{爱城华恋: {好感度: 5}}`
  * await insertVariables({爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}});
  * // 执行后变量: `{爱城华恋: {好感度: 5}, 神乐光: {好感度: 5, 认知度: 0}}`
  */
-function insertVariables(variables: Record<string, any>, { type }?: VariableOption): Promise<void>;
+function insertVariables(variables: Record<string, any>, { type, message_id }?: VariableOptio): Promise<void>;
 
 /**
  * 删除变量, 如果变量不存在则什么也不做
@@ -110,7 +130,8 @@ function insertVariables(variables: Record<string, any>, { type }?: VariableOpti
  *   - 如果变量不存在, 则什么也不做
  *   - 如果变量已经存在, 则删除该变量
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 聊天变量或全局变量, 默认为聊天变量 'chat'
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @returns 是否成功删除变量
  *
@@ -119,4 +140,4 @@ function insertVariables(variables: Record<string, any>, { type }?: VariableOpti
  * await deleteVariable("爱城华恋.好感度");
  * // 执行后变量: `{爱城华恋: {}}`
  */
-function deleteVariable(variable_path: string, { type }?: VariableOption): Promise<boolean>;
+function deleteVariable(variable_path: string, { type, message_id }?: VariableOptio): Promise<boolean>;

@@ -1,4 +1,3 @@
-import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository/index';
 import {
   Character,
   getCharAvatarPath,
@@ -94,10 +93,6 @@ function getTavernHelper() {
     createLorebook,
     getCurrentCharPrimaryLorebook,
     getOrCreateChatLorebook,
-
-    // script_repository
-    getCharacterScriptVariables,
-    replaceCharacterScriptVariables,
 
     // slash
     triggerSlash,

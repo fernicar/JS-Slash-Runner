@@ -25,7 +25,7 @@ interface GetChatMessagesOption {
 /**
  * 获取聊天消息
  *
- * @param range 要获取的消息楼层号或楼层范围, 与 `/messages` 相同
+ * @param range 要获取的消息楼层号或楼层范围, 如 `0`, `'0-{{lastMessageId}}'`, `-1` 等. 负数表示深度, 如 `-1` 表示最新的消息楼层, `-2` 表示倒数第二条消息楼层.
  * @param option 可选选项
  *   - `role:'all'|'system'|'assistant'|'user'`: 按 role 筛选消息; 默认为 `'all'`
  *   - `hide_state:'all'|'hidden'|'unhidden'`: 按是否被隐藏筛选消息; 默认为 `'all'`
@@ -60,7 +60,7 @@ interface SetChatMessageOption {
  * @param field_values 要设置的信息
  *   - message?: 消息页要设置的消息文本
  *   - data?: 消息页要绑定的数据
- * @param message_id 消息楼层id
+ * @param message_id 消息楼层id, 负数则表示深度, 如 `-1` 表示最新的消息楼层, `-2` 表示倒数第二条消息楼层
  * @param option 可选选项:
  *   - `swipe_id?:'current'|number`: 要替换的消息页 (`'current'` 来替换当前使用的消息页, 或从 0 开始的序号来替换对应消息页), 如果消息中还没有该消息页, 则会创建该页; 默认为 `'current'`
  *   - `refresh?:'none'|'display_current'|'display_and_render_current'|'all'`: 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`

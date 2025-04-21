@@ -1,12 +1,29 @@
-import { chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
+import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository';
+import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { getChatMessages, setChatMessage } from './chat_message';
 
 interface VariableOption {
-  type?: 'chat' | 'global'; // 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+  /**
+   * 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+   */
+  type?: 'message' | 'chat' | 'character' | 'global';
+
+  /**
+   * 当 `type` 为 `'message'` 时, 该参数指定要获取变量的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
+   */
+  message_id?: number | 'latest';
 }
 
-function getVariablesByType(type: 'chat' | 'global'): Record<string, any> {
+function getVariablesByType({ type = 'chat', message_id = 'latest' }: VariableOption): Record<string, any> {
   switch (type) {
+    case 'message': {
+      if (message_id !== 'latest' && (message_id < -chat.length || message_id >= chat.length)) {
+        throw Error(`提供的 message_id(${message_id}) 超出了聊天消息楼层号范围`);
+      }
+      message_id = message_id === 'latest' ? -1 : message_id;
+      return getChatMessages(message_id)[0].data;
+    }
     case 'chat': {
       const metadata = chat_metadata as {
         variables: Record<string, any> | undefined;
@@ -15,6 +32,9 @@ function getVariablesByType(type: 'chat' | 'global'): Record<string, any> {
         metadata.variables = {};
       }
       return metadata.variables;
+    }
+    case 'character': {
+      return getCharacterScriptVariables();
     }
     case 'global':
       return extension_settings.variables.global;
@@ -25,13 +45,14 @@ function getVariablesByType(type: 'chat' | 'global'): Record<string, any> {
  * 获取变量表
  *
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @returns 变量表
  *
  * @example
  * // 获取所有聊天变量并弹窗输出结果
- * const variables = getVariables();
+ * const variables = getVariables({type: 'chat'});
  * alert(variables);
  *
  * @example
@@ -41,10 +62,13 @@ function getVariablesByType(type: 'chat' | 'global'): Record<string, any> {
  * if (_.has(variables, "神乐光.好感度")) {
  *   ...
  * }
+ *
+ * @example
+ * // 获取倒数第二楼层的聊天变量
+ * const variables = getVariables({type: 'message', message_id: -2});
  */
-export function getVariables(option: VariableOption = { type: 'chat' }): Record<string, any> {
-  const { type = 'chat' } = option;
-  const result = getVariablesByType(type);
+export function getVariables({ type = 'chat', message_id = 'latest' }: VariableOption = {}): Record<string, any> {
+  const result = getVariablesByType({ type, message_id });
 
   console.info(`获取${type == 'chat' ? `聊天` : `全局`}变量表:\n${JSON.stringify(result, undefined, 2)}`);
   return result;
@@ -58,7 +82,8 @@ export function getVariables(option: VariableOption = { type: 'chat' }): Record<
  *
  * @param variables 要用于替换的变量表
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @example
  * // 执行前的聊天变量: `{爱城华恋: {好感度: 5}}`
@@ -73,12 +98,22 @@ export function getVariables(option: VariableOption = { type: 'chat' }): Record<
  */
 export async function replaceVariables(
   variables: Record<string, any>,
-  { type = 'chat' }: VariableOption = {},
+  { type = 'chat', message_id = 'latest' }: VariableOption = {},
 ): Promise<void> {
   switch (type) {
+    case 'message':
+      if (message_id !== 'latest' && (message_id < -chat.length || message_id >= chat.length)) {
+        throw Error(`提供的 message_id(${message_id}) 超出了聊天消息楼层号范围`);
+      }
+      message_id = message_id === 'latest' ? -1 : message_id;
+      await setChatMessage({ data: variables }, message_id, { refresh: 'none' });
+      return;
     case 'chat':
       (chat_metadata as { variables: Object }).variables = variables;
       await saveMetadata();
+      break;
+    case 'character':
+      await replaceCharacterScriptVariables(variables);
       break;
     case 'global':
       extension_settings.variables.global = variables;
@@ -98,7 +133,8 @@ type VariablesUpdater =
  *
  * @param updater 用于更新变量表的函数. 它应该接收变量表作为参数, 并返回更新后的变量表.
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 对聊天变量表 (`'chat'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @returns 更新后的变量表
  *
@@ -112,9 +148,9 @@ type VariablesUpdater =
  */
 export async function updateVariablesWith(
   updater: VariablesUpdater,
-  { type = 'chat' }: VariableOption = {},
+  { type = 'chat', message_id = 'latest' }: VariableOption = {},
 ): Promise<Record<string, any>> {
-  let variables = await getVariables({ type });
+  let variables = getVariables({ type, message_id });
   variables = await updater(variables);
   console.info(`对${type === 'chat' ? `聊天` : `全局`}变量表进行更新`);
   replaceVariables(variables, { type });
@@ -128,7 +164,8 @@ export async function updateVariablesWith(
  *   - 如果变量不存在, 则新增该变量
  *   - 如果变量已经存在, 则修改该变量的值
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 聊天变量或全局变量, 默认为聊天变量 'chat'
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @example
  * // 执行前变量: `{爱城华恋: {好感度: 5}}`
@@ -137,9 +174,9 @@ export async function updateVariablesWith(
  */
 export async function insertOrAssignVariables(
   variables: Record<string, any>,
-  { type = 'chat' }: VariableOption = {},
+  { type = 'chat', message_id = 'latest' }: VariableOption = {},
 ): Promise<void> {
-  await updateVariablesWith(old_variables => _.merge(old_variables, variables), { type });
+  await updateVariablesWith(old_variables => _.merge(old_variables, variables), { type, message_id });
 }
 
 /**
@@ -149,7 +186,8 @@ export async function insertOrAssignVariables(
  *   - 如果变量不存在, 则新增该变量
  *   - 如果变量已经存在, 则什么也不做
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 聊天变量或全局变量, 默认为聊天变量 'chat'
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @example
  * // 执行前变量: `{爱城华恋: {好感度: 5}}`
@@ -158,9 +196,9 @@ export async function insertOrAssignVariables(
  */
 export async function insertVariables(
   variables: Record<string, any>,
-  { type = 'chat' }: VariableOption = {},
+  { type = 'chat', message_id = 'latest' }: VariableOption = {},
 ): Promise<void> {
-  await updateVariablesWith(old_variables => _.defaultsDeep(old_variables, variables), { type });
+  await updateVariablesWith(old_variables => _.defaultsDeep(old_variables, variables), { type, message_id });
 }
 
 /**
@@ -170,7 +208,8 @@ export async function insertVariables(
  *   - 如果变量不存在, 则什么也不做
  *   - 如果变量已经存在, 则删除该变量
  * @param option 可选选项
- *   - `type?:'chat'|'global'`: 聊天变量或全局变量, 默认为聊天变量 'chat'
+ *   - `type?:number|'chat'|'character'|'global'`: 对某一楼层的聊天变量 (`message`)、聊天变量表 (`'chat'`)、角色卡变量 (`'character'`) 或全局变量表 (`'global'`) 进行操作, 默认为 `'chat'`
+ *   - `message_id?:number|'latest'`: 当 `type` 为 `'message'` 时, 该参数指定要获取的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
  *
  * @returns 是否成功删除变量
  *
@@ -181,7 +220,7 @@ export async function insertVariables(
  */
 export async function deleteVariable(
   variable_path: string,
-  { type = 'chat' }: VariableOption = {},
+  { type = 'chat', message_id = 'latest' }: VariableOption = {},
 ): Promise<boolean> {
   let result: boolean = false;
   await updateVariablesWith(
@@ -189,7 +228,7 @@ export async function deleteVariable(
       result = _.unset(old_variables, variable_path);
       return old_variables;
     },
-    { type },
+    { type, message_id },
   );
   return result;
 }
