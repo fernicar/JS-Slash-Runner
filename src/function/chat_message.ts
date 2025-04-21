@@ -39,7 +39,7 @@ interface GetChatMessagesOption {
 function string_to_range(input: string, min: number, max: number) {
   let start, end;
 
-  if (input.match(/^(-\d+)$/)) {
+  if (input.match(/^(-?\d+)$/)) {
     const value = Number(input);
     start = end = value < 0 ? max + value + 1 : value;
   } else {
