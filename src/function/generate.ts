@@ -50,6 +50,7 @@ import {
 import { Prompt, PromptCollection } from '@sillytavern/scripts/PromptManager';
 import { Stopwatch, getBase64Async } from '@sillytavern/scripts/utils';
 import { getWorldInfoPrompt, wi_anchor_position, world_info_include_names } from '@sillytavern/scripts/world-info';
+import { t } from '@sillytavern/scripts/i18n';
 
 interface GenerateConfig {
   /** 用户输入 */
@@ -1392,7 +1393,6 @@ async function handleResponse(response: any) {
   }
   if (response.error) {
     if (response?.response) {
-      // @ts-ignore
       toastr.error(response.response, t`API Error`, {
         preventDuplicates: true,
       });

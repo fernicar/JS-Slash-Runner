@@ -292,7 +292,6 @@ export async function updateTavernHelper() {
   });
   if (!response.ok) {
     const text = await response.text();
-    // @ts-ignore
     toastr.error(text || response.statusText, t`更新酒馆助手失败`, { timeOut: 5000 });
     console.error(`更新酒馆助手失败: ${text}`);
     return false;
@@ -302,9 +301,9 @@ export async function updateTavernHelper() {
   if (data.isUpToDate) {
     console.info(`酒馆助手已是最新版本, 无需更新`);
   } else {
-    // @ts-ignore
-    toastr.success(t`成功更新酒馆助手为 ${data.shortCommitHash}`, t`请刷新页面`);
-    console.info(`成功更新酒馆助手为  ${data.shortCommitHash}, 请刷新页面`);
+    toastr.success(t`成功更新酒馆助手为 ${data.shortCommitHash}, 准备刷新页面以生效...`);
+    console.info(`成功更新酒馆助手为  ${data.shortCommitHash}, 准备刷新页面以生效...`);
+    setTimeout(() => location.reload(), 3000);
   }
   return true;
 }
