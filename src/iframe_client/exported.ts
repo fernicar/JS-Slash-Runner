@@ -1,5 +1,5 @@
 /**
- * 酒馆提供给插件的稳定接口, 具体内容见于 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js#L76
+ * 酒馆提供给插件的稳定接口, 具体内容见于 酒馆文件夹/public/scripts/st-context 或 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js
  * 你也可以在酒馆页面按 f12, 在控制台中输入 `window.SillyTavern.getContext()` 来查看当前酒馆所提供的接口
  */
 const SillyTavern = (
@@ -13,9 +13,7 @@ const SillyTavern = (
  * 你也可以在酒馆页面按 f12, 在控制台中输入 `window.TavernHelper` 来查看当前酒馆助手所提供的接口
  * TODO: 怎么导出 TavernHelper 的类型声明
  */
-const TavernHelper = (
-  window.parent as unknown as { TavernHelper: Record<string, any> }
-).TavernHelper;
+const TavernHelper = (window.parent as unknown as { TavernHelper: Record<string, any> }).TavernHelper;
 
 for (const key in TavernHelper) {
   (window as any)[key] = TavernHelper[key];
