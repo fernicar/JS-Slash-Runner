@@ -4,7 +4,7 @@ import {
   getSettingValue,
   saveSettingValue,
 } from '@/util/extension_variables';
-import { reloadCurrentChat, saveChatConditional } from '@sillytavern/script';
+import { characters, reloadCurrentChat, saveChatConditional } from '@sillytavern/script';
 
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 
