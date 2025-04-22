@@ -845,10 +845,10 @@ export class ScriptRepository {
       callGenericPopup(htmlText, POPUP_TYPE.DISPLAY, undefined, { wide: true });
     });
     scriptHtml.find('.add-script').on('click', async () => {
-      let target = 'global';
+      let target: ScriptType = ScriptType.GLOBAL;
       const template = $(await renderExtensionTemplateAsync(`${templatePath}`, 'script_import_target'));
-      template.find('#script-import-target-global').on('input', () => (target = 'global'));
-      template.find('#script-import-target-scoped').on('input', () => (target = 'scoped'));
+      template.find('#script-import-target-global').on('input', () => (target = ScriptType.GLOBAL));
+      template.find('#script-import-target-scoped').on('input', () => (target = ScriptType.CHARACTER));
       const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
         okButton: '确认',
         cancelButton: '取消',
@@ -856,27 +856,8 @@ export class ScriptRepository {
       if (!result) {
         return;
       }
-      const convertedScript = new Script({
-        id: script.id,
-        name: script.name,
-        content: script.content,
-        info: script.info,
-        enabled: script.enabled,
-      });
 
-      const type = target === 'global' ? ScriptType.GLOBAL : ScriptType.CHARACTER;
-      // 检查是否已存在相同id的脚本
-      const existingScript = this.getScriptById(convertedScript.id);
-      if (existingScript) {
-        const confirm = await callGenericPopup(`脚本 ${existingScript.name} 已存在，是否要覆盖？`, POPUP_TYPE.CONFIRM);
-        if (!confirm) {
-          return;
-        } else {
-          await this.saveScript(convertedScript, type);
-        }
-      } else {
-        await this.addScript(convertedScript, type);
-      }
+      await this.confirmAndImport(script, target);
     });
     return scriptHtml;
   }
@@ -953,45 +934,7 @@ export class ScriptRepository {
       if (!script.name) {
         throw new Error('[Script] 未提供脚本名称。');
       }
-
-      const newScript = new Script(script);
-
-      if (!newScript.id) {
-        newScript.id = uuidv4();
-      }
-      newScript.enabled = false;
-
-      // 检查是否已存在相同ID的脚本
-      const existingScript = this.getScriptById(newScript.id);
-      if (existingScript) {
-        const confirm = await callGenericPopup(
-          `脚本 ${existingScript.name} 已存在，是否要覆盖？`,
-          POPUP_TYPE.CONFIRM,
-          '',
-          {
-            okButton: '确认',
-            cancelButton: '取消',
-          },
-        );
-        if (!confirm) {
-          return;
-        }
-
-        const scriptType = this.globalScripts.find(s => s.id === existingScript.id)
-          ? ScriptType.GLOBAL
-          : ScriptType.CHARACTER;
-
-        $(`#${existingScript.id}`).remove();
-
-        if (existingScript.enabled) {
-          await this.cancelRunScript(existingScript, scriptType, false);
-          this.removeButton(existingScript);
-        }
-      }
-
-      await this.saveScript(newScript, type);
-      await this.renderScript(newScript, type);
-      toastr.success(`脚本 "${newScript.name}" 导入成功。`);
+      await this.confirmAndImport(script, type);
     } catch (error) {
       console.error(error);
       toastr.error('无效的JSON文件。');
@@ -1133,13 +1076,76 @@ export class ScriptRepository {
       this.removeButton(script);
     }
   }
+
+  async confirmAndImport(script: Script, type: ScriptType): Promise<void> {
+    script = new Script({ ...script, enabled: false });
+
+    let action: 'new' | 'override' | 'cancel' = 'new';
+
+    const existing_script = this.getScriptById(script.id);
+    if (existing_script) {
+      const input = await callGenericPopup(
+        `要导入的脚本 '${script.name}' 与脚本库中的 '${existing_script.name}' id 相同，是否要导入？`,
+        POPUP_TYPE.TEXT,
+        '',
+        {
+          okButton: '覆盖原脚本',
+          cancelButton: '取消',
+          customButtons: ['新建脚本'],
+        },
+      );
+
+      switch (input) {
+        case 0:
+          action = 'cancel';
+          break;
+        case 1:
+          action = 'override';
+          break;
+        case 2:
+          action = 'new';
+          break;
+      }
+    }
+
+    switch (action) {
+      case 'new':
+        if (existing_script) {
+          script.id = uuidv4();
+        }
+        break;
+      case 'override':
+        {
+          if (!existing_script) {
+            return;
+          }
+
+          $(`#${existing_script.id}`).remove();
+
+          if (existing_script.enabled) {
+            await this.cancelRunScript(existing_script, this.getType(existing_script), false);
+            this.removeButton(existing_script);
+          }
+        }
+        break;
+      case 'cancel':
+        return;
+    }
+
+    await this.saveScript(script, type);
+    await this.renderScript(script, type);
+    toastr.success(`脚本 '${script.name}' 导入成功。`);
+  }
+
+  getType(script: Script) {
+    return this.globalScripts.some(s => script.id === s.id) ? ScriptType.GLOBAL : ScriptType.CHARACTER;
+  }
 }
 
 /**
  * 从脚本允许列表中删除角色
  * @param param0
  */
-
 export async function purgeEmbeddedScripts({ character }: { character: any }) {
   const avatar = character?.character?.avatar;
   const charactersWithScripts = getSettingValue('script.characters_with_scripts');
