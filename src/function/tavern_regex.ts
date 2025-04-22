@@ -181,9 +181,6 @@ export async function replaceTavernRegexes(
     paritioned.map(fromTavernRegex),
   );
 
-  if (this_chid === undefined) {
-    throw new Error('当前没有选中角色，无法获取角色正则');
-  }
   // @ts-ignore
   const character = characters[this_chid];
   if (scope === 'all' || scope === 'global') {
