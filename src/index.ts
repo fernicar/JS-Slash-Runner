@@ -3,6 +3,7 @@ import { initListener } from '@/component/listener';
 import { initExtensionMainPanel } from '@/component/main';
 import { defaultIframeSettings, initIframePanel } from '@/component/message_iframe';
 import { initReference } from '@/component/reference';
+import { initScriptRepository } from '@/component/script_repository/index';
 import { defaultScriptSettings } from '@/component/script_repository/script_repository';
 import { initTavernHelperObject } from '@/function';
 import { initAudioSlashCommands } from '@/slash_command/audio';
@@ -12,13 +13,18 @@ import {
   getCurrentVersion,
   handleUpdateButton,
   runCheckWithPath,
-  VERSION_FILE_PATH,
   showNewFeature,
+  VERSION_FILE_PATH,
 } from '@/util/check_update';
 import { Collapsible } from '@/util/collapsible';
-import { extensionFolderPath, extensionName, extensionSettingName } from '@/util/extension_variables';
-
-import { saveSettings } from '@sillytavern/script';
+import {
+  app_ready,
+  extensionFolderPath,
+  extensionName,
+  extensionSettingName,
+  setAppReady,
+} from '@/util/extension_variables';
+import { event_types, eventSource, saveSettings } from '@sillytavern/script';
 import { extension_settings, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 
 const defaultSettings = {
@@ -33,6 +39,8 @@ const defaultSettings = {
     ...defaultAudioSettings,
   },
 };
+
+const templatePath = `${extensionFolderPath}/src/component`;
 
 /**
  * 设置页面切换
@@ -83,6 +91,21 @@ function handleSettingPageChange(event: JQuery.ClickEvent) {
   }
 }
 
+/**界面统一加载 */
+async function initExtensionPanel() {
+  const getContainer = () => $('#extensions_settings');
+  const windowHtml = await renderExtensionTemplateAsync(`${extensionFolderPath}`, 'index');
+  getContainer().append(windowHtml);
+  const $script_container = $(await renderExtensionTemplateAsync(`${templatePath}/script_repository`, 'index'));
+  $('#script-settings-content').append($script_container);
+  const $iframe_container = $(await renderExtensionTemplateAsync(`${templatePath}/message_iframe`, 'index'));
+  $('#render-settings-content').append($iframe_container);
+  const $audio_container = $(await renderExtensionTemplateAsync(`${templatePath}/audio`, 'index'));
+  $('#audio-settings-content').append($audio_container);
+  const $reference_container = $(await renderExtensionTemplateAsync(`${templatePath}/reference`, 'index'));
+  $('#extension-reference').append($reference_container);
+}
+
 /**
  * 版本控制
  */
@@ -100,9 +123,7 @@ async function handleVersionUpdate() {
  * 初始化扩展面板
  */
 jQuery(async () => {
-  const getContainer = () => $('#extensions_settings');
-  const windowHtml = await renderExtensionTemplateAsync(`${extensionFolderPath}`, 'index');
-  getContainer().append(windowHtml);
+  await initExtensionPanel();
   //@ts-ignore
   if (!extension_settings[extensionSettingName]) {
     _.set(extension_settings, extensionSettingName, defaultSettings);
@@ -127,15 +148,20 @@ jQuery(async () => {
   $('#script-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
   $('#audio-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
 
-  initExtensionMainPanel();
-  handleVersionUpdate();
-  initAudioComponents();
-  initAudioSlashCommands();
-  initSlashEventEmit();
-  initIframePanel();
-  initReference();
-  initListener();
-
+  if (!app_ready) {
+    eventSource.once(event_types.APP_READY, async () => {
+      initExtensionMainPanel();
+      await handleVersionUpdate();
+      await initAudioComponents();
+      initAudioSlashCommands();
+      initSlashEventEmit();
+      await initScriptRepository();
+      await initIframePanel();
+      await initReference();
+      await initListener();
+      setAppReady();
+    });
+  }
   // 通用Collapsible折叠功能
   Collapsible.initAll('.collapsible', {
     headerSelector: 'div:first-child',

@@ -72,9 +72,6 @@ function formatSlashCommands(): string {
 }
 
 export async function initReference() {
-  const $reference_container = $(await renderExtensionTemplateAsync(`${templatePath}`, 'index'));
-  $('#extension-reference').append($reference_container);
-
   $('#download_slash_commands').on('click', function () {
     const url = URL.createObjectURL(new Blob([formatSlashCommands()], { type: 'text/plain' }));
     $(this).attr('href', url);

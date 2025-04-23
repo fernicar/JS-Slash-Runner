@@ -15,7 +15,8 @@
       },
       "disableNetworkCache": true,
       "internalConsoleOptions": "openOnSessionStart",
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
     }
   ]
 }

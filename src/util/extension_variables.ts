@@ -1,6 +1,14 @@
 // TODO: 为设置变量添加类型而非使用 any
-import { characters, getThumbnailUrl, saveSettingsDebounced, this_chid, user_avatar } from '@sillytavern/script';
+import {
+  characters,
+  getThumbnailUrl,
+  saveSettingsDebounced,
+  this_chid,
+  user_avatar,
+} from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+
+export let app_ready = false;
 
 export const extensionName = 'JS-Slash-Runner';
 export const extensionSettingName = 'TavernHelper';
@@ -56,4 +64,11 @@ export async function getOrSaveSettingValue(path: string, default_value: any): P
     return getSettingValue(path);
   }
   return await saveSettingValue(path, default_value);
+}
+
+/**
+ * 初次加载时设置app_ready为true
+ */
+export function setAppReady() {
+    app_ready = true;
 }

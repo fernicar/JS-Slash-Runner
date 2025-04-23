@@ -16,7 +16,7 @@ import {
   viewport_adjust_script,
 } from '@/component/message_iframe';
 import { destroyCharacterLevelOnExtension, initializeCharacterLevelOnExtension } from '@/component/script_iframe';
-import { destroyScriptRepositoryOnExtension, initializeScriptRepositoryOnExtension } from '@/component/script_repository/index';
+import { destroyScriptRepositoryOnExtension, buildScriptRepositoryOnExtension } from '@/component/script_repository/index';
 import { iframe_client } from '@/iframe_client/index';
 import { handleIframe } from '@/iframe_server/index';
 import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from '@/iframe_server/variables';
@@ -84,7 +84,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     registerAllMacros();
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
-    initializeScriptRepositoryOnExtension();
+    buildScriptRepositoryOnExtension();
 
     // 重新注入前端卡优化的样式和设置
     if (userAction && getSettingValue('render.rendering_optimize')) {

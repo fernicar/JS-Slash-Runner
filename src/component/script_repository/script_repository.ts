@@ -40,9 +40,6 @@ const defaultScriptTemplate = $(
   }),
 );
 
-let isGlobalScriptEnabled: boolean;
-let isScopedScriptEnabled: boolean;
-
 class Script {
   id: string;
   name: string;
@@ -74,9 +71,18 @@ export class ScriptRepository {
   private static instance: ScriptRepository;
   private globalScripts: Script[] = [];
   private characterScripts: Script[] = [];
+  private _isGlobalScriptEnabled: boolean = false;
+  private _isScopedScriptEnabled: boolean = false;
 
   private constructor() {
     this.loadScripts();
+  }
+
+  public get isGlobalScriptEnabled(): boolean {
+    return this._isGlobalScriptEnabled;
+  }
+  public get isScopedScriptEnabled(): boolean {
+    return this._isScopedScriptEnabled;
   }
 
   public static getInstance(): ScriptRepository {
@@ -95,7 +101,7 @@ export class ScriptRepository {
   /**
    * 脚本库原始数据
    */
-  async loadScripts() {
+  loadScripts() {
     this.globalScripts = getSettingValue('script.scriptsRepository') || [];
     // @ts-ignore
     this.characterScripts = characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
@@ -139,14 +145,15 @@ export class ScriptRepository {
 
     const charactersWithScripts = getSettingValue('script.characters_with_scripts');
     //@ts-ignore
-    isScopedScriptEnabled = charactersWithScripts?.includes(characters?.[this_chid]?.avatar) || false;
+    this._isGlobalScriptEnabled = getSettingValue('script.global_script_enabled') ?? false;
+    this._isScopedScriptEnabled = charactersWithScripts?.includes(characters?.[this_chid]?.avatar) || false;
     // @ts-ignore
     const scopedScriptArray = characters[this_chid]?.data?.extensions?.TavernHelper_scripts ?? [];
-    if (scopedScriptArray.length > 0) {
-      this.handleScriptToggle(ScriptType.CHARACTER, isScopedScriptEnabled, false);
+    if (scopedScriptArray.length > 0 && this._isScopedScriptEnabled !== undefined) {
+      this.handleScriptToggle(ScriptType.CHARACTER, this._isScopedScriptEnabled, false);
     }
     $('#scoped-script-enable-toggle')
-      .prop('checked', isScopedScriptEnabled)
+      .prop('checked', this._isScopedScriptEnabled)
       .on('click', (event: JQuery.ClickEvent) =>
         this.handleScriptToggle(ScriptType.CHARACTER, event.target.checked, true),
       );
@@ -183,10 +190,10 @@ export class ScriptRepository {
       toastr.error('[Script] 酒馆助手未启用，无法运行脚本');
       return;
     }
-    if (type === ScriptType.GLOBAL && !isGlobalScriptEnabled) {
+    if (type === ScriptType.GLOBAL && !this._isGlobalScriptEnabled) {
       return;
     }
-    if (type === ScriptType.CHARACTER && !isScopedScriptEnabled) {
+    if (type === ScriptType.CHARACTER && !this._isScopedScriptEnabled) {
       return;
     }
 
@@ -235,10 +242,10 @@ export class ScriptRepository {
       }
     }
 
-    if (type === ScriptType.GLOBAL && !isGlobalScriptEnabled) {
+    if (type === ScriptType.GLOBAL && !this._isGlobalScriptEnabled) {
       return;
     }
-    if (type === ScriptType.CHARACTER && !isScopedScriptEnabled) {
+    if (type === ScriptType.CHARACTER && !this._isScopedScriptEnabled) {
       return;
     }
 
@@ -726,10 +733,24 @@ export class ScriptRepository {
         if (targetType === ScriptType.GLOBAL) {
           await this.saveGlobalScripts(targetArray);
           await this.renderScript(script, targetType);
+          if (this._isGlobalScriptEnabled) {
+            await this.runScript(script, targetType, false);
+            this.addButton(script);
+          } else {
+            await this.cancelRunScript(script, targetType, false);
+            this.removeButton(script);
+          }
           console.info(`[Script] 移动脚本["${script.name}"]到全局仓库`);
         } else {
           await this.saveCharacterScripts(targetArray);
           await this.renderScript(script, targetType);
+          if (this._isScopedScriptEnabled) {
+            await this.runScript(script, targetType, false);
+            this.addButton(script);
+          } else {
+            await this.cancelRunScript(script, targetType, false);
+            this.removeButton(script);
+          }
           console.info(`[Script] 移动脚本["${script.name}"]到局部仓库`);
         }
       } else {
@@ -886,7 +907,7 @@ export class ScriptRepository {
       if (userInput) {
         await saveSettingValue('script.global_script_enabled', enable);
       }
-      isGlobalScriptEnabled = enable;
+      this._isGlobalScriptEnabled = enable;
       if (enable) {
         this.runScriptsByType(ScriptType.GLOBAL);
         this.addButtonsByType(ScriptType.GLOBAL);
@@ -1023,7 +1044,9 @@ export class ScriptRepository {
    * @param script 脚本
    */
   addButton(script: Script) {
-    if (!script.enabled) {
+    const type = this.getType(script);
+    const isEnable = type === ScriptType.GLOBAL ? this._isGlobalScriptEnabled : this._isScopedScriptEnabled;
+    if (!script.enabled || !isEnable) {
       return;
     }
 

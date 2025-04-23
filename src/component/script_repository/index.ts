@@ -1,43 +1,37 @@
 import {
+  purgeEmbeddedScripts,
   ScriptRepository,
   ScriptType,
   templatePath,
-  purgeEmbeddedScripts,
 } from '@/component/script_repository/script_repository';
-import { getSettingValue } from '@/util/extension_variables';
 
 import { event_types, eventSource } from '@sillytavern/script';
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
-import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
+import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 
 const load_events = [event_types.CHAT_CHANGED] as const;
 const delete_events = [event_types.CHARACTER_DELETED] as const;
-let app_ready = false;
+
 let scriptRepo: ScriptRepository;
 
 let qrBarObserver: MutationObserver | null = null;
 let qrBarDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * 初始化脚本库
+ * 初始化脚本库界面
  */
 export async function initScriptRepository() {
-  const $script_container = $(await renderExtensionTemplateAsync(`${templatePath}`, 'index'));
-  $('#script-settings-content').append($script_container);
-
-  scriptRepo = ScriptRepository.getInstance();
-  await scriptRepo.loadScriptLibrary();
-  scriptRepo.initButtonContainer();
-  MutationObserverQrBarCreated();
-
-  const isGlobalScriptEnabled = getSettingValue('script.global_script_enabled');
-
-  scriptRepo.handleScriptToggle(ScriptType.GLOBAL, isGlobalScriptEnabled, false);
+  scriptRepo.handleScriptToggle(ScriptType.GLOBAL, scriptRepo.isGlobalScriptEnabled, false);
 
   $('#global-script-enable-toggle')
-    .prop('checked', isGlobalScriptEnabled)
+    .prop('checked', scriptRepo.isGlobalScriptEnabled)
     .on('click', (event: JQuery.ClickEvent) =>
       scriptRepo.handleScriptToggle(ScriptType.GLOBAL, event.target.checked, true),
+    );
+  $('#scoped-script-enable-toggle')
+    .prop('checked', scriptRepo.isScopedScriptEnabled)
+    .on('click', (event: JQuery.ClickEvent) =>
+      scriptRepo.handleScriptToggle(ScriptType.CHARACTER, event.target.checked, true),
     );
 
   $('#open-global-script-editor').on('click', () => scriptRepo.openScriptEditor(ScriptType.GLOBAL, undefined));
@@ -77,6 +71,16 @@ export async function initScriptRepository() {
 
   // 修复和正则同时存在white-space:nowrap时布局出错的问题
   $('#extensions_settings').css('min-width', '0');
+}
+
+/**
+ * 构建脚本库
+ */
+export async function buildScriptRepository() {
+  scriptRepo = ScriptRepository.getInstance();
+  await scriptRepo.loadScriptLibrary();
+  scriptRepo.initButtonContainer();
+  MutationObserverQrBarCreated();
 }
 
 /**刷新脚本库 */
@@ -141,9 +145,9 @@ function removeMutationObserverQrBarCreated() {
 }
 
 /**
- * 初始化脚本库
+ * 扩展开启时构建脚本库
  */
-export function initializeScriptRepositoryOnExtension() {
+export async function buildScriptRepositoryOnExtension() {
   const register_events = () => {
     load_events.forEach(eventType => {
       eventSource.makeFirst(eventType, refreshScriptRepository);
@@ -153,18 +157,12 @@ export function initializeScriptRepositoryOnExtension() {
     });
   };
 
-  if (!app_ready) {
-    eventSource.once(event_types.APP_READY, () => {
-      app_ready = true;
-      initScriptRepository();
-    });
-  } else {
-    register_events();
-  }
+  await buildScriptRepository();
+  register_events();
 }
 
 /**
- * 销毁脚本库
+ * 扩展关闭时销毁脚本库
  */
 export function destroyScriptRepositoryOnExtension() {
   load_events.forEach(eventType => {

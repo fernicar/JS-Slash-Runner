@@ -1150,8 +1150,6 @@ function addRenderQuickButton() {
  * 初始化iframe控制面板
  */
 export async function initIframePanel() {
-  const $iframe_container = $(await renderExtensionTemplateAsync(`${templatePath}`, 'index'));
-  $('#render-settings-content').append($iframe_container);
 
   // 处理重型前端卡渲染优化
   isRenderingOptimizeEnabled = getSettingValue('render.render_optimize');

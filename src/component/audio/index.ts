@@ -944,11 +944,6 @@ function initAudioStyles(type: 'bgm' | 'ambient') {
  * 初始化所有音频相关组件和事件监听器
  */
 export async function initAudioComponents() {
-  const $audio_container = $(
-    await renderExtensionTemplateAsync(`${templatePath}`, 'index'),
-  );
-  $('#audio-player-content').append($audio_container);
-
   isAudioEnabled = getSettingValue('audio.audio_enabled');
   handleAudioToggle(isAudioEnabled, false);
   $('#audio-enable-toggle')
