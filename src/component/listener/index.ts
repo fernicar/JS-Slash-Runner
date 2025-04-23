@@ -9,7 +9,7 @@ import { characters, reloadCurrentChat, saveChatConditional, this_chid } from '@
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 
 import { io } from 'socket.io-client';
-import { ScriptRepository, ScriptType } from '../script_repository';
+import { ScriptRepository, ScriptType } from '../script_repository/script_repository';
 
 const templatePath = `${extensionFolderPath}/src/component/listener`;
 const default_settings = {

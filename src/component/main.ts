@@ -16,7 +16,7 @@ import {
   viewport_adjust_script,
 } from '@/component/message_iframe';
 import { destroyCharacterLevelOnExtension, initializeCharacterLevelOnExtension } from '@/component/script_iframe';
-import { ScriptRepository, ScriptType, purgeEmbeddedScripts } from '@/component/script_repository/index';
+import { destroyScriptRepositoryOnExtension, initializeScriptRepositoryOnExtension } from '@/component/script_repository/index';
 import { iframe_client } from '@/iframe_client/index';
 import { handleIframe } from '@/iframe_server/index';
 import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from '@/iframe_server/variables';
@@ -25,31 +25,13 @@ import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
-export let scriptRepo: ScriptRepository;
 
-let qrBarObserver: MutationObserver | null = null;
-let qrBarDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const handleChatChanged = async () => {
-  await scriptRepo.checkEmbeddedScripts();
-
-  //await clearAllScriptsIframe();
-  //scriptRepo.removeButtonsByType(ScriptType.GLOBAL);
-  scriptRepo.cancelRunScriptsByType(ScriptType.CHARACTER);
-  scriptRepo.removeButtonsByType(ScriptType.CHARACTER);
-
-  await scriptRepo.loadScriptLibrary();
-  await scriptRepo.runScriptsByType(ScriptType.CHARACTER);
-  scriptRepo.addButtonsByType(ScriptType.CHARACTER);
-
   await renderAllIframes();
   if (getSettingValue('render.rendering_optimize')) {
     addCodeToggleButtonsToAllMessages();
   }
-};
-
-const handleCharacterDeleted = (character: Object) => {
-  purgeEmbeddedScripts({ character });
 };
 
 const handlePartialRender = (mesId: string) => {
@@ -71,46 +53,6 @@ const handleVariableUpdated = (mesId: string) => {
   shouldUpdateVariables(mesIdNumber);
 };
 
-/**
- * 监听#qr--bar的元素移除
- */
-function MutationObserverQrBarCreated() {
-  qrBarObserver = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-      if (mutation.type === 'childList') {
-        if (qrBarDebounceTimer) {
-          clearTimeout(qrBarDebounceTimer);
-          qrBarDebounceTimer = null;
-        }
-
-        qrBarDebounceTimer = setTimeout(() => {
-          scriptRepo.initButtonContainer();
-          qrBarDebounceTimer = null;
-        }, 1000);
-      }
-    });
-  });
-
-  qrBarObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
-}
-
-/**
- * 取消监听#qr--bar
- */
-function removeMutationObserverQrBarCreated() {
-  if (qrBarObserver) {
-    qrBarObserver.disconnect();
-    qrBarObserver = null;
-  }
-
-  if (qrBarDebounceTimer) {
-    clearTimeout(qrBarDebounceTimer);
-    qrBarDebounceTimer = null;
-  }
-}
 
 /**
  * 初始化扩展主设置界面
@@ -142,14 +84,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     registerAllMacros();
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
-
-    MutationObserverQrBarCreated();
-    scriptRepo = ScriptRepository.getInstance();
-    if (userAction) {
-      await scriptRepo.loadScriptLibrary();
-    }
-    await scriptRepo.runScriptsByType(ScriptType.GLOBAL);
-    scriptRepo.addButtonsByType(ScriptType.GLOBAL);
+    initializeScriptRepositoryOnExtension();
 
     // 重新注入前端卡优化的样式和设置
     if (userAction && getSettingValue('render.rendering_optimize')) {
@@ -159,7 +94,6 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     window.addEventListener('message', handleIframe);
 
     eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
-    eventSource.on(event_types.CHARACTER_DELETED, handleCharacterDeleted);
 
     partialRenderEvents.forEach(eventType => {
       eventSource.on(eventType, handlePartialRender);
@@ -176,13 +110,6 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     // 指示器样式
     $('#extension-status-icon').css('color', 'red').next().text('扩展已禁用');
 
-    removeMutationObserverQrBarCreated();
-    await scriptRepo.cancelRunScriptsByType(ScriptType.GLOBAL);
-    await scriptRepo.cancelRunScriptsByType(ScriptType.CHARACTER);
-    scriptRepo.removeButtonsByType(ScriptType.GLOBAL);
-    scriptRepo.removeButtonsByType(ScriptType.CHARACTER);
-    ScriptRepository.destroyInstance();
-
     script_url.delete('iframe_client');
     script_url.delete('viewport_adjust_script');
     script_url.delete('tampermonkey_script');
@@ -190,6 +117,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     unregisterAllMacros();
     destroyMacroOnExtension();
     destroyCharacterLevelOnExtension();
+    destroyScriptRepositoryOnExtension();
 
     if (getSettingValue('render.rendering_optimize')) {
       removeRenderingOptimizeSettings();
@@ -198,7 +126,6 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     window.removeEventListener('message', handleIframe);
 
     eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
-    eventSource.removeListener(event_types.CHARACTER_DELETED, handleCharacterDeleted);
 
     partialRenderEvents.forEach(eventType => {
       eventSource.removeListener(eventType, handlePartialRender);

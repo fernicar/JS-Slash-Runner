@@ -1,9 +1,9 @@
 import { defaultAudioSettings, initAudioComponents } from '@/component/audio';
 import { initListener } from '@/component/listener';
-import { initExtensionMainPanel, scriptRepo } from '@/component/main';
+import { initExtensionMainPanel } from '@/component/main';
 import { defaultIframeSettings, initIframePanel } from '@/component/message_iframe';
 import { initReference } from '@/component/reference';
-import { defaultScriptSettings, initScriptRepository } from '@/component/script_repository';
+import { defaultScriptSettings } from '@/component/script_repository/script_repository';
 import { initTavernHelperObject } from '@/function';
 import { initAudioSlashCommands } from '@/slash_command/audio';
 import { initSlashEventEmit } from '@/slash_command/event';
@@ -129,7 +129,6 @@ jQuery(async () => {
 
   initExtensionMainPanel();
   handleVersionUpdate();
-  initScriptRepository(scriptRepo);
   initAudioComponents();
   initAudioSlashCommands();
   initSlashEventEmit();

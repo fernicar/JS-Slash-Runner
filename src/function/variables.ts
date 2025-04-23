@@ -1,4 +1,4 @@
-import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository';
+import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository/script_repository';
 import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { getChatMessages, setChatMessage } from './chat_message';
