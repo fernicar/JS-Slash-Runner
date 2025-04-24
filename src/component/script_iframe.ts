@@ -1,6 +1,6 @@
+import { getCharacterRegexes, getGlobalRegexes, isCharacterTavernRegexEnabled } from '@/function/tavern_regex';
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
-import { getCharacterRegexes, getGlobalRegexes, isCharacterTavernRegexEnabled } from '@/function/tavern_regex';
 
 import { event_types, eventSource } from '@sillytavern/script';
 import { RegexScriptData } from '@sillytavern/scripts/char-data';
@@ -11,7 +11,7 @@ interface Script {
 }
 
 function loadScripts(): Script[] {
-  const prefix = '脚本-'
+  const prefix = '脚本-';
   const filterScriptFromRegex = (script: RegexScriptData) =>
     script.scriptName.replace(/^【.*】/, '').startsWith(prefix);
   const isEnabled = (script: RegexScriptData) => !script.disabled;
@@ -26,7 +26,7 @@ function loadScripts(): Script[] {
     .filter(filterScriptFromRegex)
     .filter(isEnabled)
     .filter(script => (isCharacterTavernRegexEnabled() ? true : script.runOnEdit));
-    scripts.push(...enabled_character_regexes);
+  scripts.push(...enabled_character_regexes);
 
   const to_script = (script: RegexScriptData) => ({ name: toName(script), code: script.replaceString });
   return scripts.map(to_script);
@@ -99,24 +99,12 @@ async function initialize(): Promise<void> {
 }
 
 const load_events = [event_types.CHAT_CHANGED] as const;
-let app_ready = false;
 
 export function initializeCharacterLevelOnExtension() {
-  const register_events = () => {
-    load_events.forEach(eventType => {
-      eventSource.makeFirst(eventType, initialize);
-    });
-  };
-
-  if (!app_ready) {
-    eventSource.once(event_types.APP_READY, () => {
-      app_ready = true;
-      initialize();
-      register_events();
-    });
-  } else {
-    register_events();
-  }
+  initialize();
+  load_events.forEach(eventType => {
+    eventSource.makeFirst(eventType, initialize);
+  });
 }
 
 export function destroyCharacterLevelOnExtension() {
