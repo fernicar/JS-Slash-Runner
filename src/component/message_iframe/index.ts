@@ -1,15 +1,15 @@
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
 import {
+  extensionFolderPath,
   getCharAvatarPath,
   getSettingValue,
   getUserAvatarPath,
   saveSettingValue,
-  extensionFolderPath,
 } from '@/util/extension_variables';
 
 import { eventSource, event_types, reloadCurrentChat, updateMessageBlock } from '@sillytavern/script';
-import { getContext, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
+import { getContext } from '@sillytavern/scripts/extensions';
 
 let isExtensionEnabled: boolean;
 let tampermonkeyMessageListener: ((event: MessageEvent) => void) | null = null;
@@ -285,7 +285,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
       continue;
     }
 
-    let iframeCounter = 1; 
+    let iframeCounter = 1;
 
     $codeElements.each(function () {
       let extractedText = extractTextFromCode(this);
@@ -939,6 +939,9 @@ export function injectCodeBlockHideStyles() {
     .code-toggle-button:hover {
       background-color: rgba(0, 0, 0, 0.2);
     }
+    .popup:has(#qr--modalEditor) .popup-content > #qr--modalEditor > #qr--main > .qr--modal-messageContainer > #qr--modal-messageHolder > #qr--modal-message {
+      color: var(--SmartThemeEmColor) !important;
+    }
   `;
 }
 
@@ -1150,7 +1153,6 @@ function addRenderQuickButton() {
  * 初始化iframe控制面板
  */
 export async function initIframePanel() {
-
   // 处理重型前端卡渲染优化
   isRenderingOptimizeEnabled = getSettingValue('render.render_optimize');
   if (isRenderingOptimizeEnabled) {
@@ -1164,7 +1166,8 @@ export async function initIframePanel() {
   renderDepth = getSettingValue('render.render_depth');
   $('#render-depth')
     .val(renderDepth || defaultIframeSettings.render_depth)
-    .on('input', function (event) {
+    .on('blur', function (event) {
+      // 当输入框失去焦点时，确保值被保存
       onDepthInput((event.target as HTMLInputElement).value);
     });
 

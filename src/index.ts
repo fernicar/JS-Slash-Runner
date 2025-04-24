@@ -18,11 +18,9 @@ import {
 } from '@/util/check_update';
 import { Collapsible } from '@/util/collapsible';
 import {
-  app_ready,
   extensionFolderPath,
   extensionName,
-  extensionSettingName,
-  setAppReady,
+  extensionSettingName
 } from '@/util/extension_variables';
 import { event_types, eventSource, saveSettings } from '@sillytavern/script';
 import { extension_settings, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
@@ -148,20 +146,18 @@ jQuery(async () => {
   $('#script-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
   $('#audio-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
 
-  if (!app_ready) {
-    eventSource.once(event_types.APP_READY, async () => {
-      initExtensionMainPanel();
-      await handleVersionUpdate();
-      await initAudioComponents();
-      initAudioSlashCommands();
-      initSlashEventEmit();
-      await initScriptRepository();
-      await initIframePanel();
-      await initReference();
-      await initListener();
-      setAppReady();
-    });
-  }
+  eventSource.once(event_types.APP_READY, async () => {
+    initExtensionMainPanel();
+    await handleVersionUpdate();
+    await initAudioComponents();
+    initAudioSlashCommands();
+    initSlashEventEmit();
+    await initScriptRepository();
+    await initIframePanel();
+    await initReference();
+    await initListener();
+  });
+
   // 通用Collapsible折叠功能
   Collapsible.initAll('.collapsible', {
     headerSelector: 'div:first-child',

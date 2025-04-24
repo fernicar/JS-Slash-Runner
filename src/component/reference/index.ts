@@ -1,13 +1,8 @@
-import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import {
   SlashCommandArgument,
   SlashCommandNamedArgument,
 } from '@sillytavern/scripts/slash-commands/SlashCommandArgument';
 import { SlashCommandParser } from '@sillytavern/scripts/slash-commands/SlashCommandParser';
-
-import { extensionFolderPath } from '@/util/extension_variables';
-
-const templatePath = `${extensionFolderPath}/src/component/reference`;
 
 function formatSlashCommands(): string {
   const cmdList = Object.keys(SlashCommandParser.commands)
