@@ -1,12 +1,6 @@
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
-import {
-  extensionFolderPath,
-  getCharAvatarPath,
-  getSettingValue,
-  getUserAvatarPath,
-  saveSettingValue,
-} from '@/util/extension_variables';
+import { getCharAvatarPath, getSettingValue, getUserAvatarPath, saveSettingValue } from '@/util/extension_variables';
 
 import { eventSource, event_types, reloadCurrentChat, updateMessageBlock } from '@sillytavern/script';
 import { getContext } from '@sillytavern/scripts/extensions';
@@ -17,8 +11,6 @@ let isRenderEnabled: boolean;
 let isRenderingOptimizeEnabled: boolean;
 let renderDepth: number;
 let isTampermonkeyEnabled: boolean;
-
-const templatePath = `${extensionFolderPath}/src/component/message_iframe`;
 
 // 保存原始高亮方法
 const originalHighlightElement = hljs.highlightElement;
@@ -47,7 +39,7 @@ export const partialRenderEvents = [
 export const defaultIframeSettings = {
   render_enabled: true,
   tampermonkey_compatibility: false,
-  render_depth: 3,
+  render_depth: 0,
   render_optimize: false,
 };
 
@@ -234,7 +226,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
   }
   const context = getContext();
   const totalMessages = context.chat.length;
-  const processDepth = renderDepth || 0;
+  const processDepth = renderDepth ?? 0;
   const depthLimit = processDepth > 0 ? processDepth : totalMessages;
   const depthLimitedMessageIds = [...Array(totalMessages).keys()].slice(-depthLimit);
 
@@ -1165,9 +1157,8 @@ export async function initIframePanel() {
   // 处理处理深度设置
   renderDepth = getSettingValue('render.render_depth');
   $('#render-depth')
-    .val(renderDepth || defaultIframeSettings.render_depth)
+    .val(renderDepth ?? defaultIframeSettings.render_depth)
     .on('blur', function (event) {
-      // 当输入框失去焦点时，确保值被保存
       onDepthInput((event.target as HTMLInputElement).value);
     });
 
