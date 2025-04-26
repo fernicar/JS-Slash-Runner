@@ -107,7 +107,7 @@ const SillyTavern: {
     type: number,
     inputValue?: string,
     popupOptions?: any,
-  ) => Promise<string>;
+  ) => Promise<number|string|boolean|undefined>;
   readonly showLoader: () => void;
   readonly hideLoader: () => Promise<any>;
   readonly mainApi: any;
