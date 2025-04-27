@@ -52,16 +52,15 @@ interface GenerateRawConfig {
   image?: File | string;
 
   /**
-     * 是否启用流式传输; 默认为 `false`.
-
-     *
-     * 若启用流式传输, 每次得到流式传输结果时, 函数将会发送事件:
-     * - `ifraem_events.STREAM_TOKEN_RECEIVED_FULLY`: 监听它可以得到流式传输的当前完整文本 ("这是", "这是一条", "这是一条流式传输")
-     * - `iframe_events.STREAM_TOKEN_RECEIVED_INCREMENTALLY`: 监听它可以得到流式传输的当前增量文本 ("这是", "一条", "流式传输")
-     *
-     * @example
-     * eventOn(iframe_events.STREAM_TOKEN_RECEIVED_FULLY, text => console.info(text));
-     */
+   * 是否启用流式传输; 默认为 `false`.
+   *
+   * 若启用流式传输, 每次得到流式传输结果时, 函数将会发送事件:
+   * - `ifraem_events.STREAM_TOKEN_RECEIVED_FULLY`: 监听它可以得到流式传输的当前完整文本 ("这是", "这是一条", "这是一条流式传输")
+   * - `iframe_events.STREAM_TOKEN_RECEIVED_INCREMENTALLY`: 监听它可以得到流式传输的当前增量文本 ("这是", "一条", "流式传输")
+   *
+   * @example
+   * eventOn(iframe_events.STREAM_TOKEN_RECEIVED_FULLY, text => console.info(text));
+   */
   should_stream?: boolean;
 
   /**
@@ -171,8 +170,30 @@ type BuiltinPrompt =
  *   - `injects?:InjectionPrompt[]`: 要额外注入的提示词
  *   - `max_chat_history?:'all'|number`: 最多使用多少条聊天历史
  * @returns 生成的最终文本
+ *
+ * @example
+ * // 流式生成
+ * const result = await generate({ user_input: '你好', should_stream: true });
+ *
+ * @example
+ * // 图片输入
+ * const result = await generate({ user_input: '你好', image: 'https://example.com/image.jpg' });
+ *
+ * @example
+ * // 注入、覆盖提示词
+ * const result = await generate({
+ *   user_input: '你好',
+ *   injects: [{ role: 'system', content: '思维链...', position: 'in_chat', depth: 0, should_scan: true, }]
+ *   overrides: {
+ *     char_personality: '温柔',
+ *     world_info_before: '',
+ *     chat_history: {
+ *       prompts: [],
+ *     }
+ *   }
+ * });
  */
-function generate(config: GenerateConfig): Promise<string>;
+async function generate(config: GenerateConfig): Promise<string>;
 
 /**
  * 不使用酒馆当前启用的预设, 让 ai 生成一段文本.
@@ -192,5 +213,17 @@ function generate(config: GenerateConfig): Promise<string>;
  *   - `max_chat_history?:'all'|number`: 最多使用多少条聊天历史
  *   - `ordered_prompts?:(BuiltinPrompt|RolePrompt)[]`: 一个提示词数组, 数组元素将会按顺序发给 ai, 因而相当于自定义预设
  * @returns 生成的最终文本
+ *
+ * @example
+ * // 自定义内置提示词顺序, 未在 ordered_prompts 中给出的将不会被使用
+ * const result = await generateRaw({
+ *   user_input: '你好',
+ *   ordered_prompts: [
+ *     'char_description',
+ *     { role: 'system', content: '系统提示' },
+ *     'chat_history',
+ *     'user_input',
+ *   ]
+ * })
  */
-function generateRaw(config: GenerateRawConfig): Promise<string>;
+async function generateRaw(config: GenerateRawConfig): Promise<string>;

@@ -101,10 +101,6 @@ function fromTavernRegex(tavern_regex: TavernRegex): RegexScriptData {
   };
 }
 
-/**
- * 判断局部正则是否启用
- * @returns 布尔值
- */
 export function isCharacterTavernRegexesEnabled(): boolean {
   const result = isCharacterTavernRegexEnabled();
 
@@ -117,15 +113,6 @@ interface GetTavernRegexesOption {
   enable_state?: 'all' | 'enabled' | 'disabled'; // 按是否被开启筛选正则
 }
 
-/**
- * 获取酒馆正则
- *
- * @param option 可选选项
- *   - `scope?:'all'|'global'|'character'`:         // 按所在区域筛选酒馆正则; 默认为 `'all'`
- *   - `enable_state?:'all'|'enabled'|'disabled'`:  // 按是否被开启筛选酒馆正则; 默认为 `'all'`
- *
- * @returns 一个数组, 数组的元素是酒馆正则 `TavernRegex`. 该数组依据正则作用于文本的顺序排序, 也就是酒馆显示正则的地方从上到下排列.
- */
 export function getTavernRegexes({ scope = 'all', enable_state = 'all' }: GetTavernRegexesOption = {}): TavernRegex[] {
   if (!['all', 'enabled', 'disabled'].includes(enable_state)) {
     throw Error(`提供的 enable_state 无效, 请提供 'all', 'enabled' 或 'disabled', 你提供的是: ${enable_state}`);
@@ -152,18 +139,6 @@ interface ReplaceTavernRegexesOption {
   scope?: 'all' | 'global' | 'character'; // 要替换的酒馆正则部分
 }
 
-/**
- * 完全替换酒馆正则为 `regexes`.
- * - **这是一个很慢的操作!** 尽量对正则做完所有事后再一次性 replaceTavernRegexes.
- * - **为了重新应用正则, 它会重新载入整个聊天消息**, 将会触发 `tavern_events.CHAT_CHANGED` 进而重新加载全局脚本和楼层消息.
- *     这意味着如果你在全局脚本中运行本函数, 则该函数之后的内容将不会被执行.
- *
- * 之所以提供这么直接的函数, 是因为你可能需要调换正则顺序等.
- *
- * @param regexes 要用于替换的酒馆正则
- * @param option 可选选项
- *   - scope?: 'all' | 'global' | 'character';  // 要替换的酒馆正则部分; 默认为 'all'
- */
 export async function replaceTavernRegexes(
   regexes: TavernRegex[],
   { scope = 'all' }: ReplaceTavernRegexesOption,
@@ -209,26 +184,6 @@ type TavernRegexUpdater =
   | ((regexes: TavernRegex[]) => TavernRegex[])
   | ((regexes: TavernRegex[]) => Promise<TavernRegex[]>);
 
-/**
- * 用 `updater` 函数更新酒馆正则
- *
- * @param updater 用于更新酒馆正则的函数. 它应该接收酒馆正则作为参数, 并返回更新后的酒馆正则.
- * @param option 可选选项
- *   - scope?: 'all' | 'global' | 'character';  // 要替换的酒馆正则部分; 默认为 'all'
- *
- * @returns 更新后的酒馆正则
- *
- * @example
- * // 开启所有名字里带 "舞台少女" 的正则
- * await updateTavernRegexesWith(regexes => {
- *   regexes.forEach(regex => {
- *     if (regex.script_name.includes('舞台少女')) {
- *       regex.enabled = true;
- *     }
- *   });
- *   return regexes;
- * });
- */
 export async function updateTavernRegexesWith(
   updater: TavernRegexUpdater,
   option: ReplaceTavernRegexesOption = {},

@@ -14,13 +14,17 @@ interface FormatAsDisplayedMessageOption {
  *   - `message_id?:number`: 消息所在的楼层, 要求该楼层已经存在, 即在 `[0, await getLastMessageId()]` 范围内; 默认为最新楼层
  *
  * @returns 处理结果
+ *
+ * @example
+ * const text = formatAsDisplayedMessage("{{char}} speaks in {{lastMessageId}}");
+ * => "<p>少女歌剧 speaks in 5</p>";
  */
 function formatAsDisplayedMessage(text: string, { message_id }?: FormatAsDisplayedMessageOption): string;
 
 /**
  * 获取消息楼层号对应的消息内容 JQuery
  *
- * 相比于一个实用函数, 这更像是一个告诉你可以这样用 JQuery 的示例
+ * 相比于一个实用函数, 这更像是一个告诉你可以用 JQuery 的示例
  *
  * @param message_id 要获取的消息楼层号, 必须要酒馆页面显示了该消息楼层才能获取到
  * @returns 如果能获取到该消息楼层的 html, 则返回对应的 JQuery; 否则返回空 JQuery

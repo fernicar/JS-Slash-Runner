@@ -54,44 +54,18 @@ interface GetLorebookEntriesOption {
 }
 
 /**
- * 获取世界书中的条目信息. **请务必阅读示例**.
+ * 获取世界书中的条目信息
  *
  * @param lorebook 世界书名称
- * @param option 可选选项
- *   - `filter:'none'|LorebookEntry的一个子集`: 按照指定字段值筛选条目, 要求对应字段值包含制定的内容; 默认为不进行筛选.
- *                                       如 `{content: '神乐光'}` 表示内容中必须有 `'神乐光'`, `{type: 'selective'}` 表示仅获取绿灯条目.
- *                                       由于实现限制, 只能做到这样的简单筛选; 如果需要更复杂的筛选, 请获取所有条目然后自己筛选.
  *
- * @returns 一个数组, 元素是各条目信息.
+ * @returns 一个数组, 元素是各条目信息
+ *
+ * @example
+ * // 获取世界书中所有条目的所有信息
+ * const entries = await getLorebookEntries("eramgt少女歌剧");
+ *
+ * @example
+ * // 按内容筛选, content 中必须出现 `'神乐光'`
+ * const entries = await getLorebookEntries("eramgt少女歌剧", {filter: {content: '神乐光'}});
  */
-function getLorebookEntries(lorebook: string, { filter }?: GetLorebookEntriesOption): Promise<LorebookEntry[]>;
-
-/**
- * 将条目信息修改回对应的世界书中, 如果某个字段不存在, 则该字段采用原来的值.
- *
- * 这只是修改信息, 不能创建新的条目, 因此要求条目必须已经在世界书中.
- *
- * @param lorebook 条目所在的世界书名称
- * @param entries 一个数组, 元素是各条目信息. 其中必须有 "uid", 而其他字段可选.
- */
-function setLorebookEntries(lorebook: string, entries: LorebookEntry[]): Promise<void>;
-
-/**
- * 向世界书中新增一个条目
- *
- * @param lorebook 世界书名称
- * @param field_values 要对新条目设置的字段值, 如果不设置则采用酒馆给的默认值. **不能设置 `uid`**.
- *
- * @returns 新条目的 uid
- */
-function createLorebookEntry(lorebook: string, field_values: Partial<LorebookEntry>): Promise<number>;
-
-/**
- * 删除世界书中的某个条目
- *
- * @param lorebook 世界书名称
- * @param uid 要删除的条目 uid
- *
- * @returns 是否成功删除, 可能因世界书不存在、对应条目不存在等原因失败
- */
-function deleteLorebookEntry(lorebook: string, lorebook_uid: number): Promise<boolean>;
+async function getLorebookEntries(lorebook: string): Promise<LorebookEntry[]>;

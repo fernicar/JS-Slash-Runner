@@ -60,7 +60,7 @@ function getVariables({ type, message_id }?: VariableOption): Record<string, any
  * _.unset(variables, "神乐光.好感度");
  * await replaceVariables(variables);
  */
-function replaceVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
+async function replaceVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
 
 type VariablesUpdater =
   | ((variables: Record<string, any>) => Record<string, any>)
@@ -84,7 +84,7 @@ type VariablesUpdater =
  * // 更新 "爱城华恋.好感度" 为原来的 2 倍, 如果该变量不存在则设置为 0
  * await updateVariablesWith(variables => _.update(variables, "爱城华恋.好感度", value => value ? value * 2 : 0));
  */
-function updateVariablesWith(
+async function updateVariablesWith(
   updater: VariablesUpdater,
   { type, message_id }?: VariableOption,
 ): Promise<Record<string, any>>;
@@ -104,7 +104,10 @@ function updateVariablesWith(
  * await insertOrAssignVariables({爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}});
  * // 执行后变量: `{爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}}`
  */
-function insertOrAssignVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
+async function insertOrAssignVariables(
+  variables: Record<string, any>,
+  { type, message_id }?: VariableOption,
+): Promise<void>;
 
 /**
  * 插入新变量, 如果变量已经存在则什么也不做
@@ -121,7 +124,7 @@ function insertOrAssignVariables(variables: Record<string, any>, { type, message
  * await insertVariables({爱城华恋: {好感度: 10}, 神乐光: {好感度: 5, 认知度: 0}});
  * // 执行后变量: `{爱城华恋: {好感度: 5}, 神乐光: {好感度: 5, 认知度: 0}}`
  */
-function insertVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
+async function insertVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
 
 /**
  * 删除变量, 如果变量不存在则什么也不做
@@ -140,4 +143,4 @@ function insertVariables(variables: Record<string, any>, { type, message_id }?: 
  * await deleteVariable("爱城华恋.好感度");
  * // 执行后变量: `{爱城华恋: {}}`
  */
-function deleteVariable(variable_path: string, { type, message_id }?: VariableOption): Promise<boolean>;
+async function deleteVariable(variable_path: string, { type, message_id }?: VariableOption): Promise<boolean>;

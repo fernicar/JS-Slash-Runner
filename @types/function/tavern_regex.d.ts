@@ -22,7 +22,6 @@ interface TavernRegex {
 
 /**
  * 判断局部正则是否启用
- * @returns 布尔值
  */
 function isCharacterTavernRegexesEnabled(): boolean;
 

@@ -31,6 +31,15 @@ interface GetChatMessagesOption {
  *   - `hide_state:'all'|'hidden'|'unhidden'`: 按是否被隐藏筛选消息; 默认为 `'all'`
  *
  * @returns 一个数组, 数组的元素是每楼的消息 `ChatMessage`. 该数组依据按 message_id 从低到高排序.
+ *
+ * @exmaple
+ * // 仅获取第 10 楼会被 ai 使用的消息页
+ * const messages = getChatMessages(10);
+ * const messages = getChatMessages("10");
+ *
+ * @example
+ * // 获取所有楼层的所有消息页
+ * const messages = getChatMessages("0-{{lastMessageId}}");
  */
 function getChatMessages(range: string | number, { role, hide_state }?: GetChatMessagesOption): ChatMessage[];
 
@@ -44,6 +53,7 @@ interface SetChatMessageOption {
    * 要替换的消息页 (`'current'` 来替换当前使用的消息页, 或从 0 开始的序号来替换对应消息页), 如果消息中还没有该消息页, 则会创建该页; 默认为 `'current'`
    */
   swipe_id?: 'current' | number;
+
   /**
    * 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`
    * - `'none'`: 不更新页面的显示和 iframe 渲染
@@ -64,9 +74,14 @@ interface SetChatMessageOption {
  * @param option 可选选项:
  *   - `swipe_id?:'current'|number`: 要替换的消息页 (`'current'` 来替换当前使用的消息页, 或从 0 开始的序号来替换对应消息页), 如果消息中还没有该消息页, 则会创建该页; 默认为 `'current'`
  *   - `refresh?:'none'|'display_current'|'display_and_render_current'|'all'`: 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`
+ *
+ * @example
+ * await setChatMessage("设置楼层 5 当前消息页的文本", 5);
+ * await setChatMessage("设置楼层 5 第 3 页的文本, 更新为显示它并渲染其中的 iframe", 5, {swipe_id: 3});
+ * await setChatMessage("设置楼层 5 第 3 页的文本, 但不更新显示它", 5, {swipe_id: 3, refresh: 'none'});
  */
-function setChatMessage(
-  field_values: ChatMessageToSet,
+async function setChatMessage(
+  message: string,
   message_id: number,
   { swipe_id, refresh }?: SetChatMessageOption,
 ): Promise<void>;

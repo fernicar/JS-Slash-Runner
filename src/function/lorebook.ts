@@ -195,17 +195,11 @@ function assignPartialLorebookSettings(settings: Partial<LorebookSettings>): voi
     });
 }
 
-
 interface GetCharLorebooksOption {
   name?: string;
   type?: 'all' | 'primary' | 'additional';
 }
 
-/**
- * 获取当前的世界书全局设置
- *
- * @returns 当前的世界书全局设置
- */
 export function getLorebookSettings(): LorebookSettings {
   const lorebook_settings = toLorebookSettings(getWorldInfoSettings());
 
@@ -213,11 +207,6 @@ export function getLorebookSettings(): LorebookSettings {
   return lorebook_settings;
 }
 
-/**
- * 修改世界书全局设置
- *
- * @returns 修改世界书全局设置
- */
 export function setLorebookSettings(settings: Partial<LorebookSettings>): void {
   if (settings.selected_global_lorebooks) {
     const inexisting_lorebooks = settings.selected_global_lorebooks.filter(lorebook => !world_names.includes(lorebook));
@@ -231,21 +220,30 @@ export function setLorebookSettings(settings: Partial<LorebookSettings>): void {
   console.info(`修改世界书全局设置:\n${JSON.stringify(settings, undefined, 2)}`);
 }
 
+export function getLorebooks(): string[] {
+  console.info(`获取世界书列表: ${JSON.stringify(world_names)}`);
+  return world_names;
+}
+
+export async function deleteLorebook(lorebook: string): Promise<boolean> {
+  const success = await deleteWorldInfo(lorebook);
+
+  console.info(`移除世界书 '${lorebook}' ${success ? '成功' : '失败'}`);
+  return success;
+}
+
+export async function createLorebook(lorebook: string): Promise<boolean> {
+  const success = await createNewWorldInfo(lorebook, { interactive: false });
+
+  console.info(`新建世界书 '${lorebook}' ${success ? '成功' : '失败'}`);
+  return success;
+}
 
 interface CharLorebooks {
   primary: string | null;
   additional: string[];
 }
 
-/**
- * 获取角色卡绑定的世界书
- *
- * @param option 可选选项
- *   - `name?:string`: 要查询的角色卡名称; 默认为当前角色卡
- *   - `type?:'all'|'primary'|'additional'`: 按角色世界书的绑定类型筛选世界书; 默认为 `'all'`
- *
- * @returns 一个 CharLorebook 数组
- */
 export function getCharLorebooks({
   name = (characters as any)[this_chid as string]?.avatar ?? null,
   type = 'all',
@@ -291,13 +289,10 @@ export function getCharLorebooks({
   return books;
 }
 
-/**
- * 设置当前角色卡绑定的世界书
- *
- * @param lorebooks 要设置的世界书信息
- *    - `primary: string | null;`: 主要世界书名称，设为null或空字符串表示移除
- *    - `additional: string[];`: 附加世界书名称数组，设为空数组表示移除所有附加世界书
- */
+export function getCurrentCharPrimaryLorebook(): string | null {
+  return getCharLorebooks().primary;
+}
+
 export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>): Promise<void> {
   // @ts-ignore
   if (selected_group && !name) {
@@ -375,57 +370,6 @@ export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>)
   );
 }
 
-/**
- * 获取世界书列表
- *
- * @returns 世界书名称列表
- */
-export async function getLorebooks(): Promise<string[]> {
-  console.info(`获取世界书列表: ${JSON.stringify(world_names)}`);
-  return world_names;
-}
-
-/**
- * 删除世界书
- *
- * @param lorebook 世界书名称
- * @returns 是否成功删除, 可能因世界书不存在等原因而失败
- */
-export async function deleteLorebook(lorebook: string): Promise<boolean> {
-  const success = await deleteWorldInfo(lorebook);
-
-  console.info(`移除世界书 '${lorebook}' ${success ? '成功' : '失败'}`);
-  return success;
-}
-
-/**
- * 新建世界书
- *
- * @param lorebook 世界书名称
- *
- * @returns 是否成功创建, 如果已经存在同名世界书会失败
- */
-export async function createLorebook(lorebook: string): Promise<boolean> {
-  const success = await createNewWorldInfo(lorebook, { interactive: false });
-
-  console.info(`新建世界书 '${lorebook}' ${success ? '成功' : '失败'}`);
-  return success;
-}
-
-/**
- * 获取当前角色卡绑定的主要世界书
- *
- * @returns 如果当前角色卡有绑定并使用世界书 (地球图标呈绿色), 返回该世界书的名称; 否则返回 `null`
- */
-export async function getCurrentCharPrimaryLorebook(): Promise<string | null> {
-  return getCharLorebooks().primary;
-}
-
-/**
- * 获取或创建当前聊天绑定的世界书
- *
- * @returns 聊天世界书的名称
- */
 export async function getOrCreateChatLorebook(): Promise<string> {
   return triggerSlash('/getchatbook') as Promise<string>;
 }
