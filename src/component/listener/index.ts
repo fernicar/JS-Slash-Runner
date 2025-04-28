@@ -28,15 +28,15 @@ function reset_refresh_duration() {
 async function refresh_iframe(): Promise<void> {
   console.log(`[Listener] 已将 iframe 刷新为最新版本`);
 
-  // @ts-expect-error
-  const character = characters[this_chid];
-  if (character) {
-    await saveChatConditional();
-  }
   const script_repository = ScriptRepository.getInstance();
   await script_repository.cancelRunScriptsByType(ScriptType.GLOBAL);
   await script_repository.runScriptsByType(ScriptType.GLOBAL);
-  await reloadCurrentChat();
+  // @ts-ignore
+  const character = characters[this_chid];
+  if (character) {
+    await saveChatConditional();
+    setTimeout(reloadCurrentChat, 100);
+  }
 }
 
 function toggle_status(should_enable: boolean) {
