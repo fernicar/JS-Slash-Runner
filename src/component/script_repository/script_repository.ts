@@ -609,7 +609,7 @@ export class ScriptRepository {
   }
 
   /**
-   * 保存单个脚本到设置中，不存在则添加，存在则覆盖
+   * 保存单个脚本到设置中，不存在则添加到末尾，存在则覆盖
    * @param script 脚本
    * @param type 脚本类型
    */
@@ -621,7 +621,7 @@ export class ScriptRepository {
           characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
     const index = array.findIndex((s: Script) => s.id === script.id);
     if (index === -1) {
-      array.unshift(script);
+      array.push(script);
     } else {
       array[index] = script;
     }
