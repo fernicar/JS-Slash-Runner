@@ -404,7 +404,7 @@ export class ScriptRepository {
       const buttonId = `button-${$editorHtml.find('.button-list .button-item').length}`;
       const $buttonContent = $(`<div class="button-item" id="${buttonId}">
         <span class="drag-handle menu-handle">☰</span>
-        <input type="checkbox" id="checkbox-${buttonId}"/>
+        <input type="checkbox" id="checkbox-${buttonId}" checked/>
         <input class="text_pole" type="text" id="text-${buttonId}"/>
         <div class="delete-button menu_button interactable">
           <i class="fa-solid fa-trash"></i>
