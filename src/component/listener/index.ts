@@ -15,7 +15,7 @@ const templatePath = `${extensionFolderPath}/src/component/listener`;
 const default_settings = {
   enabled: false,
   url: 'http://localhost:6621',
-  duration: 100,
+  duration: 1000,
   enable_echo: true,
 } as const;
 
