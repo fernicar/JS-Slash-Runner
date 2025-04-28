@@ -16,6 +16,9 @@ export const DEFAULT_SCRIPT_CONFIGS: Record<string, ScriptConfig> = {
   样式加载: {
     name: '样式加载: 像酒馆主题自定义 css 一样编写角色卡 css',
   },
+  预设防误触: {
+    name: '预设防误触',
+  },
   资源预载: {
     name: '资源预载: 提前缓存角色卡的插图',
   },
