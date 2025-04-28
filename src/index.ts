@@ -17,11 +17,9 @@ import {
   VERSION_FILE_PATH,
 } from '@/util/check_update';
 import { Collapsible } from '@/util/collapsible';
-import {
-  extensionFolderPath,
-  extensionName,
-  extensionSettingName
-} from '@/util/extension_variables';
+import { extensionFolderPath, extensionName, extensionSettingName } from '@/util/extension_variables';
+import { initVariableManager } from '@/component/script_repository/variable_manager';
+
 import { event_types, eventSource, saveSettings } from '@sillytavern/script';
 import { extension_settings, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 
@@ -156,6 +154,7 @@ jQuery(async () => {
     await initIframePanel();
     await initReference();
     await initListener();
+    await initVariableManager();
   });
 
   // 通用Collapsible折叠功能
