@@ -76,12 +76,16 @@ interface SetChatMessageOption {
  *   - `refresh?:'none'|'display_current'|'display_and_render_current'|'all'`: 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`
  *
  * @example
- * await setChatMessage("设置楼层 5 当前消息页的文本", 5);
- * await setChatMessage("设置楼层 5 第 3 页的文本, 更新为显示它并渲染其中的 iframe", 5, {swipe_id: 3});
- * await setChatMessage("设置楼层 5 第 3 页的文本, 但不更新显示它", 5, {swipe_id: 3, refresh: 'none'});
+ * await setChatMessage({message: "设置楼层 5 当前消息页的文本"}, 5);
+ * await setChatMessage({message: "设置楼层 5 第 3 页的文本, 更新为显示它并渲染其中的 iframe"}, 5, {swipe_id: 3});
+ * await setChatMessage({message: "设置楼层 5 第 3 页的文本, 但不更新显示它"}, 5, {swipe_id: 3, refresh: 'none'});
+ *
+ * @example
+ * // 为最后一楼的当前消息页绑定数据
+ * await setChatMessage({data: {神乐光好感度: 5}}, -1);
  */
 async function setChatMessage(
-  message: string,
+  { message, data }?: ChatMessageToSet,
   message_id: number,
   { swipe_id, refresh }?: SetChatMessageOption,
 ): Promise<void>;

@@ -132,7 +132,7 @@ export function getTavernRegexes({ scope = 'all', enable_state = 'all' }: GetTav
     regexes = regexes.filter(regex => regex.enabled === (enable_state === 'enabled'));
   }
 
-  return regexes;
+  return structuredClone(regexes);
 }
 
 interface ReplaceTavernRegexesOption {
@@ -176,8 +176,8 @@ export async function replaceTavernRegexes(
   await reloadCurrentChat();
 
   console.info(`替换酒馆正则\
-${scope === 'all' || scope === 'global' ? `, 全局正则:\n${JSON.stringify(global_regexes, undefined, 2)}` : ``}\
-${scope === 'all' || scope === 'character' ? `, 局部正则:\n${JSON.stringify(character_regexes, undefined, 2)}` : ``}`);
+${scope === 'all' || scope === 'global' ? `, 全局正则:\n${JSON.stringify(global_regexes)}` : ``}\
+${scope === 'all' || scope === 'character' ? `, 局部正则:\n${JSON.stringify(character_regexes)}` : ``}`);
 }
 
 type TavernRegexUpdater =
@@ -186,14 +186,11 @@ type TavernRegexUpdater =
 
 export async function updateTavernRegexesWith(
   updater: TavernRegexUpdater,
-  option: ReplaceTavernRegexesOption = {},
+  { scope = 'all' }: ReplaceTavernRegexesOption = {},
 ): Promise<TavernRegex[]> {
-  const defaulted_option: Required<ReplaceTavernRegexesOption> = {
-    scope: option.scope ?? 'all',
-  } as Required<ReplaceTavernRegexesOption>;
-  let regexes = await getTavernRegexes(defaulted_option);
+  let regexes = getTavernRegexes({ scope });
   regexes = await updater(regexes);
-  console.info(`对${{ all: '全部', global: '全局', character: '局部' }[defaulted_option.scope]}变量表进行更新`);
-  await replaceTavernRegexes(regexes, defaulted_option);
+  console.info(`对${{ all: '全部', global: '全局', character: '局部' }[scope]}变量表进行更新`);
+  await replaceTavernRegexes(regexes, { scope });
   return regexes;
 }

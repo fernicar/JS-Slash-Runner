@@ -1,3 +1,30 @@
+## 3.0.5
+
+### ⏫功能
+
+世界书条目操作
+
+- 新增 `replaceLorebookEntries` 和 `updateLorebookEntriesWith` 函数, 相比于原来的 `setLorebookEntries` 等函数更方便
+
+  ```typescript
+  // 禁止所有条目递归, 保持其他设置不变
+  const entries = await getLorebookEntries("eramgt少女歌剧");
+  await replaceLorebookEntries("eramgt少女歌剧", entries.map(entry => ({ ...entry, prevent_recursion: true })));
+  ```
+
+  ```typescript
+  // 删除所有名字中包含 `神乐光` 的条目
+  const entries = await getLorebookEntries("eramgt少女歌剧");
+  _.remove(entries, entry => entry.comment.includes('神乐光'));
+  await replaceLorebookEntries("eramgt少女歌剧", entries);
+  ```
+
+- 新增 `createLorebookEntry` 和 `deleteLorebookEntry` 的数组版本: `createLorebookEntries` 和 `deleteLorebookEntries`
+
+### 🐛修复
+
+- 部分函数不兼容以前版本的问题
+
 ## 3.0.4
 
 ### 🐛修复

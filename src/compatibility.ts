@@ -4,6 +4,7 @@ import { characters, this_chid } from '@sillytavern/script';
 import { selected_group } from '@sillytavern/scripts/group-chats';
 import { getTagsList } from '@sillytavern/scripts/tags';
 import { equalsIgnoreCaseAndAccents } from '@sillytavern/scripts/utils';
+import { world_names } from '@sillytavern/scripts/world-info';
 
 // for 1.12.6
 /**
@@ -84,3 +85,18 @@ export function findChar({
 
   return matchingCharacters[0] || null;
 }
+
+/**
+ * Reloads the editor with the specified world info file
+ * @param file The file to load in the editor
+ * @param loadIfNotSelected Indicates whether to load the file even if it's not currently selected
+ */
+export function reloadEditor(file: string, load_if_not_selected: boolean = false) {
+  const current_index = Number($('#world_editor_select').val());
+  const selected_index = world_names.indexOf(file);
+  if (selected_index !== -1 && (load_if_not_selected || current_index === selected_index)) {
+    $('#world_editor_select').val(selected_index).trigger('change');
+  }
+}
+
+export const reloadEditorDebounced = _.debounce(reloadEditor, 1000);

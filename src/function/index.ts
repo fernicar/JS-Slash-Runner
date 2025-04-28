@@ -20,10 +20,14 @@ import {
   setLorebookSettings,
 } from '@/function/lorebook';
 import {
+  createLorebookEntries,
   createLorebookEntry,
+  deleteLorebookEntries,
   deleteLorebookEntry,
   getLorebookEntries,
+  replaceLorebookEntries,
   setLorebookEntries,
+  updateLorebookEntriesWith,
 } from '@/function/lorebook_entry';
 import { triggerSlash } from '@/function/slash';
 import {
@@ -79,8 +83,12 @@ function getTavernHelper() {
 
     // lorebook_entry
     getLorebookEntries,
+    replaceLorebookEntries,
+    updateLorebookEntriesWith,
     setLorebookEntries,
+    createLorebookEntries,
     createLorebookEntry,
+    deleteLorebookEntries,
     deleteLorebookEntry,
 
     // lorebook
