@@ -2,7 +2,7 @@
 
 ### ⏫功能
 
-世界书条目操作
+**世界书条目操作:**
 
 - 新增 `replaceLorebookEntries` 和 `updateLorebookEntriesWith` 函数, 相比于原来的 `setLorebookEntries` 等函数更方便
 
