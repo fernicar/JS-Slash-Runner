@@ -1,10 +1,5 @@
-/**
- * 酒馆提供给插件的稳定接口, 具体内容见于 SillyTavern/public/scripts/st-context.js 或 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js
- * 你也可以在酒馆页面按 f12, 在控制台中输入 `window.SillyTavern.getContext()` 来查看当前酒馆所提供的接口
- */
-const SillyTavern: {
-  readonly accountStorage: any;
-  readonly chat: Array<{
+namespace SillyTavern {
+  interface ChatMessage {
     message_id: number;
     name: string;
     /**
@@ -23,7 +18,16 @@ const SillyTavern: {
     swipes?: string[];
     variables?: Record<string, any>[];
     extra?: Record<string, any>;
-  }>;
+  }
+}
+
+/**
+ * 酒馆提供给插件的稳定接口, 具体内容见于 SillyTavern/public/scripts/st-context.js 或 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js
+ * 你也可以在酒馆页面按 f12, 在控制台中输入 `window.SillyTavern.getContext()` 来查看当前酒馆所提供的接口
+ */
+const SillyTavern: {
+  readonly accountStorage: any;
+  readonly chat: Array<SillyTavern.ChatMessage>;
   readonly characters: any;
   readonly groups: any;
   readonly name1: any;
