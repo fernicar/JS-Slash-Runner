@@ -1,19 +1,12 @@
 /**
  * 变量类型
  */
-export type VariableType = 'global' | 'character' | 'chat';
+export type VariableType = 'global' | 'character' | 'chat' | 'message';
 
 /**
  * 变量数据类型
  */
-export type VariableDataType =
-  | 'text'
-  | 'list' // 原始类型
-  | 'array'
-  | 'boolean'
-  | 'number'
-  | 'object'
-  | 'string';
+export type VariableDataType = 'array' | 'boolean' | 'number' | 'object' | 'string' | 'text' | 'list';
 
 /**
  * 变量项结构
