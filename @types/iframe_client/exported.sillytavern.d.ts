@@ -4,7 +4,26 @@
  */
 const SillyTavern: {
   readonly accountStorage: any;
-  readonly chat: any;
+  readonly chat: Array<{
+    message_id: number;
+    name: string;
+    /**
+     * 实际的 role 为:
+     * - 'system': extra?.type === 'narrator' && !is_user
+     * - 'user': extra?.type !== 'narrator' && is_user
+     * - 'assistant': extra?.type !== 'narrator' && !is_user
+     */
+    is_user: boolean;
+    /**
+     * 实际是表示消息是否被隐藏不会发给 llm
+     */
+    is_system: boolean;
+    mes: string;
+    swipe_id?: number;
+    swipes?: string[];
+    variables?: Record<string, any>[];
+    extra?: Record<string, any>;
+  }>;
   readonly characters: any;
   readonly groups: any;
   readonly name1: any;
@@ -107,7 +126,7 @@ const SillyTavern: {
     type: number,
     inputValue?: string,
     popupOptions?: any,
-  ) => Promise<number|string|boolean|undefined>;
+  ) => Promise<number | string | boolean | undefined>;
   readonly showLoader: () => void;
   readonly hideLoader: () => Promise<any>;
   readonly mainApi: any;
