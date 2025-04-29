@@ -626,7 +626,7 @@ export class ScriptRepository {
       array[index] = script;
     }
     if (type === ScriptType.GLOBAL) {
-      await saveSettingValue('script.scriptsRepository', array);
+      saveSettingValue('script.scriptsRepository', array);
     } else {
       await this.saveCharacterScripts(array);
     }
@@ -637,7 +637,7 @@ export class ScriptRepository {
    * @param array 脚本数组
    */
   async saveGlobalScripts(array: Script[]) {
-    await saveSettingValue('script.scriptsRepository', array);
+    saveSettingValue('script.scriptsRepository', array);
   }
 
   /**
@@ -652,7 +652,7 @@ export class ScriptRepository {
       if (!charactersWithScripts.includes(this_chid)) {
         charactersWithScripts.push(this_chid);
       }
-      await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     } else {
       toastr.error('保存失败，当前角色为空');
     }
@@ -905,7 +905,7 @@ export class ScriptRepository {
   async handleScriptToggle(type: ScriptType, enable: boolean, userInput: boolean = true) {
     if (type === ScriptType.GLOBAL) {
       if (userInput) {
-        await saveSettingValue('script.global_script_enabled', enable);
+        saveSettingValue('script.global_script_enabled', enable);
       }
       this._isGlobalScriptEnabled = enable;
       if (enable) {
@@ -934,7 +934,7 @@ export class ScriptRepository {
         this.cancelRunScriptsByType(ScriptType.CHARACTER);
         this.removeButtonsByType(ScriptType.CHARACTER);
       }
-      await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     }
   }
 
@@ -1001,7 +1001,7 @@ export class ScriptRepository {
                 });
             }
             charactersWithScripts.push(avatar);
-            await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+            saveSettingValue('script.characters_with_scripts', charactersWithScripts);
           }
         }
       }
@@ -1176,7 +1176,7 @@ export async function purgeEmbeddedScripts({ character }: { character: any }) {
     const index = charactersWithScripts.indexOf(avatar);
     if (index !== -1) {
       charactersWithScripts.splice(index, 1);
-      await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     }
   }
 }

@@ -1,11 +1,5 @@
 // TODO: 为设置变量添加类型而非使用 any
-import {
-  characters,
-  getThumbnailUrl,
-  saveSettingsDebounced,
-  this_chid,
-  user_avatar,
-} from '@sillytavern/script';
+import { characters, getThumbnailUrl, saveSettingsDebounced, this_chid, user_avatar } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
 export let app_ready = false;
@@ -44,10 +38,10 @@ export function getSettingValue(path: string, default_value: any = undefined): a
  * @param value 设置变量的值
  * @returns 设置变量的值
  */
-export async function saveSettingValue(path: string, value: any): Promise<any> {
+export function saveSettingValue<T>(path: string, value: T): T {
   // @ts-ignore
   _.set(extension_settings[extensionSettingName], path, value);
-  await saveSettingsDebounced();
+  saveSettingsDebounced();
   return value;
 }
 
@@ -58,17 +52,17 @@ export async function saveSettingValue(path: string, value: any): Promise<any> {
  * @param default_value 扩展没有该设置变量时应该设置并返回的默认值
  * @returns 设置变量的值
  */
-export async function getOrSaveSettingValue(path: string, default_value: any): Promise<any> {
+export function getOrSaveSettingValue<T>(path: string, default_value: T): T {
   // @ts-ignore
   if (_.has(extension_settings[extensionSettingName], path)) {
     return getSettingValue(path);
   }
-  return await saveSettingValue(path, default_value);
+  return saveSettingValue(path, default_value);
 }
 
 /**
  * 初次加载时设置app_ready为true
  */
 export function setAppReady() {
-    app_ready = true;
+  app_ready = true;
 }

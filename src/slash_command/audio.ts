@@ -38,7 +38,7 @@ export async function audioMode(args: { type: string; mode: string }): Promise<v
   }
 
   if (type === 'bgm') {
-    await saveSettingValue('audio.bgm_mode', mode);
+    saveSettingValue('audio.bgm_mode', mode);
     const iconMap: Record<string, string> = {
       repeat: 'fa-repeat',
       random: 'fa-random',
@@ -48,7 +48,7 @@ export async function audioMode(args: { type: string; mode: string }): Promise<v
     $('#audio_bgm_mode_icon').removeClass('fa-repeat fa-random fa-redo-alt fa-cancel');
     $('#audio_bgm_mode_icon').addClass(iconMap[mode]);
   } else if (type === 'ambient') {
-    await saveSettingValue('audio.ambient_mode', mode);
+    saveSettingValue('audio.ambient_mode', mode);
     const iconMap: Record<string, string> = {
       repeat: 'fa-repeat',
       random: 'fa-random',
@@ -169,10 +169,10 @@ export async function audioImport(args: { type: string; play?: string }, url: st
   if (play === 'true' && urlArray[0]) {
     const selectedUrl = urlArray[0];
     if (type === 'bgm') {
-      await saveSettingValue('audio.bgm_selected', selectedUrl);
+      saveSettingValue('audio.bgm_selected', selectedUrl);
       await updateAudio('bgm', true);
     } else if (type === 'ambient') {
-      await saveSettingValue('audio.ambient_selected', selectedUrl);
+      saveSettingValue('audio.ambient_selected', selectedUrl);
       await updateAudio('ambient', true);
     }
   }
@@ -200,10 +200,10 @@ export async function audioSelect(args: { type: string }, url: string): Promise<
 
   if (playlist && playlist.includes(url)) {
     if (type === 'bgm') {
-      await saveSettingValue('audio.bgm_selected', url);
+      saveSettingValue('audio.bgm_selected', url);
       await updateAudio('bgm', true);
     } else if (type === 'ambient') {
-      await saveSettingValue('audio.ambient_selected', url);
+      saveSettingValue('audio.ambient_selected', url);
       await updateAudio('ambient', true);
     }
     return '';
@@ -217,11 +217,11 @@ export async function audioSelect(args: { type: string }, url: string): Promise<
 
   if (type === 'bgm') {
     updateAudioSelect('bgm');
-    await saveSettingValue('audio.bgm_selected', url);
+    saveSettingValue('audio.bgm_selected', url);
     await updateAudio('bgm', true);
   } else if (type === 'ambient') {
     updateAudioSelect('ambient');
-    await saveSettingValue('audio.ambient_selected', url);
+    saveSettingValue('audio.ambient_selected', url);
     await updateAudio('ambient', true);
   }
 

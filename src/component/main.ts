@@ -16,7 +16,10 @@ import {
   viewport_adjust_script,
 } from '@/component/message_iframe';
 import { destroyCharacterLevelOnExtension, initializeCharacterLevelOnExtension } from '@/component/script_iframe';
-import { destroyScriptRepositoryOnExtension, buildScriptRepositoryOnExtension } from '@/component/script_repository/index';
+import {
+  buildScriptRepositoryOnExtension,
+  destroyScriptRepositoryOnExtension,
+} from '@/component/script_repository/index';
 import { iframe_client } from '@/iframe_client/index';
 import { handleIframe } from '@/iframe_server/index';
 import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from '@/iframe_server/variables';
@@ -24,8 +27,6 @@ import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
-
-
 
 const handleChatChanged = async () => {
   await renderAllIframes();
@@ -53,7 +54,6 @@ const handleVariableUpdated = (mesId: string) => {
   shouldUpdateVariables(mesIdNumber);
 };
 
-
 /**
  * 初始化扩展主设置界面
  */
@@ -71,7 +71,7 @@ export function initExtensionMainPanel() {
 
 async function handleExtensionToggle(userAction: boolean = true, enable: boolean = true) {
   if (userAction) {
-    await saveSettingValue('enabled_extension', enable);
+    saveSettingValue('enabled_extension', enable);
   }
   if (enable) {
     // 指示器样式
