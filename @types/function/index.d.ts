@@ -36,23 +36,22 @@ interface Window {
 
     // lorebook_entry
     readonly getLorebookEntries: typeof getLorebookEntries;
+    readonly replaceLorebookEntries: typeof replaceLorebookEntries;
+    readonly updatelorebookEntriesWith: typeof updateLorebookEntriesWith;
     readonly setLorebookEntries: typeof setLorebookEntries;
-    readonly createLorebookEntry: typeof createLorebookEntry;
-    readonly deleteLorebookEntry: typeof deleteLorebookEntry;
+    readonly createLorebookEntries: typeof createLorebookEntries;
+    readonly deleteLorebookEntries: typeof deleteLorebookEntries;
 
     // lorebook
     readonly getLorebookSettings: typeof getLorebookSettings;
     readonly setLorebookSettings: typeof setLorebookSettings;
-    readonly getCharLorebooks: typeof getCharLorebooks;
-    readonly setCurrentCharLorebooks: typeof setCurrentCharLorebooks;
     readonly getLorebooks: typeof getLorebooks;
     readonly deleteLorebook: typeof deleteLorebook;
     readonly createLorebook: typeof createLorebook;
+    readonly getCharLorebooks: typeof getCharLorebooks;
+    readonly setCurrentCharLorebooks: typeof setCurrentCharLorebooks;
     readonly getCurrentCharPrimaryLorebook: typeof getCurrentCharPrimaryLorebook;
     readonly getOrCreateChatLorebook: typeof getOrCreateChatLorebook;
-
-    // script_repository
-    readonly getCharacterScriptVariables: typeof getCharacterScriptVariables;
 
     // slash
     readonly triggerSlash: typeof triggerSlash;
