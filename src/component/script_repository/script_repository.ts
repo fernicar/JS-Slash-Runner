@@ -351,9 +351,9 @@ export class ScriptRepository {
     const $emptyTip =
       type === ScriptType.GLOBAL ? $(`#global-script-list`).find('small') : $(`#scoped-script-list`).find('small');
     if (type === ScriptType.GLOBAL) {
-      $('#global-script-list').prepend(scriptHtml);
+      $('#global-script-list').append(scriptHtml);
     } else {
-      $('#scoped-script-list').prepend(scriptHtml);
+      $('#scoped-script-list').append(scriptHtml);
     }
 
     if ($emptyTip.length > 0) {
