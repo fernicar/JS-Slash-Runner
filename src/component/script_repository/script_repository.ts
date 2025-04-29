@@ -144,8 +144,8 @@ export class ScriptRepository {
     const globalScriptArray = getSettingValue('script.scriptsRepository') ?? [];
 
     const charactersWithScripts = getSettingValue('script.characters_with_scripts');
-    //@ts-ignore
     this._isGlobalScriptEnabled = getSettingValue('script.global_script_enabled') ?? false;
+    //@ts-ignore
     this._isScopedScriptEnabled = charactersWithScripts?.includes(characters?.[this_chid]?.avatar) || false;
     // @ts-ignore
     const scopedScriptArray = characters[this_chid]?.data?.extensions?.TavernHelper_scripts ?? [];
