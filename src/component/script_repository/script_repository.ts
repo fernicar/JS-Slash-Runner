@@ -728,7 +728,7 @@ export class ScriptRepository {
             : // @ts-ignore
               characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
 
-        targetArray.unshift(script);
+        targetArray.push(script);
 
         if (targetType === ScriptType.GLOBAL) {
           await this.saveGlobalScripts(targetArray);
