@@ -39,6 +39,11 @@ export class VariableView {
   private onClose: (() => void) | null = null;
 
   /**
+   * 浮窗打开事件回调
+   */
+  private onOpen: (() => void) | null = null;
+
+  /**
    * 构造函数
    * @param container 变量管理器容器
    */
@@ -56,6 +61,14 @@ export class VariableView {
   }
 
   /**
+   * 设置打开回调
+   * @param callback 打开时执行的回调函数
+   */
+  public setOnOpenCallback(callback: () => void): void {
+    this.onOpen = callback;
+  }
+
+  /**
    * 初始化UI
    */
   public initUI(): void {
@@ -65,17 +78,21 @@ export class VariableView {
     this.container.find('#global-tab').addClass('active');
     this.container.find('#global-content').addClass('active');
 
+    // 为每个标签页内容区域创建变量列表元素
+    const tabContentIds = ['global-content', 'character-content', 'chat-content', 'message-content'];
+    tabContentIds.forEach(contentId => {
+      const $content = this.container.find(`#${contentId}`);
+      // 检查是否已存在变量列表
+      if ($content.find('.variable-list').length === 0) {
+        console.log(`[VariableView] 为 #${contentId} 创建变量列表元素`);
+        const $variableList = $('<div class="variable-list"></div>');
+        $content.append($variableList);
+      }
+    });
+
     // 初始化可排序功能
     this.initSortable();
-
-    // 确保有"暂无变量"提示的默认状态
-    const $variableList = this.container.find('.variable-list');
-    if ($variableList.children().length === 0) {
-      console.log('[VariableView] 初始化空状态提示');
-      const noVarsElement = $(`<div class="list-group-item text-center text-muted">没有找到变量</div>`);
-      $variableList.append(noVarsElement);
-    }
-
+    
     console.log('[VariableView] UI初始化完成');
   }
 
@@ -102,30 +119,75 @@ export class VariableView {
     // 更新UI元素中的类型标签
     this.container.find('.variable-type-label').text(`${type}变量`);
 
-    // 清空变量列表显示
-    const $variableList = this.container.find('.variable-list');
-    $variableList.empty();
+    // 获取活动标签页的内容区域
+    const activeContent = this.container.find(`#${type}-content`);
 
-    // 更新过滤信息显示
-    const filterInfoText =
-      variables.length === totalCount
-        ? `显示全部 ${totalCount} 个变量`
-        : `显示 ${variables.length}/${totalCount} 个变量`;
-    this.container.find('.filter-info').text(filterInfoText);
+    // 获取活动标签页中的变量列表
+    let $variableList = activeContent.find('.variable-list');
 
-    // 添加变量卡片到UI
-    if (variables.length > 0) {
-      console.log(`[VariableView] 添加${variables.length}个变量卡片到UI`);
-      variables.forEach(variable => {
-        const card = this.cardFactory.createCard(variable.type, variable.name, variable.value);
-        $variableList.append(card);
-      });
-    } else {
-      // 无变量时显示提示
-      console.log(`[VariableView] 变量列表为空，显示"没有找到变量"提示`);
-      const noVarsElement = $(`<div class="list-group-item text-center text-muted">没有找到变量</div>`);
-      $variableList.append(noVarsElement);
+    // 如果找不到变量列表元素，动态创建一个
+    if ($variableList.length === 0) {
+      console.log(`[VariableView] 未找到${type}标签页的变量列表，动态创建一个`);
+      const newVariableList = $('<div class="variable-list"></div>');
+      activeContent.append(newVariableList);
+      // 重新获取变量列表引用
+      $variableList = activeContent.find('.variable-list');
     }
+
+    // 创建变量名到变量对象的映射，用于快速查找
+    const variableMap = new Map(variables.map(v => [v.name, v]));
+
+    // 收集现有卡片的信息，用于判断是否需要更新或删除
+    const existingCards = new Map<string, JQuery<HTMLElement>>();
+    $variableList.find('.variable-card').each(function () {
+      const $card = $(this);
+      const cardName = $card.attr('data-name');
+      if (cardName) {
+        existingCards.set(cardName, $card);
+      }
+    });
+
+    // 如果变量列表为空，显示"没有找到变量"提示并返回
+    if (variables.length === 0) {
+      return;
+    }
+
+    // 移除所有不在当前变量列表中的卡片
+    existingCards.forEach(($card, cardName) => {
+      if (!variableMap.has(cardName)) {
+        // 检查是否是正在进行重命名的卡片（已通过data-original-name更新但data-name还未更新）
+        const originalName = $card.attr('data-original-name');
+        if (originalName !== cardName) {
+          // 这可能是正在进行重命名的卡片，检查原始名称是否在新变量列表中
+          const renamed = variables.some(v => v.name === originalName);
+          if (!renamed) {
+            console.log(`[VariableView] 移除不在当前列表中的卡片: ${cardName}`);
+            $card.remove();
+          }
+        } else {
+          console.log(`[VariableView] 移除不在当前列表中的卡片: ${cardName}`);
+          $card.remove();
+        }
+      }
+    });
+
+    // 处理每个变量：更新现有卡片或创建新卡片
+    variables.forEach(variable => {
+      // 检查是否已有同名卡片
+      if (existingCards.has(variable.name)) {
+        // 更新现有卡片
+        const $card = existingCards.get(variable.name)!;
+      } else {
+        const card = this.cardFactory.createCard(variable.type, variable.name, variable.value);
+
+        // 确保卡片有正确的data-name属性
+        card.attr('data-name', variable.name);
+        // 设置原始名称属性，用于跟踪重命名
+        card.attr('data-original-name', variable.name);
+
+        $variableList.append(card);
+      }
+    });
 
     console.log(`[VariableView] 变量卡片刷新完成`);
   }
@@ -170,10 +232,13 @@ export class VariableView {
     }
 
     // 创建新卡片
-    const newCard = this.cardFactory.createCard(dataType, 'new_variable', defaultValue);
+    const defaultName = 'new_variable';
+    const newCard = this.cardFactory.createCard(dataType, defaultName, defaultValue);
 
     // 设置初始原始名称为空，因为这是新创建的变量
     newCard.attr('data-original-name', '');
+    // 确保新卡片有默认的data-name属性
+    newCard.attr('data-name', defaultName);
 
     // 高亮卡片并滚动到可见区域
     newCard.addClass('highlight-new');
@@ -230,12 +295,23 @@ export class VariableView {
           (this.container.find('.tab-item.active').attr('id')?.replace('-tab', '') as VariableType) || 'chat';
         const newCard = this.cardFactory.createCard(dataType, name, value);
 
+        // 确保卡片有正确的data-name属性
+        newCard.attr('data-name', name);
+        // 设置原始名称属性，用于跟踪重命名
+        newCard.attr('data-original-name', name);
+
+        // 获取活动标签页内容区域
+        const activeContent = this.container.find(`#${activeType}-content`);
+
         // 获取变量列表元素
-        const variableList = this.container.find('.variable-list');
+        let variableList = activeContent.find('.variable-list');
 
-        // 移除可能存在的"没有找到变量"提示
-        variableList.find('.text-muted').remove();
-
+        // 如果找不到变量列表，创建一个
+        if (variableList.length === 0) {
+          console.log(`[VariableView] 未找到${activeType}标签页的变量列表，动态创建一个`);
+          variableList = $('<div class="variable-list"></div>');
+          activeContent.append(variableList);
+        }
         // 添加新卡片
         variableList.append(newCard);
         console.log(`[VariableView] 已创建并添加新变量卡片: ${name}`);
@@ -404,6 +480,11 @@ export class VariableView {
 
     // 显示变量管理器内容
     this.container.show();
+
+    // 调用打开回调
+    if (this.onOpen) {
+      this.onOpen();
+    }
   }
 
   /**

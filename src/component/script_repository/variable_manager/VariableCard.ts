@@ -14,12 +14,6 @@ export class VariableCardFactory {
    */
   public createCard(type: VariableDataType, name: string, value: any): JQuery<HTMLElement> {
     switch (type) {
-      case 'text':
-        // 将文本类型重定向到字符串类型
-        return this.createStringCard(name, value as string);
-      case 'list':
-        // 将列表类型重定向到数组类型
-        return this.createArrayCard(name, value as string[]);
       case 'array':
         return this.createArrayCard(name, value as any[]);
       case 'boolean':
@@ -45,7 +39,7 @@ export class VariableCardFactory {
   private createArrayCard(name: string, items: any[]): JQuery<HTMLElement> {
     // 创建基本卡片
     const card = $(`
-      <div class="variable-card" data-type="array">
+      <div class="variable-card" data-type="array" data-name="${name}">
         <div class="variable-card-header">
           <div class="variable-title-container">
             <i class="fa-solid fa-list"></i>
@@ -113,7 +107,7 @@ export class VariableCardFactory {
    */
   private createBooleanCard(name: string, value: boolean): JQuery<HTMLElement> {
     const card = $(`
-      <div class="variable-card" data-type="boolean">
+      <div class="variable-card" data-type="boolean" data-name="${name}">
         <div class="variable-card-header">
           <div class="variable-title-container">
             <i class="fa-solid fa-toggle-on"></i>
@@ -157,7 +151,7 @@ export class VariableCardFactory {
    */
   private createNumberCard(name: string, value: number): JQuery<HTMLElement> {
     const card = $(`
-      <div class="variable-card" data-type="number">
+      <div class="variable-card" data-type="number" data-name="${name}">
         <div class="variable-card-header">
           <div class="variable-title-container">
             <i class="fa-solid fa-hashtag"></i>
@@ -192,7 +186,7 @@ export class VariableCardFactory {
     const jsonString = JSON.stringify(value, null, 2);
 
     const card = $(`
-      <div class="variable-card" data-type="object">
+      <div class="variable-card" data-type="object" data-name="${name}">
         <div class="variable-card-header">
           <div class="variable-title-container">
             <i class="fa-solid fa-code"></i>
@@ -224,7 +218,7 @@ export class VariableCardFactory {
    */
   private createStringCard(name: string, value: string): JQuery<HTMLElement> {
     const card = $(`
-      <div class="variable-card" data-type="string">
+      <div class="variable-card" data-type="string" data-name="${name}">
         <div class="variable-card-header">
           <div class="variable-title-container">
             <i class="fa-solid fa-font"></i>

@@ -33,10 +33,32 @@ export class VariableSyncService {
   };
 
   /**
+   * 当前活动的变量类型
+   */
+  private activeVariableType: VariableType = 'global';
+
+  /**
    * 构造函数
    */
   constructor() {
     // 初始化同步服务
+  }
+
+  /**
+   * 设置当前活动的变量类型
+   * @param type 变量类型
+   */
+  public setActiveVariableType(type: VariableType): void {
+    console.log(`[VariableSyncService] 设置当前活动变量类型为: ${type}`);
+    this.activeVariableType = type;
+  }
+
+  /**
+   * 获取当前活动的变量类型
+   * @returns 当前活动的变量类型
+   */
+  public getActiveVariableType(): VariableType {
+    return this.activeVariableType;
   }
 
   /**
@@ -72,6 +94,14 @@ export class VariableSyncService {
    * @param value 变量值
    */
   public notifyVariableUpdate(type: VariableType, name: string, value: any): void {
+    // 检查是否与当前活动类型匹配
+    if (type !== this.activeVariableType) {
+      console.log(
+        `[VariableSyncService] 跳过通知变量更新: type=${type}, name=${name}, 因为当前活动类型为 ${this.activeVariableType}`,
+      );
+      return;
+    }
+
     console.log(
       `[VariableSyncService] 通知变量更新: type=${type}, name=${name}, 监听器数量=${this.changeListeners.length}`,
     );
@@ -88,222 +118,132 @@ export class VariableSyncService {
   }
 
   /**
-   * 注册全局变量监听
+   * 注册指定类型的变量监听
+   * @param type 变量类型
    */
-  public registerGlobalVariablesListener(): void {
-    if (this.variableTypeHandlers.global) {
+  public registerVariablesListener(type: VariableType): void {
+    if (this.variableTypeHandlers[type]) {
       // 已注册，直接返回
-      console.log(`[VariableSyncService] 全局变量监听器已注册，跳过`);
+      console.log(`[VariableSyncService] ${type}变量监听器已注册，跳过`);
       return;
     }
 
-    console.log(`[VariableSyncService] 开始注册全局变量监听器`);
+    // chat类型特殊处理（不需要初始化缓存和强制刷新）
+    if (type !== 'chat') {
+      // 同步加载当前变量并缓存
+      const currentVariables = this.getVariablesSync(type);
+      console.log(`[VariableSyncService] 初始化${type}变量缓存:`, JSON.stringify(currentVariables));
+      this.previousVariables[type] = { ...currentVariables }; // 使用深拷贝
 
-    // 同步加载当前全局变量并缓存
-    const currentVariables = this.getVariablesSync('global');
-    console.log(`[VariableSyncService] 初始化全局变量缓存:`, JSON.stringify(currentVariables));
-    this.previousVariables.global = { ...currentVariables }; // 使用深拷贝
-
-    // 立即触发一次强制刷新
-    setTimeout(() => this.handleSettingsUpdate('global', true), 100);
+      // 立即触发一次强制刷新
+      setTimeout(() => this.handleSettingsUpdate(type, true), 100);
+    }
 
     // 创建处理函数
-    const handler = () => this.handleSettingsUpdate('global');
-    this.variableTypeHandlers.global = handler;
+    const handler = () => this.handleSettingsUpdate(type);
+    this.variableTypeHandlers[type] = handler;
 
     // 注册监听
     try {
       console.log(`[VariableSyncService] 注册settings_updated事件监听`);
       eventSource.on('settings_updated', handler);
     } catch (error) {
-      console.error('注册全局变量监听失败:', error);
+      console.error(`注册${type}变量监听失败:`, error);
     }
   }
 
   /**
-   * 同步获取变量（避免异步加载带来的问题）
+   * 移除指定类型的变量监听
    * @param type 变量类型
-   * @returns 变量对象
    */
-  private getVariablesSync(type: VariableType): Record<string, any> {
-    try {
-      const variables = getVariables({ type });
-      console.log(`[VariableSyncService] 同步获取${type}变量:`, JSON.stringify(variables));
-      return variables;
-    } catch (error) {
-      console.error(`同步获取${type}变量失败:`, error);
-      return {};
+  public removeVariablesListener(type: VariableType): void {
+    if (!this.variableTypeHandlers[type]) {
+      // 未注册，直接返回
+      return;
     }
+
+    // 移除监听
+    try {
+      eventSource.removeListener('settings_updated', this.variableTypeHandlers[type]);
+      this.variableTypeHandlers[type] = null;
+    } catch (error) {
+      console.error(`移除${type}变量监听失败:`, error);
+    }
+  }
+
+  // 为了保持向后兼容，保留原来的特定类型方法，但它们现在调用通用方法
+
+  /**
+   * 注册全局变量监听
+   */
+  public registerGlobalVariablesListener(): void {
+    this.registerVariablesListener('global');
   }
 
   /**
    * 移除全局变量监听
    */
   public removeGlobalVariablesListener(): void {
-    if (!this.variableTypeHandlers.global) {
-      // 未注册，直接返回
-      return;
-    }
-
-    // 移除监听
-    try {
-      eventSource.removeListener('settings_updated', this.variableTypeHandlers.global);
-      this.variableTypeHandlers.global = null;
-    } catch (error) {
-      console.error('移除全局变量监听失败:', error);
-    }
+    this.removeVariablesListener('global');
   }
 
   /**
    * 注册角色变量监听
    */
   public registerCharacterVariablesListener(): void {
-    if (this.variableTypeHandlers.character) {
-      // 已注册，直接返回
-      console.log(`[VariableSyncService] 角色变量监听器已注册，跳过`);
-      return;
-    }
-
-    console.log(`[VariableSyncService] 开始注册角色变量监听器`);
-
-    // 同步加载当前角色变量并缓存
-    const currentVariables = this.getVariablesSync('character');
-    console.log(`[VariableSyncService] 初始化角色变量缓存:`, JSON.stringify(currentVariables));
-    this.previousVariables.character = { ...currentVariables }; // 使用深拷贝
-
-    // 立即触发一次强制刷新
-    setTimeout(() => this.handleSettingsUpdate('character', true), 100);
-
-    // 创建处理函数
-    const handler = () => this.handleSettingsUpdate('character');
-    this.variableTypeHandlers.character = handler;
-
-    // 注册监听
-    try {
-      console.log(`[VariableSyncService] 注册settings_updated事件监听`);
-      eventSource.on('settings_updated', handler);
-    } catch (error) {
-      console.error('注册角色变量监听失败:', error);
-    }
+    this.registerVariablesListener('character');
   }
 
   /**
    * 移除角色变量监听
    */
   public removeCharacterVariablesListener(): void {
-    if (!this.variableTypeHandlers.character) {
-      // 未注册，直接返回
-      return;
-    }
-
-    // 移除监听
-    try {
-      eventSource.removeListener('settings_updated', this.variableTypeHandlers.character);
-      this.variableTypeHandlers.character = null;
-    } catch (error) {
-      console.error('移除角色变量监听失败:', error);
-    }
+    this.removeVariablesListener('character');
   }
 
   /**
    * 注册聊天变量监听
    */
   public registerChatVariablesListener(): void {
-    if (this.variableTypeHandlers.chat) {
-      // 已注册，直接返回
-      console.log(`[VariableSyncService] 聊天变量监听器已注册，跳过`);
-      return;
-    }
-
-    console.log(`[VariableSyncService] 开始注册聊天变量监听器`);
-
-    // 同步加载当前聊天变量并缓存
-    const currentVariables = this.getVariablesSync('chat');
-    console.log(`[VariableSyncService] 初始化聊天变量缓存:`, JSON.stringify(currentVariables));
-    this.previousVariables.chat = { ...currentVariables }; // 使用深拷贝
-
-    // 立即触发一次强制刷新
-    setTimeout(() => this.handleSettingsUpdate('chat', true), 100);
-
-    // 创建处理函数
-    const handler = () => this.handleSettingsUpdate('chat');
-    this.variableTypeHandlers.chat = handler;
-
-    // 注册监听
-    try {
-      console.log(`[VariableSyncService] 注册settings_updated事件监听`);
-      eventSource.on('settings_updated', handler);
-    } catch (error) {
-      console.error('注册聊天变量监听失败:', error);
-    }
+    this.registerVariablesListener('chat');
   }
 
   /**
    * 移除聊天变量监听
    */
   public removeChatVariablesListener(): void {
-    if (!this.variableTypeHandlers.chat) {
-      // 未注册，直接返回
-      return;
-    }
-
-    // 移除监听
-    try {
-      eventSource.removeListener('settings_updated', this.variableTypeHandlers.chat);
-      this.variableTypeHandlers.chat = null;
-    } catch (error) {
-      console.error('移除聊天变量监听失败:', error);
-    }
+    this.removeVariablesListener('chat');
   }
 
   /**
    * 注册消息变量监听
    */
   public registerMessageVariablesListener(): void {
-    if (this.variableTypeHandlers.message) {
-      // 已注册，直接返回
-      console.log(`[VariableSyncService] 消息变量监听器已注册，跳过`);
-      return;
-    }
-
-    console.log(`[VariableSyncService] 开始注册消息变量监听器`);
-
-    // 同步加载当前消息变量并缓存
-    const currentVariables = this.getVariablesSync('message');
-    console.log(`[VariableSyncService] 初始化消息变量缓存:`, JSON.stringify(currentVariables));
-    this.previousVariables.message = { ...currentVariables }; // 使用深拷贝
-
-    // 立即触发一次强制刷新
-    setTimeout(() => this.handleSettingsUpdate('message', true), 100);
-
-    // 创建处理函数
-    const handler = () => this.handleSettingsUpdate('message');
-    this.variableTypeHandlers.message = handler;
-
-    // 注册监听
-    try {
-      console.log(`[VariableSyncService] 注册settings_updated事件监听`);
-      eventSource.on('settings_updated', handler);
-    } catch (error) {
-      console.error('注册消息变量监听失败:', error);
-    }
+    this.registerVariablesListener('message');
   }
 
   /**
    * 移除消息变量监听
    */
   public removeMessageVariablesListener(): void {
-    if (!this.variableTypeHandlers.message) {
-      // 未注册，直接返回
-      return;
-    }
+    this.removeVariablesListener('message');
+  }
 
-    // 移除监听
+  /**
+   * 同步获取变量
+   * @param type 变量类型
+   * @returns 变量对象
+   */
+  private getVariablesSync(type: VariableType): Record<string, any> {
     try {
-      eventSource.removeListener('settings_updated', this.variableTypeHandlers.message);
-      this.variableTypeHandlers.message = null;
+      if (type === 'message') {
+        return getVariables({ type: 'message', message_id: 'latest' });
+      }
+      const variables = getVariables({ type });
+      return variables;
     } catch (error) {
-      console.error('移除消息变量监听失败:', error);
+      console.error(`同步获取${type}变量失败:`, error);
+      return {};
     }
   }
 
@@ -332,23 +272,90 @@ export class VariableSyncService {
   }
 
   /**
+   * 计算两个变量集合之间的差异
+   * @param previous 之前的变量集合
+   * @param current 当前的变量集合
+   * @returns 差异映射，包含每个变量的变更类型
+   */
+  private computeVariableDiffs(
+    previous: Record<string, any>,
+    current: Record<string, any>,
+  ): Record<string, 'added' | 'changed' | 'deleted' | 'unchanged'> {
+    const diffs: Record<string, 'added' | 'changed' | 'deleted' | 'unchanged'> = {};
+
+    // 检查新增和变更
+    for (const name in current) {
+      if (!(name in previous)) {
+        diffs[name] = 'added';
+      } else if (!this.areValuesEqual(previous[name], current[name])) {
+        diffs[name] = 'changed';
+      } else {
+        diffs[name] = 'unchanged';
+      }
+    }
+
+    // 检查删除
+    for (const name in previous) {
+      if (!(name in current)) {
+        diffs[name] = 'deleted';
+      }
+    }
+
+    return diffs;
+  }
+
+  /**
+   * 处理变量差异并执行相应操作
+   * @param type 变量类型
+   * @param diffs 差异映射
+   * @param current 当前变量集合
+   */
+  private processVariableDiffs(
+    type: VariableType,
+    diffs: Record<string, 'added' | 'changed' | 'deleted' | 'unchanged'>,
+    current: Record<string, any>,
+  ): void {
+    // 处理所有变更
+    for (const [name, diffType] of Object.entries(diffs)) {
+      // 跳过未变更的变量
+      if (diffType === 'unchanged') continue;
+
+      // 获取当前值（如果是删除则为undefined）
+      const value = diffType === 'deleted' ? undefined : current[name];
+
+      // 记录详细日志
+      if (diffType === 'added') {
+        console.log(`[VariableSyncService] 新增${type}变量: ${name} =`, value);
+      } else if (diffType === 'changed') {
+        console.log(`[VariableSyncService] 变更${type}变量: ${name} =`, value);
+      } else if (diffType === 'deleted') {
+        console.log(`[VariableSyncService] 删除${type}变量: ${name}`);
+      }
+
+      // 通知变量更新
+      this.notifyVariableUpdate(type, name, value);
+
+      // 应用UI动画
+      this.addVariableAnimation(type, name, diffType as 'added' | 'changed' | 'deleted');
+    }
+  }
+
+  /**
    * 处理设置更新
    * @param variableType 可选的变量类型，如果指定则只处理该类型的变量
    * @param forceRefresh 是否强制刷新（忽略比较逻辑，直接通知所有变量）
    */
   private async handleSettingsUpdate(variableType?: VariableType, forceRefresh: boolean = false): Promise<void> {
     try {
-      console.log(
-        `[VariableSyncService] 开始处理设置更新, 变量类型:`,
-        variableType || 'all',
-        '强制刷新:',
-        forceRefresh,
-      );
-
       // 确定要处理的变量类型
-      const typesToProcess: VariableType[] = variableType
-        ? [variableType]
-        : (['global', 'character', 'chat', 'message'] as VariableType[]);
+      // 如果指定了类型，则使用指定的类型；否则只处理当前活动的类型
+      const typesToProcess: VariableType[] = variableType ? [variableType] : [this.activeVariableType];
+
+      console.log(
+        `[VariableSyncService] 处理设置更新 - 当前活动类型: ${
+          this.activeVariableType
+        }, 要处理的类型: ${typesToProcess.join(',')}`,
+      );
 
       // 获取指定类型的变量数据
       const currentVariables: Partial<Record<VariableType, Record<string, any>>> = {};
@@ -384,40 +391,11 @@ export class VariableSyncService {
             this.notifyVariableUpdate(type, name, value);
           });
         } else {
-          // 正常模式：检查变更和新增的变量
-          for (const name in current) {
-            const prevValue = previous[name];
-            const currentValue = current[name];
+          // 计算变量差异
+          const diffs = this.computeVariableDiffs(previous, current);
 
-            console.log(`[VariableSyncService] 检查${type}变量: ${name}, 之前值:`, prevValue, '当前值:', currentValue);
-
-            const areEqual = this.areValuesEqual(prevValue, currentValue);
-            console.log(`[VariableSyncService] 变量比较: ${name}, 相等=${areEqual}`);
-
-            if (prevValue === undefined) {
-              // 新增的变量
-              console.log(`[VariableSyncService] 新增${type}变量: ${name} =`, currentValue);
-              this.notifyVariableUpdate(type, name, currentValue);
-              this.addVariableAnimation(type, name, 'added');
-            } else if (!areEqual) {
-              // 变更的变量
-              console.log(`[VariableSyncService] 变更${type}变量: ${name} = `, currentValue, '(原值:', prevValue, ')');
-              this.notifyVariableUpdate(type, name, currentValue);
-              this.addVariableAnimation(type, name, 'changed');
-            } else {
-              console.log(`[VariableSyncService] ${type}变量无变化: ${name}`);
-            }
-          }
-
-          // 检查删除的变量
-          for (const name in previous) {
-            if (current[name] === undefined) {
-              // 删除的变量
-              console.log(`[VariableSyncService] 删除${type}变量: ${name}`);
-              this.notifyVariableUpdate(type, name, undefined);
-              this.addVariableAnimation(type, name, 'deleted');
-            }
-          }
+          // 处理差异
+          this.processVariableDiffs(type, diffs, current);
         }
 
         // 更新缓存
@@ -436,12 +414,8 @@ export class VariableSyncService {
    * @returns 变量对象
    */
   private async getVariables(type: VariableType): Promise<Record<string, any>> {
-    // 使用导入的getVariables函数获取变量数据
     try {
-      // VariableType（'global' | 'character' | 'chat' | 'message'）与getVariables函数的参数类型相同
-      // 所以可以直接传递
       const variables = getVariables({ type });
-      console.log(`[VariableSyncService] 获取${type}变量:`, JSON.stringify(variables));
       return variables;
     } catch (error) {
       console.error(`获取${type}变量失败:`, error);
@@ -456,9 +430,17 @@ export class VariableSyncService {
    * @param action 变量动作
    */
   private addVariableAnimation(type: VariableType, name: string, action: 'added' | 'changed' | 'deleted'): void {
+    // 检查是否与当前活动类型匹配
+    if (type !== this.activeVariableType) {
+      console.log(
+        `[VariableSyncService] 跳过为变量添加动画: type=${type}, name=${name}, 因为当前活动类型为 ${this.activeVariableType}`,
+      );
+      return;
+    }
+
     // 查找元素，并添加动画类
     try {
-      const variableSelector = `.variable-item[data-type="${type}"][data-name="${name}"]`;
+      const variableSelector = `.variable-card[data-type="${type}"][data-name="${name}"]`;
       const $variableElement = $(variableSelector);
 
       // 如果元素存在或者是删除操作，执行相应动画
@@ -523,7 +505,7 @@ export class VariableSyncService {
     const maxRetries = 3;
 
     const attemptAnimation = () => {
-      const variableSelector = `.variable-item[data-type="${type}"][data-name="${name}"]`;
+      const variableSelector = `.variable-card[data-type="${type}"][data-name="${name}"]`;
       const $variableElement = $(variableSelector);
 
       if ($variableElement.length > 0) {
@@ -556,7 +538,34 @@ export class VariableSyncService {
    * @param value 新的变量值
    */
   public handleExternalVariableChange(type: VariableType, name: string, value: any): void {
+    // 检查是否与当前活动类型匹配
+    if (type !== this.activeVariableType) {
+      console.log(
+        `[VariableSyncService] 跳过处理外部变量变更: type=${type}, name=${name}, 因为当前活动类型为 ${this.activeVariableType}`,
+      );
+      return;
+    }
+
     console.log(`[VariableSyncService] 处理外部变量变更: ${type}.${name} =`, value);
+
+    // 检查是否通过DOM属性已经反映了这个变更
+    // 特别是在变量重命名场景中
+    const variableSelector = `.variable-card[data-name="${name}"]`;
+    const $existingCard = $(variableSelector);
+
+    // 如果是删除操作，且同名卡片已经不存在，说明是重命名的删除部分，已被UI处理，跳过此次操作
+    if (value === undefined && $existingCard.length === 0) {
+      console.log(`[VariableSyncService] 跳过删除操作，因为卡片"${name}"已不存在，可能是重命名操作的一部分`);
+      return;
+    }
+
+    // 如果是添加操作，且同名卡片已存在，且有data-original-name属性与name相同，说明是重命名操作且UI已更新，跳过此次操作
+    if (value !== undefined && $existingCard.length > 0 && $existingCard.attr('data-original-name') === name) {
+      console.log(
+        `[VariableSyncService] 跳过添加操作，因为卡片"${name}"已存在且原始名称已更新，可能是重命名操作的一部分`,
+      );
+      return;
+    }
 
     // 更新缓存
     if (!this.previousVariables[type]) {
@@ -588,6 +597,14 @@ export class VariableSyncService {
    * @param newOrder 新的排序
    */
   public async applyListOrderChange(type: VariableType, name: string, newOrder: string[]): Promise<void> {
+    // 检查是否与当前活动类型匹配
+    if (type !== this.activeVariableType) {
+      console.log(
+        `[VariableSyncService] 跳过应用列表排序变更: type=${type}, name=${name}, 因为当前活动类型为 ${this.activeVariableType}`,
+      );
+      return;
+    }
+
     // 通知变量已更新
     this.notifyVariableUpdate(type, name, newOrder);
   }

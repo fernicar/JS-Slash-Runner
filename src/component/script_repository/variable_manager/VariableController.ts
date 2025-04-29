@@ -50,6 +50,9 @@ export class VariableController {
       this.removeVariableListener(type);
     });
 
+    // 设置视图打开回调
+    this.view.setOnOpenCallback(this.handleVariableManagerOpen.bind(this));
+
     // 初始化同步服务
     this.syncService.init();
 
@@ -58,6 +61,9 @@ export class VariableController {
 
     // 绑定UI事件处理
     this.bindEvents(container);
+
+    // 设置初始活动类型为global
+    this.syncService.setActiveVariableType('global');
 
     // 默认注册全局变量的事件监听
     this.registerVariableListener('global');
@@ -112,6 +118,9 @@ export class VariableController {
   public async loadVariables(type: VariableType): Promise<void> {
     console.log(`[VariableController] 开始加载${type}变量数据`);
 
+    // 更新同步服务中的当前活动类型
+    this.syncService.setActiveVariableType(type);
+
     // 先加载变量数据到模型
     await this.model.loadVariables(type);
 
@@ -131,6 +140,9 @@ export class VariableController {
    */
   public forceRefresh(): void {
     const type = this.model.getActiveVariableType();
+
+    // 确保同步服务的活动类型与模型一致
+    this.syncService.setActiveVariableType(type);
 
     // 先强制刷新同步服务的缓存
     this.syncService.forceRefreshVariables(type);
@@ -179,6 +191,8 @@ export class VariableController {
     // 如果当前已经是这个标签页，不做任何处理
     if (type === currentType) return;
 
+    console.log(`[VariableController] 标签页切换: ${currentType} -> ${type}`);
+
     // 移除所有active类
     $('.tab-item').removeClass('active');
     $('.tab-content').removeClass('active');
@@ -192,6 +206,9 @@ export class VariableController {
 
     // 注册新标签页的监听
     this.registerVariableListener(type);
+
+    // 更新同步服务中的当前活动类型
+    this.syncService.setActiveVariableType(type);
 
     // 加载对应类型的变量
     await this.loadVariables(type);
@@ -324,26 +341,42 @@ export class VariableController {
     }
 
     try {
-      // 处理变量保存
-      if (oldName && oldName !== newName) {
+      // 标记是否为重命名操作
+      const isRename = oldName && oldName !== newName;
+
+      if (isRename) {
+        // 重命名变量前先更新DOM属性，防止后续事件处理中出现重复项
+        card.attr('data-original-name', newName);
+        card.attr('data-name', newName);
+
         // 重命名变量（单个事务）
         await this.model.renameVariable(type, oldName, newName, value);
+
+        // 阻止重命名操作触发refreshVariableCards
+        // 因为DOM已经正确更新，不需要完全刷新变量列表
+        console.log(`[VariableController] 变量重命名完成: ${oldName} -> ${newName}`);
+
+        // 明确告知同步服务这是重命名操作
+        // 通知变量已更新，同时删除旧变量
+        this.syncService.notifyVariableUpdate(type, newName, value);
+        this.syncService.notifyVariableUpdate(type, oldName, undefined);
       } else {
         // 正常保存变量
         await this.model.saveVariableData(type, newName, dataType, value);
-      }
 
-      // 更新卡片属性
-      card.attr('data-original-name', newName);
+        // 更新卡片属性
+        card.attr('data-original-name', newName);
+        card.attr('data-name', newName);
+
+        // 通知变量已更新
+        this.syncService.notifyVariableUpdate(type, newName, value);
+      }
 
       // 显示保存成功
       button.html('<i class="fa-solid fa-check"></i>');
       setTimeout(() => {
         button.html('<i class="fa-regular fa-save"></i>');
       }, 1000);
-
-      // 通知变量已更新
-      this.syncService.notifyVariableUpdate(type, newName, value);
     } catch (error) {
       console.error('保存变量失败:', error);
       alert(`保存失败: ${error}`);
@@ -480,6 +513,17 @@ export class VariableController {
     if (type === this.model.getActiveVariableType()) {
       console.log(`[VariableController] 变量${name}属于当前活动类型${type}，需更新UI`);
 
+      // 检查DOM中是否已存在该变量卡片
+      const variableCard = $(`.variable-card[data-name="${name}"]`);
+      const isCardExist = variableCard.length > 0;
+
+      // 变量删除操作（value === undefined）且DOM中没有该卡片，可能是重命名操作的一部分
+      // 这种情况下应该跳过刷新，避免不必要的DOM操作
+      if (value === undefined && !isCardExist) {
+        console.log(`[VariableController] 跳过删除的变量${name}的UI刷新，因为DOM中已不存在该卡片`);
+        return;
+      }
+
       // 更新模型中的变量(确保模型数据与实际一致)
       if (value !== undefined) {
         this.model.getCurrentVariables()[name] = value;
@@ -497,5 +541,24 @@ export class VariableController {
     } else {
       console.log(`[VariableController] 变量${name}不属于当前活动类型，无需更新UI`);
     }
+  }
+
+  /**
+   * 处理变量管理器浮窗打开事件
+   * 注册当前活动标签页类型的变量监听器
+   */
+  private handleVariableManagerOpen(): void {
+    // 获取当前活动的变量类型
+    const type = this.model.getActiveVariableType();
+    console.log(`[VariableController] 变量管理器浮窗打开，注册${type}变量监听器`);
+
+    // 更新同步服务中的当前活动类型
+    this.syncService.setActiveVariableType(type);
+
+    // 注册对应类型的变量监听器
+    this.registerVariableListener(type);
+
+    // 强制刷新一次，确保变量数据是最新的
+    this.forceRefresh();
   }
 }

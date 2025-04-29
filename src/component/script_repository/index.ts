@@ -5,6 +5,7 @@ import {
   templatePath,
 } from '@/component/script_repository/script_repository';
 
+import { initVariableManager } from '@/component/script_repository/variable_manager';
 import { event_types, eventSource } from '@sillytavern/script';
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
@@ -37,7 +38,7 @@ export async function initScriptRepository() {
   $('#open-global-script-editor').on('click', () => scriptRepo.openScriptEditor(ScriptType.GLOBAL, undefined));
   $('#open-scoped-script-editor').on('click', () => scriptRepo.openScriptEditor(ScriptType.CHARACTER, undefined));
 
-  $('#scope-variable').on('click', () => scriptRepo.openVariableEditor());
+  $('#scope-variable').on('click', async () => await initVariableManager());
 
   $('#import-script-file').on('change', async function () {
     let target = 'global';

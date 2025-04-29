@@ -11,9 +11,12 @@ import { VariableView } from './VariableView';
 
 const templatePath = `${extensionFolderPath}/src/component/script_repository/variable_manager`;
 
+// 保存变量视图实例，以便外部函数可以访问
+let variableView: VariableView | null = null;
+
 /**
  * 初始化变量管理器
- * 加载模板、初始化MVC结构
+ * 加载模板、初始化MVC结构，但不显示浮窗
  */
 export async function initVariableManager() {
   // 加载CSS
@@ -24,13 +27,22 @@ export async function initVariableManager() {
 
   // 创建并初始化MVC组件
   const model = new VariableModel();
-  const view = new VariableView($variableManagerContainer);
+  variableView = new VariableView($variableManagerContainer);
   const syncService = new VariableSyncService();
-  const controller = new VariableController(model, view, syncService);
+  const controller = new VariableController(model, variableView, syncService);
 
   // 初始化控制器
   await controller.init($variableManagerContainer);
+  showVariableManager();
+}
 
-  // 使用新的浮窗方式显示变量管理器
-  view.render();
+/**
+ * 显示变量管理器浮窗
+ */
+export function showVariableManager() {
+  if (variableView) {
+    variableView.render();
+  } else {
+    console.error('[VariableManager] 变量管理器未初始化');
+  }
 }
