@@ -25,6 +25,7 @@ import { handleIframe } from '@/iframe_server/index';
 import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from '@/iframe_server/variables';
 import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
+import { initializeToastr } from '@/component/toastr';
 
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
@@ -82,6 +83,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     script_url.set('tampermonkey_script', tampermonkey_script);
 
     registerAllMacros();
+    initializeToastr();
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
     buildScriptRepositoryOnExtension();

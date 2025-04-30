@@ -18,6 +18,8 @@ for (const key in TavernHelper) {
   (window as any)[key] = TavernHelper[key];
 }
 
+const toastr = (window.parent as unknown as { toastr: any }).toastr;
+
 /**
  * 提示词模板语法插件所提供的额外功能, 具体内容见于 https://github.com/zonde306/ST-Prompt-Template
  * 你也可以在酒馆页面按 f12,在控制台中输入 `window.EjsTemplate` 来查看当前提示词模板语法所提供的接口
