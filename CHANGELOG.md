@@ -3,7 +3,9 @@
 ### ⏫功能
 
 - 导出了 `toastr` 库, 你现在可以用 `toastr.error('内容', '标题')` 而不是 `triggerSlash('/echo severity=error title=标题 内容')` 来进行酒馆提示了:
+  - `toastr.info`
   - `toastr.success`
+  - `toastr.warning`
   - `toastr.error`
 
 ## 3.0.6
