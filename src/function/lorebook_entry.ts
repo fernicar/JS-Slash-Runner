@@ -363,22 +363,25 @@ export async function updateLorebookEntriesWith(
 export async function setLorebookEntries(
   lorebook: string,
   entries: Array<Pick<LorebookEntry, 'uid'> & Partial<LorebookEntry>>,
-): Promise<void> {
-  await updateLorebookEntriesWith(lorebook, data => {
+): Promise<LorebookEntry[]> {
+  return await updateLorebookEntriesWith(lorebook, data => {
     entries.filter(entry => data[entry.uid] !== undefined).forEach(entry => _.merge(data[entry.uid], entry));
     return data;
   });
 }
 
-export async function createLorebookEntries(lorebook: string, entries: Partial<LorebookEntry>[]): Promise<number[]> {
-  const result: number[] = [];
-  await updateLorebookEntriesWith(lorebook, data => {
+export async function createLorebookEntries(
+  lorebook: string,
+  entries: Partial<LorebookEntry>[],
+): Promise<{ entries: LorebookEntry[]; new_uids: number[] }> {
+  const new_uids: number[] = [];
+  const updated_entries = await updateLorebookEntriesWith(lorebook, data => {
     const uid_set = new Set(data.map(entry => entry.uid));
     const get_free_uid = () => {
       for (let i = 0; i < MAX_UID; ++i) {
         if (!uid_set.has(i)) {
           uid_set.add(i);
-          result.push(i);
+          new_uids.push(i);
           return i;
         }
       }
@@ -388,26 +391,29 @@ export async function createLorebookEntries(lorebook: string, entries: Partial<L
     entries.forEach(entry => (entry.uid = get_free_uid()));
     return [...data, ...entries];
   });
-  return result;
+  return { entries: updated_entries, new_uids: new_uids };
 }
 
-export async function deleteLorebookEntries(lorebook: string, uids: number[]): Promise<boolean> {
-  let result: boolean = false;
-  await updateLorebookEntriesWith(lorebook, data => {
+export async function deleteLorebookEntries(
+  lorebook: string,
+  uids: number[],
+): Promise<{ entries: LorebookEntry[]; delete_occurred: boolean }> {
+  let deleted: boolean = false;
+  const updated_entires = await updateLorebookEntriesWith(lorebook, data => {
     const removed_data = _.remove(data, entry => uids.includes(entry.uid));
-    result = removed_data.length > 0;
+    deleted = removed_data.length > 0;
     return data;
   });
-  return result;
+  return { entries: updated_entires, delete_occurred: deleted };
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 /** @deprecated 请使用 `createLorebookEntries` 代替 */
 export async function createLorebookEntry(lorebook: string, field_values: Partial<LorebookEntry>): Promise<number> {
-  return (await createLorebookEntries(lorebook, [field_values]))[0];
+  return (await createLorebookEntries(lorebook, [field_values])).new_uids[0];
 }
 
 /** @deprecated 请使用 `deleteLorebookEntries` 代替 */
 export async function deleteLorebookEntry(lorebook: string, uid: number): Promise<boolean> {
-  return deleteLorebookEntries(lorebook, [uid]);
+  return (await deleteLorebookEntries(lorebook, [uid])).delete_occurred;
 }

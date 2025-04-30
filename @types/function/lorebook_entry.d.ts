@@ -113,11 +113,13 @@ async function updateLorebookEntriesWith(lorebook: string, updater: LorebookEntr
  *
  * @param lorebook 条目所在的世界书名称
  * @param entries 一个数组, 元素是各条目信息. 其中必须有 "uid", 而其他字段可选.
+ *
+ * @returns 更新后的世界书条目
  */
 async function setLorebookEntries(
   lorebook: string,
   entries: Array<Pick<LorebookEntry, 'uid'> & Partial<LorebookEntry>>,
-): Promise<void>;
+): Promise<LorebookEntry[]>;
 
 /**
  * 向世界书中新增条目
@@ -125,9 +127,12 @@ async function setLorebookEntries(
  * @param lorebook 世界书名称
  * @param entries 要对新条目设置的字段值, 如果不设置则采用酒馆给的默认值. **不能设置 `uid`**.
  *
- * @returns 新条目的 uid, 按顺序排列
+ * @returns 更新后的世界书条目, 以及新条目的 uid
  */
-async function createLorebookEntries(lorebook: string, entries: Partial<LorebookEntry>[]): Promise<number[]>;
+async function createLorebookEntries(
+  lorebook: string,
+  entries: Partial<LorebookEntry>[],
+): Promise<{ entries: LorebookEntry[]; new_uids: number[] }>;
 
 /**
  * 删除世界书中的某个条目
@@ -135,9 +140,12 @@ async function createLorebookEntries(lorebook: string, entries: Partial<Lorebook
  * @param lorebook 世界书名称
  * @param uids 要删除的所有条目 uid
  *
- * @returns 是否成功删除, 可能因世界书不存在、对应条目不存在等原因失败
+ * @returns 更新后的世界书条目, 以及是否有发生删除
  */
-async function deleteLorebookEntries(lorebook: string, uids: number[]): Promise<boolean>;
+async function deleteLorebookEntries(
+  lorebook: string,
+  uids: number[],
+): Promise<{ entries: LorebookEntry[]; delete_occurred: boolean }>;
 
 //----------------------------------------------------------------------------------------------------------------------
 /** @deprecated 请使用 `createLorebookEntries` 代替 */
