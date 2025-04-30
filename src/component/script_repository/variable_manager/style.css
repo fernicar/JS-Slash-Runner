@@ -101,7 +101,7 @@
 /* 搜索框 */
 .variable-search {
   width: 100%;
-  height: 32px;
+  height: 25px;
   padding: 5px 10px;
   border-radius: 4px;
   border: 1px solid var(--SmartThemeBorderColor, #666);
@@ -183,6 +183,7 @@
   margin-bottom: 10px;
   overflow: hidden;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: relative; /* 添加相对定位，以支持内部绝对定位元素 */
 }
 
 /* 变量卡片头部样式 */
@@ -205,9 +206,9 @@
   font-size: calc(var(--mainFontSize) * 0.8);
 }
 /* 变量标题输入框 */
-.variable-title {
-  background: transparent;
-  border: none;
+.variable-list .variable-title {
+  background: transparent !important;
+  border: none !important;
   color: var(--SmartThemeBodyColor, #fff);
   font-weight: bold;
   width: 150px;
@@ -642,7 +643,6 @@
   min-width: 350px;
   min-height: 250px;
   background-color: var(--SmartThemeBodyBGColor, #1f1f1f);
-  border: 1px solid var(--SmartThemeBorderColor, #666);
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   display: flex;
@@ -682,7 +682,8 @@
   gap: 8px;
 }
 
-.dialog-close-btn {
+.dialog-close-btn,
+.dialog-toggle-btn {
   background: transparent;
   border: none;
   color: var(--SmartThemeBodyColor, #fff);
@@ -692,12 +693,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-}
-
-.dialog-close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .dialog-content {
@@ -706,6 +701,17 @@
   padding: 0 10px;
   display: flex; /* 启用flexbox布局 */
   flex-direction: column; /* 垂直方向排列子元素 */
+  transition: max-height 0.3s ease-in-out;
+}
+
+/* 折叠状态下的对话框样式 */
+.variable-manager-dialog.content-collapsed {
+  min-height: auto !important;
+  height: 25px !important;
+}
+
+.variable-manager-dialog.content-collapsed .dialog-content {
+  border-bottom: none;
 }
 
 .dialog-resize-handle {
@@ -826,4 +832,23 @@
 
 .confirm-buttons .confirm-btn:hover {
   background-color: var(--SmartThemeAccentBtnHoverColor, #0066a8);
+}
+
+/* 变量更新通知样式 */
+.value-change-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(255, 165, 0, 0.8);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: fade-in-out 2s ease;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

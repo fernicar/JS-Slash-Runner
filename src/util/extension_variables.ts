@@ -12,7 +12,7 @@ export let app_ready = false;
 
 export const extensionName = 'JS-Slash-Runner';
 export const extensionSettingName = 'TavernHelper';
-//TODO: 修改名称
+
 export const extensionFolderPath = `third-party/${extensionName}`;
 
 // 获取头像原图
@@ -64,11 +64,4 @@ export async function getOrSaveSettingValue(path: string, default_value: any): P
     return getSettingValue(path);
   }
   return await saveSettingValue(path, default_value);
-}
-
-/**
- * 初次加载时设置app_ready为true
- */
-export function setAppReady() {
-    app_ready = true;
 }
