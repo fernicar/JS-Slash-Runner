@@ -333,7 +333,14 @@ export async function replaceLorebookEntries(lorebook: string, entries: Partial<
     throw Error(`未能找到世界书 '${lorebook}'`);
   }
 
-  const data = { entries: handleLorebookEntriesCollision(entries).map(fromPartialLorebookEntry) };
+  const data = {
+    entries: _.merge(
+      {},
+      ...handleLorebookEntriesCollision(entries)
+        .map(fromPartialLorebookEntry)
+        .map(entry => ({ [entry.uid]: entry })),
+    ),
+  };
   await saveWorldInfo(lorebook, data);
   reloadEditorDebounced(lorebook);
 
