@@ -135,7 +135,7 @@ export class ScriptRepository {
    * 加载脚本库到界面
    */
   async loadScriptLibrary() {
-    await this.loadScripts();
+    this.loadScripts();
 
     $('#global-script-list').empty();
     $('#scoped-script-list').empty();
@@ -150,7 +150,7 @@ export class ScriptRepository {
     // @ts-ignore
     const scopedScriptArray = characters[this_chid]?.data?.extensions?.TavernHelper_scripts ?? [];
     if (scopedScriptArray.length > 0 && this._isScopedScriptEnabled !== undefined) {
-      this.handleScriptToggle(ScriptType.CHARACTER, this._isScopedScriptEnabled, false);
+      await this.handleScriptToggle(ScriptType.CHARACTER, this._isScopedScriptEnabled, false);
     }
     $('#scoped-script-enable-toggle')
       .prop('checked', this._isScopedScriptEnabled)
@@ -160,19 +160,23 @@ export class ScriptRepository {
 
     if (globalScriptArray.length > 0) {
       const globalScripts = globalScriptArray.map((scriptData: Script) => new Script(scriptData));
-      globalScripts.forEach(async (script: Script) => {
-        const scriptHtml = await this.cloneTemplate(script, ScriptType.GLOBAL);
-        $('#global-script-list').append(scriptHtml);
-      });
+      await Promise.all(
+        globalScripts.map(async (script: Script) => {
+          const scriptHtml = await this.cloneTemplate(script, ScriptType.GLOBAL);
+          $('#global-script-list').append(scriptHtml);
+        }),
+      );
     } else {
       $('#global-script-list').append($emptyTip);
     }
     if (scopedScriptArray.length > 0) {
       const scopedScripts = scopedScriptArray.map((scriptData: Script) => new Script(scriptData));
-      scopedScripts.forEach(async (script: Script) => {
-        const scriptHtml = await this.cloneTemplate(script, ScriptType.CHARACTER);
-        $('#scoped-script-list').append(scriptHtml);
-      });
+      await Promise.all(
+        scopedScripts.map(async (script: Script) => {
+          const scriptHtml = await this.cloneTemplate(script, ScriptType.CHARACTER);
+          $('#scoped-script-list').append(scriptHtml);
+        }),
+      );
     } else {
       $('#scoped-script-list').append($emptyTip);
     }
