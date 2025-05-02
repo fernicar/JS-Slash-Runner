@@ -1,5 +1,5 @@
-import { createDefaultScripts } from '@/builtin_scripts/index';
 import { destroyIframe } from '@/component/message_iframe';
+import { createDefaultScripts } from '@/component/script_repository/builtin_scripts';
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
 import { extensionFolderPath, getSettingValue, saveSettingValue } from '@/util/extension_variables';

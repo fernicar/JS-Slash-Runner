@@ -1,3 +1,7 @@
+## 3.1.0
+
+现在所有内置库脚本将使用 `import 'https://gcore.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/标签化/index.js'` 的形式从仓库直接获取最新代码, **因此脚本将永远保持最新**, 你不再需要为了更新脚本重新导入脚本.
+
 ## 3.0.7
 
 ### ⏫功能
