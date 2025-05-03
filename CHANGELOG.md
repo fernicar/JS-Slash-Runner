@@ -33,7 +33,7 @@
   await setChatMessages(_.range(last_message_id + 1).map(message_id => ({message_id, is_hidden: true})));
   ```
 
-- 调整了 `setChatMessage` 接口, 现在返回类型将根据是否获取 swipes 部分 (`{ include_swipes: boolean }`) 返回 `ChatMessage[]` 或 `ChatMessageSwiped[]`.
+- 调整了 `getChatMessage` 接口, 现在返回类型将根据是否获取 swipes 部分 (`{ include_swipes: boolean }`) 返回 `ChatMessage[]` 或 `ChatMessageSwiped[]`.
 
   ```typescript
   // 仅获取第 10 楼被 ai 使用的消息页
