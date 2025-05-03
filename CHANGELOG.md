@@ -1,3 +1,9 @@
+## 3.1.2
+
+### 💻界面
+
+- 在界面中新增到[酒馆命令自查手册](https://rentry.org/sillytavern-script-book)的参考链接
+
 ## 3.1.1
 
 ### ⏫功能
