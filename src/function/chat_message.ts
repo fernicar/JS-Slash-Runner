@@ -1,7 +1,7 @@
-import { handlePartialRender } from '@/component/message_iframe';
-
 import {
   chat,
+  event_types,
+  eventSource,
   messageFormatting,
   reloadCurrentChat,
   saveChatConditional,
@@ -72,7 +72,7 @@ export function getChatMessages(
 
   const { start, end } = range_number;
 
-  const getRole = (chat_message: any) => {
+  const get_role = (chat_message: any) => {
     const is_narrator = chat_message.extra?.type === system_message_types.NARRATOR;
     if (is_narrator) {
       if (chat_message.is_user) {
@@ -93,7 +93,7 @@ export function getChatMessages(
       return null;
     }
 
-    const message_role = getRole(message);
+    const message_role = get_role(message);
     if (role !== 'all' && message_role !== role) {
       console.debug(`筛去了第 ${message_id} 楼的消息因为它的身份不是 ${role}`);
       return null;
@@ -220,7 +220,7 @@ export async function setChatMessage(
     }
   };
 
-  const update_partial_html = (should_update_swipe: boolean) => {
+  const update_partial_html = async (should_update_swipe: boolean) => {
     // @ts-ignore
     const mes_html = $(`div.mes[mesid = "${message_id}"]`);
     if (!mes_html) {
@@ -238,19 +238,22 @@ export async function setChatMessage(
         .append(
           messageFormatting(message, chat_message.name, chat_message.is_system, chat_message.is_user, message_id),
         );
-      if (refresh == 'display_and_render_current') {
-        handlePartialRender(message_id);
+      if (refresh === 'display_and_render_current') {
+        await eventSource.emit(
+          chat_message.is_user ? event_types.USER_MESSAGE_RENDERED : event_types.CHARACTER_MESSAGE_RENDERED,
+          message_id,
+        );
       }
     }
   };
 
   const should_update_swipe: boolean = add_swipes_if_required();
   update_chat_message();
+  await saveChatConditional();
   if (refresh == 'all') {
     await reloadCurrentChat();
   } else {
-    update_partial_html(should_update_swipe);
-    await saveChatConditional();
+    await update_partial_html(should_update_swipe);
   }
 
   console.info(

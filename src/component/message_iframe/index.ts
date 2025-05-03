@@ -264,7 +264,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
     }
   }
 
-  const renderedMessages = [];
   for (const messageId of messagesToRenderIds) {
     const $messageElement = $(`.mes[mesid="${messageId}"]`);
     if (!$messageElement.length) {
@@ -403,8 +402,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
         $(this).replaceWith($wrapper);
       }
     });
-
-    renderedMessages.push(messageId);
   }
 }
 
