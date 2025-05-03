@@ -1,13 +1,5 @@
-import { debounce } from '@sillytavern/scripts/utils';
-import {
-  createWorldInfoEntry,
-  deleteWIOriginalDataValue,
-  loadWorldInfo,
-  originalWIDataKeyMap,
-  saveWorldInfo,
-  setWIOriginalDataValue,
-  world_names,
-} from '@sillytavern/scripts/world-info';
+import { reloadEditorDebounced } from '@/compatibility';
+import { loadWorldInfo, saveWorldInfo, world_names } from '@sillytavern/scripts/world-info';
 
 interface LorebookEntry {
   uid: number;
@@ -54,15 +46,96 @@ interface LorebookEntry {
   delay: number | null;
 }
 
-function toLorebookEntry(entry: any): LorebookEntry {
+interface _OriginalLorebookEntry {
+  uid: number;
+  key: string[];
+  keysecondary: string[];
+  comment: string;
+  content: string;
+  constant: boolean;
+  vectorized: boolean;
+  selective: boolean;
+  selectiveLogic: 0 | 1 | 2 | 3; // 0: and_any, 1: and_all, 2: not_any, 3: not_all
+  addMemo: boolean;
+  order: number;
+  position: number;
+  disable: boolean;
+  excludeRecursion: boolean;
+  preventRecursion: boolean;
+  matchPersonaDescription: boolean;
+  matchCharacterDescription: boolean;
+  matchCharacterPersonality: boolean;
+  matchCharacterDepthPrompt: boolean;
+  matchScenario: boolean;
+  matchCreatorNotes: boolean;
+  delayUntilRecursion: number;
+  probability: number;
+  useProbability: boolean;
+  depth: number;
+  group: string;
+  groupOverride: boolean;
+  groupWeight: number;
+  scanDepth: number | null;
+  caseSensitive: boolean | null;
+  matchWholeWords: boolean | null;
+  useGroupScoring: boolean | null;
+  automationId: string;
+  role: 0 | 1 | 2; // 0: system, 1: user, 2: assistant
+  sticky: number | null;
+  cooldown: number | null;
+  delay: number | null;
+  displayIndex: number;
+}
+
+const default_original_lorebook_entry: Omit<_OriginalLorebookEntry, 'uid' | 'displayIndex'> = {
+  key: [],
+  keysecondary: [],
+  comment: '',
+  content: '',
+  constant: false,
+  vectorized: false,
+  selective: true,
+  selectiveLogic: 0,
+  addMemo: true,
+  order: 100,
+  position: 0,
+  disable: false,
+  excludeRecursion: false,
+  preventRecursion: false,
+  matchPersonaDescription: false,
+  matchCharacterDescription: false,
+  matchCharacterPersonality: false,
+  matchCharacterDepthPrompt: false,
+  matchScenario: false,
+  matchCreatorNotes: false,
+  delayUntilRecursion: 0,
+  probability: 100,
+  useProbability: true,
+  depth: 4,
+  group: '',
+  groupOverride: false,
+  groupWeight: 100,
+  scanDepth: null,
+  caseSensitive: null,
+  matchWholeWords: null,
+  useGroupScoring: null,
+  automationId: '',
+  role: 0,
+  sticky: null,
+  cooldown: null,
+  delay: null,
+};
+
+function toLorebookEntry(entry: _OriginalLorebookEntry): LorebookEntry {
   return {
     uid: entry.uid,
     display_index: entry.displayIndex,
+
     comment: entry.comment,
     enabled: !entry.disable,
     type: entry.constant ? 'constant' : entry.vectorized ? 'vectorized' : 'selective',
+    // @ts-ignore
     position:
-      // @ts-ignore
       {
         0: 'before_character_definition',
         1: 'after_character_definition',
@@ -106,7 +179,43 @@ function toLorebookEntry(entry: any): LorebookEntry {
   };
 }
 
-function fromPartialLorebookEntry(entry: Partial<LorebookEntry>): any {
+interface GetLorebookEntriesOption {
+  filter?: 'none' | Partial<LorebookEntry>;
+}
+
+export async function getLorebookEntries(
+  lorebook: string,
+  { filter = 'none' }: GetLorebookEntriesOption = {},
+): Promise<LorebookEntry[]> {
+  if (!world_names.includes(lorebook)) {
+    throw Error(`未能找到世界书 '${lorebook}'`);
+  }
+
+  // @ts-ignore
+  let entries: LorebookEntry[] = Object.values((await loadWorldInfo(lorebook)).entries).map(toLorebookEntry);
+  if (filter !== 'none') {
+    entries = entries.filter(entry =>
+      Object.entries(filter).every(([field, expected_value]) => {
+        // @ts-ignore
+        const entry_value = entry[field];
+        if (Array.isArray(entry_value)) {
+          return (expected_value as string[]).every(value => entry_value.includes(value));
+        }
+        if (typeof entry_value === 'string') {
+          return entry_value.includes(expected_value as string);
+        }
+        return entry_value === expected_value;
+      }),
+    );
+  }
+
+  console.info(`获取世界书 '${lorebook}' 中的条目, 选项: ${JSON.stringify({ filter })}`);
+  return structuredClone(entries);
+}
+
+function fromPartialLorebookEntry(
+  entry: Pick<LorebookEntry, 'uid' | 'display_index'> & Partial<LorebookEntry>,
+): Pick<_OriginalLorebookEntry, 'uid' | 'displayIndex'> & Partial<_OriginalLorebookEntry> {
   const transformers = {
     uid: (value: LorebookEntry['uid']) => ({ uid: value }),
     display_index: (value: LorebookEntry['display_index']) => ({ displayIndex: value }),
@@ -178,143 +287,133 @@ function fromPartialLorebookEntry(entry: Partial<LorebookEntry>): any {
     delay: (value: LorebookEntry['delay']) => ({ delay: value === null ? 0 : value }),
   };
 
-  return Object.entries(entry)
-    .filter(([_, value]) => value !== undefined)
-    .reduce(
-      (result, [field, value]) => ({
-        ...result,
-        // @ts-ignore
-        ...transformers[field]?.(value),
-      }),
-      {},
-    );
-}
-
-function assignFieldValuesToWiEntry(data: any, wi_entry: any, field_values: any) {
-  Object.entries(field_values).forEach(([field, value]) => {
-    wi_entry[field] = value;
-    // @ts-ignore
-    const original_wi_mapped_key = originalWIDataKeyMap[field];
-    if (original_wi_mapped_key) {
+  return _.merge(
+    {},
+    default_original_lorebook_entry,
+    ...Object.entries(entry)
+      .filter(([_, value]) => value !== undefined)
       // @ts-ignore
-      setWIOriginalDataValue(data, wi_entry.uid, original_wi_mapped_key, value);
+      .map(([key, value]) => transformers[key]?.(value)),
+  );
+}
+
+const MAX_UID = 1_000_000;
+
+function handleLorebookEntriesCollision(
+  entries: Partial<LorebookEntry>[],
+): Array<Pick<LorebookEntry, 'uid' | 'display_index'> & Partial<LorebookEntry>> {
+  const uid_set = new Set<number>();
+  const handle_uid_collision = (index: number | undefined) => {
+    if (index === undefined) {
+      index = _.random(0, MAX_UID - 1);
     }
-  });
+
+    let i = 1;
+    while (true) {
+      if (!uid_set.has(index)) {
+        uid_set.add(index);
+        return index;
+      }
+
+      index = (index + i * i) % MAX_UID;
+      ++i;
+    }
+  };
+
+  let max_display_index = _.max(entries.map(entry => entry.display_index ?? -1)) ?? -1;
+  return entries.map(entry => ({
+    ...entry,
+    uid: handle_uid_collision(entry.uid),
+    display_index: entry.display_index ?? ++max_display_index,
+  }));
 }
 
-function reloadEditor(file: string): void {
-  // @ts-ignore
-  const currentIndex = Number($('#world_editor_select').val());
-  const selectedIndex = world_names.indexOf(file);
-  if (selectedIndex !== -1 && currentIndex === selectedIndex) {
-    // @ts-ignore
-    $('#world_editor_select').val(selectedIndex).trigger('change');
-  }
-}
-
-const reloadEditorDebounced = debounce(reloadEditor);
-
-interface GetLorebookEntriesOption {
-  filter?: 'none' | Partial<LorebookEntry>;
-}
-
-export async function getLorebookEntries(
-  lorebook: string,
-  { filter = 'none' }: GetLorebookEntriesOption = {},
-): Promise<LorebookEntry[]> {
+export async function replaceLorebookEntries(lorebook: string, entries: Partial<LorebookEntry>[]): Promise<void> {
   if (!world_names.includes(lorebook)) {
     throw Error(`未能找到世界书 '${lorebook}'`);
   }
 
-  // @ts-ignore
-  let entries: LorebookEntry[] = Object.values((await loadWorldInfo(lorebook)).entries).map(toLorebookEntry);
-  if (filter !== 'none') {
-    entries = entries.filter(entry =>
-      Object.entries(filter).every(([field, expected_value]) => {
-        // @ts-ignore
-        const entry_value = entry[field];
-        if (Array.isArray(entry_value)) {
-          return (expected_value as string[]).every(value => entry_value.includes(value));
-        }
-        if (typeof entry_value === 'string') {
-          return entry_value.includes(expected_value as string);
-        }
-        return entry_value === expected_value;
-      }),
-    );
-  }
+  const data = {
+    entries: _.merge(
+      {},
+      ...handleLorebookEntriesCollision(entries)
+        .map(fromPartialLorebookEntry)
+        .map(entry => ({ [entry.uid]: entry })),
+    ),
+  };
+  await saveWorldInfo(lorebook, data);
+  reloadEditorDebounced(lorebook);
 
-  console.info(`获取世界书 '${lorebook}' 中的条目, 选项: ${JSON.stringify({ filter })}`);
-  return entries;
+  console.info(`更新世界书 '${lorebook}' 中的条目`);
+}
+
+type LorebookEntriesUpdater =
+  | ((entries: LorebookEntry[]) => Partial<LorebookEntry>[])
+  | ((entries: LorebookEntry[]) => Promise<Partial<LorebookEntry>[]>);
+
+export async function updateLorebookEntriesWith(
+  lorebook: string,
+  updater: LorebookEntriesUpdater,
+): Promise<LorebookEntry[]> {
+  console.info(`对世界书 '${lorebook}' 中的条目进行更新`);
+  await replaceLorebookEntries(lorebook, await updater(await getLorebookEntries(lorebook)));
+  return getLorebookEntries(lorebook);
 }
 
 export async function setLorebookEntries(
   lorebook: string,
   entries: Array<Pick<LorebookEntry, 'uid'> & Partial<LorebookEntry>>,
-): Promise<void> {
-  if (!world_names.includes(lorebook)) {
-    throw Error(`未能找到世界书 '${lorebook}'`);
-  }
-  const data = await loadWorldInfo(lorebook);
-
-  const process_entry = async (entry: (typeof entries)[0]): Promise<void> => {
-    // @ts-ignore
-    const wi_entry = data.entries[entry.uid];
-    if (!wi_entry) {
-      throw Error(`未能在世界书 '${lorebook}' 中找到 uid=${entry.uid} 的条目`);
-    }
-    assignFieldValuesToWiEntry(data, wi_entry, fromPartialLorebookEntry(entry));
-  };
-
-  await Promise.all(entries.map(process_entry));
-  await saveWorldInfo(lorebook, data);
-  reloadEditorDebounced(lorebook);
-
-  console.info(`修改世界书 '${lorebook}' 中以下条目的以下字段:\n${JSON.stringify(entries, undefined, 2)}`);
+): Promise<LorebookEntry[]> {
+  return await updateLorebookEntriesWith(lorebook, data => {
+    entries.filter(entry => data[entry.uid] !== undefined).forEach(entry => _.merge(data[entry.uid], entry));
+    return data;
+  });
 }
 
+export async function createLorebookEntries(
+  lorebook: string,
+  entries: Partial<LorebookEntry>[],
+): Promise<{ entries: LorebookEntry[]; new_uids: number[] }> {
+  const new_uids: number[] = [];
+  const updated_entries = await updateLorebookEntriesWith(lorebook, data => {
+    const uid_set = new Set(data.map(entry => entry.uid));
+    const get_free_uid = () => {
+      for (let i = 0; i < MAX_UID; ++i) {
+        if (!uid_set.has(i)) {
+          uid_set.add(i);
+          new_uids.push(i);
+          return i;
+        }
+      }
+      throw Error(`无法找到可用的世界书条目 uid`);
+    };
+
+    entries.forEach(entry => (entry.uid = get_free_uid()));
+    return [...data, ...entries];
+  });
+  return { entries: updated_entries, new_uids: new_uids };
+}
+
+export async function deleteLorebookEntries(
+  lorebook: string,
+  uids: number[],
+): Promise<{ entries: LorebookEntry[]; delete_occurred: boolean }> {
+  let deleted: boolean = false;
+  const updated_entires = await updateLorebookEntriesWith(lorebook, data => {
+    const removed_data = _.remove(data, entry => uids.includes(entry.uid));
+    deleted = removed_data.length > 0;
+    return data;
+  });
+  return { entries: updated_entires, delete_occurred: deleted };
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+/** @deprecated 请使用 `createLorebookEntries` 代替 */
 export async function createLorebookEntry(lorebook: string, field_values: Partial<LorebookEntry>): Promise<number> {
-  if (!world_names.includes(lorebook)) {
-    throw Error(`未能找到世界书 '${lorebook}'`);
-  }
-  const data = await loadWorldInfo(lorebook);
-  const wi_entry = createWorldInfoEntry(lorebook, data) as any;
-  const partial_lorebook_entry = fromPartialLorebookEntry(field_values);
-  if (partial_lorebook_entry.uid) {
-    delete partial_lorebook_entry.uid;
-  }
-  assignFieldValuesToWiEntry(data, wi_entry, partial_lorebook_entry);
-
-  await saveWorldInfo(lorebook, data);
-  reloadEditorDebounced(lorebook);
-
-  console.info(
-    `在世界书 '${lorebook}' 中新建 uid='${wi_entry.uid}' 条目, 并设置内容:\n${JSON.stringify(
-      field_values,
-      undefined,
-      2,
-    )}`,
-  );
-  return wi_entry.uid;
+  return (await createLorebookEntries(lorebook, [field_values])).new_uids[0];
 }
 
-export async function deleteLorebookEntry(lorebook: string, lorebook_uid: number): Promise<boolean> {
-  const data = await loadWorldInfo(lorebook);
-  // QUESTION: 好像没办法从 data 检测世界书是否存在?
-  let deleted = false;
-  // @ts-ignore 18046
-  if (data.entries[lorebook_uid]) {
-    // @ts-ignore 18046
-    delete data.entries[lorebook_uid];
-    deleted = true;
-  }
-  if (deleted) {
-    // @ts-ignore 2345
-    deleteWIOriginalDataValue(data, lorebook_uid);
-    await saveWorldInfo(lorebook, data);
-    reloadEditorDebounced(lorebook);
-  }
-
-  console.info(`删除世界书 '${lorebook}' 中的 uid='${lorebook_uid}' 条目${deleted ? '成功' : '失败'}`);
-  return deleted;
+/** @deprecated 请使用 `deleteLorebookEntries` 代替 */
+export async function deleteLorebookEntry(lorebook: string, uid: number): Promise<boolean> {
+  return (await deleteLorebookEntries(lorebook, [uid])).delete_occurred;
 }

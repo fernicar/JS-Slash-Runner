@@ -1,10 +1,33 @@
+namespace SillyTavern {
+  interface ChatMessage {
+    message_id: number;
+    name: string;
+    /**
+     * 实际的 role 为:
+     * - 'system': extra?.type === 'narrator' && !is_user
+     * - 'user': extra?.type !== 'narrator' && is_user
+     * - 'assistant': extra?.type !== 'narrator' && !is_user
+     */
+    is_user: boolean;
+    /**
+     * 实际是表示消息是否被隐藏不会发给 llm
+     */
+    is_system: boolean;
+    mes: string;
+    swipe_id?: number;
+    swipes?: string[];
+    variables?: Record<string, any>[];
+    extra?: Record<string, any>;
+  }
+}
+
 /**
  * 酒馆提供给插件的稳定接口, 具体内容见于 SillyTavern/public/scripts/st-context.js 或 https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/st-context.js
  * 你也可以在酒馆页面按 f12, 在控制台中输入 `window.SillyTavern.getContext()` 来查看当前酒馆所提供的接口
  */
 const SillyTavern: {
   readonly accountStorage: any;
-  readonly chat: any;
+  readonly chat: Array<SillyTavern.ChatMessage>;
   readonly characters: any;
   readonly groups: any;
   readonly name1: any;
@@ -107,7 +130,7 @@ const SillyTavern: {
     type: number,
     inputValue?: string,
     popupOptions?: any,
-  ) => Promise<number|string|boolean|undefined>;
+  ) => Promise<number | string | boolean | undefined>;
   readonly showLoader: () => void;
   readonly hideLoader: () => Promise<any>;
   readonly mainApi: any;

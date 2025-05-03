@@ -1,7 +1,7 @@
-import { handlePartialRender } from '@/component/message_iframe';
-
 import {
   chat,
+  event_types,
+  eventSource,
   messageFormatting,
   reloadCurrentChat,
   saveChatConditional,
@@ -72,7 +72,7 @@ export function getChatMessages(
 
   const { start, end } = range_number;
 
-  const getRole = (chat_message: any) => {
+  const get_role = (chat_message: any) => {
     const is_narrator = chat_message.extra?.type === system_message_types.NARRATOR;
     if (is_narrator) {
       if (chat_message.is_user) {
@@ -93,7 +93,7 @@ export function getChatMessages(
       return null;
     }
 
-    const message_role = getRole(message);
+    const message_role = get_role(message);
     if (role !== 'all' && message_role !== role) {
       console.debug(`筛去了第 ${message_id} 楼的消息因为它的身份不是 ${role}`);
       return null;
@@ -136,7 +136,12 @@ export function getChatMessages(
       hide_state,
     })} `,
   );
-  return chat_messages;
+  return structuredClone(chat_messages);
+}
+
+interface ChatMessageToSet {
+  message?: string;
+  data?: Record<string, any>;
 }
 
 interface SetChatMessageOption {
@@ -145,17 +150,11 @@ interface SetChatMessageOption {
 }
 
 export async function setChatMessage(
-  message: string,
+  field_values: ChatMessageToSet,
   message_id: number,
   { swipe_id = 'current', refresh = 'display_and_render_current' }: SetChatMessageOption = {},
 ): Promise<void> {
-  // 向后兼容
-  interface ChatMessageToSet {
-    message?: string;
-    data?: Record<string, any>;
-  }
-
-  const field_values: ChatMessageToSet = typeof message === 'string' ? { message: message } : message;
+  field_values = typeof field_values === 'string' ? { message: field_values } : field_values;
   if (typeof swipe_id !== 'number' && swipe_id !== 'current') {
     throw Error(`提供的 swipe_id 无效, 请提供 'current' 或序号, 你提供的是: ${swipe_id} `);
   }
@@ -196,13 +195,13 @@ export async function setChatMessage(
   const swipe_id_previous_index: number = chat_message.swipe_id ?? 0;
   const swipe_id_to_set_index: number = swipe_id == 'current' ? swipe_id_previous_index : swipe_id;
   const swipe_id_to_use_index: number = refresh != 'none' ? swipe_id_to_set_index : swipe_id_previous_index;
-  const current_message: string =
+  const message: string =
     field_values.message ??
     (chat_message.swipes ? chat_message.swipes[swipe_id_to_set_index] : undefined) ??
     chat_message.mes;
 
   const update_chat_message = () => {
-    const message_demacroed = substituteParamsExtended(current_message);
+    const message_demacroed = substituteParamsExtended(message);
 
     if (field_values.data) {
       if (!chat_message.variables) {
@@ -221,7 +220,7 @@ export async function setChatMessage(
     }
   };
 
-  const update_partial_html = (should_update_swipe: boolean) => {
+  const update_partial_html = async (should_update_swipe: boolean) => {
     // @ts-ignore
     const mes_html = $(`div.mes[mesid = "${message_id}"]`);
     if (!mes_html) {
@@ -237,27 +236,24 @@ export async function setChatMessage(
         .find('.mes_text')
         .empty()
         .append(
-          messageFormatting(
-            current_message,
-            chat_message.name,
-            chat_message.is_system,
-            chat_message.is_user,
-            message_id,
-          ),
+          messageFormatting(message, chat_message.name, chat_message.is_system, chat_message.is_user, message_id),
         );
-      if (refresh == 'display_and_render_current') {
-        handlePartialRender(message_id);
+      if (refresh === 'display_and_render_current') {
+        await eventSource.emit(
+          chat_message.is_user ? event_types.USER_MESSAGE_RENDERED : event_types.CHARACTER_MESSAGE_RENDERED,
+          message_id,
+        );
       }
     }
   };
 
   const should_update_swipe: boolean = add_swipes_if_required();
   update_chat_message();
+  await saveChatConditional();
   if (refresh == 'all') {
     await reloadCurrentChat();
   } else {
-    update_partial_html(should_update_swipe);
-    await saveChatConditional();
+    await update_partial_html(should_update_swipe);
   }
 
   console.info(

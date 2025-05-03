@@ -1,3 +1,67 @@
+## 3.1.1
+
+### 🐛修复
+
+- 现在 `setChatMessage` 使用 `refresh: 'display_and_render_current'` 选项时将会发送对应的酒馆渲染事件从而激活对应的监听器, 而不只是渲染 iframe.
+
+## 3.1.0
+
+现在所有内置库脚本将使用 `import 'https://gcore.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/标签化/index.js'` 的形式从仓库直接获取最新代码, **因此脚本将永远保持最新**, 你不再需要为了更新脚本重新导入脚本.
+
+## 3.0.7
+
+### ⏫功能
+
+- 导出了 `toastr` 库, 你现在可以用 `toastr.error('内容', '标题')` 而不是 `triggerSlash('/echo severity=error title=标题 内容')` 来进行酒馆提示了:
+  - `toastr.info`
+  - `toastr.success`
+  - `toastr.warning`
+  - `toastr.error`
+
+## 3.0.6
+
+### 🐛修复
+
+- 修复世界书条目操作后, 以前版本酒馆可能不能正常显示世界书条目的问题
+
+## 3.0.5
+
+### 💻界面
+
+- 新导入的脚本将添加到末尾而不是开头
+- 在脚本编辑界面新建按钮将默认是启用的
+
+### 📚脚本库
+
+**内置库:**
+
+- 新增 `预设防误触` 脚本, 启用后将锁定预设除了 '流式传输'、'请求思维链' 和 '具体条目' 以外的选项, 不能通过界面来修改
+
+### ⏫功能
+
+**世界书条目操作:**
+
+- 新增 `replaceLorebookEntries` 和 `updateLorebookEntriesWith` 函数, 相比于原来的 `setLorebookEntries` 等函数更方便
+
+  ```typescript
+  // 禁止所有条目递归, 保持其他设置不变
+  const entries = await getLorebookEntries("eramgt少女歌剧");
+  await replaceLorebookEntries("eramgt少女歌剧", entries.map(entry => ({ ...entry, prevent_recursion: true })));
+  ```
+
+  ```typescript
+  // 删除所有名字中包含 `神乐光` 的条目
+  const entries = await getLorebookEntries("eramgt少女歌剧");
+  _.remove(entries, entry => entry.comment.includes('神乐光'));
+  await replaceLorebookEntries("eramgt少女歌剧", entries);
+  ```
+
+- 新增 `createLorebookEntry` 和 `deleteLorebookEntry` 的数组版本: `createLorebookEntries` 和 `deleteLorebookEntries`
+
+### 🐛修复
+
+- 部分函数不兼容以前版本的问题
+
 ## 3.0.4
 
 ### 🐛修复

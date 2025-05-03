@@ -3,16 +3,16 @@ interface ChatMessage {
   name: string;
   role: 'system' | 'assistant' | 'user';
   is_hidden: boolean;
+
   /** 当前被使用的消息页页号 */
   swipe_id: number;
   /** 当前被使用的消息页文本 */
   message: string;
   /** 当前被使用的消息页所绑定的数据 */
   data: Record<string, any>;
+
   swipes: string[];
   swipes_data: Record<string, any>[];
-  is_user: boolean;
-  is_system_or_hidden: boolean;
 }
 
 interface GetChatMessagesOption {
@@ -58,7 +58,7 @@ interface SetChatMessageOption {
    * 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`
    * - `'none'`: 不更新页面的显示和 iframe 渲染
    * - `'display_current'`: 仅更新当前被替换楼层的显示, 如果替换的是没被使用的消息页, 则会自动切换为使用那一页
-   * - `'display_and_render_current'`: 与 `display_current` 相同, 但还会重新渲染该楼的 iframe
+   * - `'display_and_render_current'`: 与 `display_current` 相同, 但还会再发送一次 `USER_MESSAGE_RENDERED` 或 `CHARACTER_MESSAGE_RENDERED` 事件, 因而会重新渲染本楼的 iframe
    * - `'all'`: 重新载入整个聊天消息, 将会触发 `tavern_events.CHAT_CHANGED` 进而重新加载全局脚本和楼层消息
    */
   refresh?: 'none' | 'display_current' | 'display_and_render_current' | 'all';
@@ -76,12 +76,16 @@ interface SetChatMessageOption {
  *   - `refresh?:'none'|'display_current'|'display_and_render_current'|'all'`: 是否更新页面的显示和 iframe 渲染, 只会更新已经被加载显示在网页的楼层, 更新显示时会触发被更新楼层的 "仅格式显示" 正则; 默认为 `'display_and_render_current'`
  *
  * @example
- * await setChatMessage("设置楼层 5 当前消息页的文本", 5);
- * await setChatMessage("设置楼层 5 第 3 页的文本, 更新为显示它并渲染其中的 iframe", 5, {swipe_id: 3});
- * await setChatMessage("设置楼层 5 第 3 页的文本, 但不更新显示它", 5, {swipe_id: 3, refresh: 'none'});
+ * await setChatMessage({message: "设置楼层 5 当前消息页的文本"}, 5);
+ * await setChatMessage({message: "设置楼层 5 第 3 页的文本, 更新为显示它并渲染其中的 iframe"}, 5, {swipe_id: 3});
+ * await setChatMessage({message: "设置楼层 5 第 3 页的文本, 但不更新显示它"}, 5, {swipe_id: 3, refresh: 'none'});
+ *
+ * @example
+ * // 为最后一楼的当前消息页绑定数据
+ * await setChatMessage({data: {神乐光好感度: 5}}, -1);
  */
 async function setChatMessage(
-  message: string,
+  { message, data }?: ChatMessageToSet,
   message_id: number,
   { swipe_id, refresh }?: SetChatMessageOption,
 ): Promise<void>;

@@ -151,7 +151,7 @@ function removeMutationObserverQrBarCreated() {
 export async function buildScriptRepositoryOnExtension() {
   const register_events = () => {
     load_events.forEach(eventType => {
-      eventSource.makeFirst(eventType, refreshScriptRepository);
+      eventSource.on(eventType, refreshScriptRepository);
     });
     delete_events.forEach(eventType => {
       eventSource.on(eventType, (character: any) => purgeEmbeddedScripts({ character }));

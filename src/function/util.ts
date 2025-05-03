@@ -1,4 +1,4 @@
-import { substituteParamsExtended } from '@sillytavern/script';
+import { chat, substituteParamsExtended } from '@sillytavern/script';
 
 export function substitudeMacros(text: string): string {
   const text_demacroed = substituteParamsExtended(text);
@@ -8,11 +8,7 @@ export function substitudeMacros(text: string): string {
 }
 
 export function getLastMessageId(): number {
-  const result = substitudeMacros('{{lastMessageId}}');
-  if (result === '') {
-    throw Error('未找到任何消息楼层');
-  }
-  return parseInt(result);
+  return chat.length - 1;
 }
 
 export function errorCatched<T extends any[], U>(fn: (...args: T) => U): (...args: T) => U {

@@ -1,4 +1,7 @@
-import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository/script_repository';
+import {
+  getCharacterScriptVariables,
+  replaceCharacterScriptVariables,
+} from '@/component/script_repository/script_repository';
 import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { getChatMessages, setChatMessage } from './chat_message';
@@ -37,8 +40,8 @@ function getVariablesByType({ type = 'chat', message_id = 'latest' }: VariableOp
 export function getVariables({ type = 'chat', message_id = 'latest' }: VariableOption = {}): Record<string, any> {
   const result = getVariablesByType({ type, message_id });
 
-  console.info(`获取${type == 'chat' ? `聊天` : `全局`}变量表:\n${JSON.stringify(result, undefined, 2)}`);
-  return result;
+  console.info(`获取${type == 'chat' ? `聊天` : `全局`}变量表:\n${JSON.stringify(result)}`);
+  return structuredClone(result);
 }
 
 export async function replaceVariables(
@@ -52,21 +55,21 @@ export async function replaceVariables(
       }
       message_id = message_id === 'latest' ? -1 : message_id;
       await setChatMessage({ data: variables }, message_id, { refresh: 'none' });
-      return;
+      break;
     case 'chat':
-      (chat_metadata as { variables: Object }).variables = variables;
+      _.set(chat_metadata, 'variables', variables);
       await saveMetadata();
       break;
     case 'character':
       await replaceCharacterScriptVariables(variables);
       break;
     case 'global':
-      extension_settings.variables.global = variables;
+      _.set(extension_settings.variables, 'global', variables);
       await saveSettings();
       break;
   }
 
-  console.info(`将${type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(variables, undefined, 2)}`);
+  console.info(`将${type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(variables)}`);
 }
 
 type VariablesUpdater =
@@ -80,7 +83,7 @@ export async function updateVariablesWith(
   let variables = getVariables({ type, message_id });
   variables = await updater(variables);
   console.info(`对${type === 'chat' ? `聊天` : `全局`}变量表进行更新`);
-  replaceVariables(variables, { type });
+  await replaceVariables(variables, { type, message_id });
   return variables;
 }
 

@@ -203,8 +203,8 @@ interface GetCharLorebooksOption {
 export function getLorebookSettings(): LorebookSettings {
   const lorebook_settings = toLorebookSettings(getWorldInfoSettings());
 
-  console.info(`获取世界书全局设置:\n${JSON.stringify(lorebook_settings, undefined, 2)}`);
-  return lorebook_settings;
+  console.info(`获取世界书全局设置:\n${JSON.stringify(lorebook_settings)}`);
+  return structuredClone(lorebook_settings);
 }
 
 export function setLorebookSettings(settings: Partial<LorebookSettings>): void {
@@ -217,12 +217,12 @@ export function setLorebookSettings(settings: Partial<LorebookSettings>): void {
 
   assignPartialLorebookSettings(settings);
 
-  console.info(`修改世界书全局设置:\n${JSON.stringify(settings, undefined, 2)}`);
+  console.info(`修改世界书全局设置:\n${JSON.stringify(settings)}`);
 }
 
 export function getLorebooks(): string[] {
   console.info(`获取世界书列表: ${JSON.stringify(world_names)}`);
-  return world_names;
+  return structuredClone(world_names);
 }
 
 export async function deleteLorebook(lorebook: string): Promise<boolean> {
@@ -286,7 +286,7 @@ export function getCharLorebooks({
   }
 
   console.info(`获取角色卡绑定的世界书, 选项: ${JSON.stringify({ name, type })}, 获取结果: ${JSON.stringify(books)}`);
-  return books;
+  return structuredClone(books);
 }
 
 export function getCurrentCharPrimaryLorebook(): string | null {

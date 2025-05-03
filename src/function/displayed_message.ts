@@ -14,10 +14,12 @@ export function formatAsDisplayedMessage(
       `提供的 message_id 无效, 请提供 'last', 'last_user', 'last_char' 或楼层消息号, 你提供的是: ${message_id}`,
     );
   }
+
   const last_message_id = getLastMessageId();
   if (last_message_id === null) {
     throw Error(`未找到任何消息楼层, 你提供的是: ${message_id}`);
   }
+
   switch (message_id) {
     case 'last':
       message_id = last_message_id;

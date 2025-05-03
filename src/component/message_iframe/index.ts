@@ -48,7 +48,7 @@ export async function handleRenderToggle(userInput: boolean = true, enable: bool
     renderMessagesInIframes(RENDER_MODES.FULL);
   }
   if (userInput) {
-    await saveSettingValue('render.render_enabled', enable);
+    saveSettingValue('render.render_enabled', enable);
   }
 }
 
@@ -264,7 +264,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
     }
   }
 
-  const renderedMessages = [];
   for (const messageId of messagesToRenderIds) {
     const $messageElement = $(`.mes[mesid="${messageId}"]`);
     if (!$messageElement.length) {
@@ -403,8 +402,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
         $(this).replaceWith($wrapper);
       }
     });
-
-    renderedMessages.push(messageId);
   }
 }
 
@@ -803,7 +800,7 @@ export async function renderMessageAfterDelete(mesId: number) {
  */
 async function handleTampermonkeyCompatibilityChange(enable: boolean, userInput: boolean = true) {
   if (userInput) {
-    await saveSettingValue('render.tampermonkey_compatibility', enable);
+    saveSettingValue('render.tampermonkey_compatibility', enable);
   }
 
   if (!getSettingValue('enabled_extension')) {
@@ -837,7 +834,7 @@ async function onDepthInput(value: string) {
     return;
   }
 
-  await saveSettingValue('render.render_depth', processDepth);
+  saveSettingValue('render.render_depth', processDepth);
 
   await clearAndRenderAllIframes();
 }
@@ -1077,7 +1074,7 @@ export function removeRenderingOptimizeSettings() {
  */
 async function handleRenderingOptimizationToggle(enable: boolean, userInput: boolean = true) {
   if (userInput) {
-    await saveSettingValue('render.render_optimize', enable);
+    saveSettingValue('render.render_optimize', enable);
     isRenderingOptimizeEnabled = enable;
   }
 
@@ -1104,7 +1101,7 @@ async function handleRenderingOptimizationToggle(enable: boolean, userInput: boo
  */
 async function handleRenderEnableToggle(enable: boolean, userInput: boolean = true) {
   if (userInput) {
-    await saveSettingValue('render.render_enabled', enable);
+    saveSettingValue('render.render_enabled', enable);
     isRenderEnabled = enable;
   }
   if (enable) {

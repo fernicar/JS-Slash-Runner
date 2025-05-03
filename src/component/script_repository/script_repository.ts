@@ -1,5 +1,5 @@
-import { createDefaultScripts } from '@/builtin_scripts/index';
 import { destroyIframe } from '@/component/message_iframe';
+import { createDefaultScripts } from '@/component/script_repository/builtin_scripts';
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
 import { extensionFolderPath, getSettingValue, saveSettingValue } from '@/util/extension_variables';
@@ -135,7 +135,7 @@ export class ScriptRepository {
    * 加载脚本库到界面
    */
   async loadScriptLibrary() {
-    await this.loadScripts();
+    this.loadScripts();
 
     $('#global-script-list').empty();
     $('#scoped-script-list').empty();
@@ -144,13 +144,13 @@ export class ScriptRepository {
     const globalScriptArray = getSettingValue('script.scriptsRepository') ?? [];
 
     const charactersWithScripts = getSettingValue('script.characters_with_scripts');
-    //@ts-ignore
     this._isGlobalScriptEnabled = getSettingValue('script.global_script_enabled') ?? false;
+    //@ts-ignore
     this._isScopedScriptEnabled = charactersWithScripts?.includes(characters?.[this_chid]?.avatar) || false;
     // @ts-ignore
     const scopedScriptArray = characters[this_chid]?.data?.extensions?.TavernHelper_scripts ?? [];
     if (scopedScriptArray.length > 0 && this._isScopedScriptEnabled !== undefined) {
-      this.handleScriptToggle(ScriptType.CHARACTER, this._isScopedScriptEnabled, false);
+      await this.handleScriptToggle(ScriptType.CHARACTER, this._isScopedScriptEnabled, false);
     }
     $('#scoped-script-enable-toggle')
       .prop('checked', this._isScopedScriptEnabled)
@@ -160,19 +160,23 @@ export class ScriptRepository {
 
     if (globalScriptArray.length > 0) {
       const globalScripts = globalScriptArray.map((scriptData: Script) => new Script(scriptData));
-      globalScripts.forEach(async (script: Script) => {
-        const scriptHtml = await this.cloneTemplate(script, ScriptType.GLOBAL);
-        $('#global-script-list').append(scriptHtml);
-      });
+      await Promise.all(
+        globalScripts.map(async (script: Script) => {
+          const scriptHtml = await this.cloneTemplate(script, ScriptType.GLOBAL);
+          $('#global-script-list').append(scriptHtml);
+        }),
+      );
     } else {
       $('#global-script-list').append($emptyTip);
     }
     if (scopedScriptArray.length > 0) {
       const scopedScripts = scopedScriptArray.map((scriptData: Script) => new Script(scriptData));
-      scopedScripts.forEach(async (script: Script) => {
-        const scriptHtml = await this.cloneTemplate(script, ScriptType.CHARACTER);
-        $('#scoped-script-list').append(scriptHtml);
-      });
+      await Promise.all(
+        scopedScripts.map(async (script: Script) => {
+          const scriptHtml = await this.cloneTemplate(script, ScriptType.CHARACTER);
+          $('#scoped-script-list').append(scriptHtml);
+        }),
+      );
     } else {
       $('#scoped-script-list').append($emptyTip);
     }
@@ -351,9 +355,9 @@ export class ScriptRepository {
     const $emptyTip =
       type === ScriptType.GLOBAL ? $(`#global-script-list`).find('small') : $(`#scoped-script-list`).find('small');
     if (type === ScriptType.GLOBAL) {
-      $('#global-script-list').prepend(scriptHtml);
+      $('#global-script-list').append(scriptHtml);
     } else {
-      $('#scoped-script-list').prepend(scriptHtml);
+      $('#scoped-script-list').append(scriptHtml);
     }
 
     if ($emptyTip.length > 0) {
@@ -404,7 +408,7 @@ export class ScriptRepository {
       const buttonId = `button-${$editorHtml.find('.button-list .button-item').length}`;
       const $buttonContent = $(`<div class="button-item" id="${buttonId}">
         <span class="drag-handle menu-handle">☰</span>
-        <input type="checkbox" id="checkbox-${buttonId}"/>
+        <input type="checkbox" id="checkbox-${buttonId}" checked/>
         <input class="text_pole" type="text" id="text-${buttonId}"/>
         <div class="delete-button menu_button interactable">
           <i class="fa-solid fa-trash"></i>
@@ -609,7 +613,7 @@ export class ScriptRepository {
   }
 
   /**
-   * 保存单个脚本到设置中，不存在则添加，存在则覆盖
+   * 保存单个脚本到设置中，不存在则添加到末尾，存在则覆盖
    * @param script 脚本
    * @param type 脚本类型
    */
@@ -621,12 +625,12 @@ export class ScriptRepository {
           characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
     const index = array.findIndex((s: Script) => s.id === script.id);
     if (index === -1) {
-      array.unshift(script);
+      array.push(script);
     } else {
       array[index] = script;
     }
     if (type === ScriptType.GLOBAL) {
-      await saveSettingValue('script.scriptsRepository', array);
+      saveSettingValue('script.scriptsRepository', array);
     } else {
       await this.saveCharacterScripts(array);
     }
@@ -637,7 +641,7 @@ export class ScriptRepository {
    * @param array 脚本数组
    */
   async saveGlobalScripts(array: Script[]) {
-    await saveSettingValue('script.scriptsRepository', array);
+    saveSettingValue('script.scriptsRepository', array);
   }
 
   /**
@@ -652,7 +656,7 @@ export class ScriptRepository {
       if (!charactersWithScripts.includes(this_chid)) {
         charactersWithScripts.push(this_chid);
       }
-      await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     } else {
       toastr.error('保存失败，当前角色为空');
     }
@@ -728,7 +732,7 @@ export class ScriptRepository {
             : // @ts-ignore
               characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
 
-        targetArray.unshift(script);
+        targetArray.push(script);
 
         if (targetType === ScriptType.GLOBAL) {
           await this.saveGlobalScripts(targetArray);
@@ -905,7 +909,7 @@ export class ScriptRepository {
   async handleScriptToggle(type: ScriptType, enable: boolean, userInput: boolean = true) {
     if (type === ScriptType.GLOBAL) {
       if (userInput) {
-        await saveSettingValue('script.global_script_enabled', enable);
+        saveSettingValue('script.global_script_enabled', enable);
       }
       this._isGlobalScriptEnabled = enable;
       if (enable) {
@@ -934,7 +938,7 @@ export class ScriptRepository {
         this.cancelRunScriptsByType(ScriptType.CHARACTER);
         this.removeButtonsByType(ScriptType.CHARACTER);
       }
-      await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     }
   }
 
@@ -1001,7 +1005,7 @@ export class ScriptRepository {
                 });
             }
             charactersWithScripts.push(avatar);
-            await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+            saveSettingValue('script.characters_with_scripts', charactersWithScripts);
           }
         }
       }
@@ -1176,7 +1180,7 @@ export async function purgeEmbeddedScripts({ character }: { character: any }) {
     const index = charactersWithScripts.indexOf(avatar);
     if (index !== -1) {
       charactersWithScripts.splice(index, 1);
-      await saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     }
   }
 }
