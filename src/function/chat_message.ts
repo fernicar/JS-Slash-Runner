@@ -14,21 +14,24 @@ interface ChatMessage {
   name: string;
   role: 'system' | 'assistant' | 'user';
   is_hidden: boolean;
-
-  swipe_id: number;
   message: string;
   data: Record<string, any>;
+}
 
+interface ChatMessageSwiped {
+  message_id: number;
+  name: string;
+  role: 'system' | 'assistant' | 'user';
+  is_hidden: boolean;
+  swipe_id: number;
   swipes: string[];
   swipes_data: Record<string, any>[];
-
-  is_user: boolean;
-  is_system_or_hidden: boolean;
 }
 
 interface GetChatMessagesOption {
   role?: 'all' | 'system' | 'assistant' | 'user';
   hide_state?: 'all' | 'hidden' | 'unhidden';
+  include_swipes?: boolean;
 }
 
 function string_to_range(input: string, min: number, max: number) {
@@ -56,8 +59,16 @@ function string_to_range(input: string, min: number, max: number) {
 
 export function getChatMessages(
   range: string | number,
-  { role = 'all', hide_state = 'all' }: GetChatMessagesOption = {},
-): ChatMessage[] {
+  { role, hide_state, include_swipes }: Omit<GetChatMessagesOption, 'include_swipes'> & { include_swipes?: false },
+): ChatMessage[];
+export function getChatMessages(
+  range: string | number,
+  { role, hide_state, include_swipes }: Omit<GetChatMessagesOption, 'include_swipes'> & { include_swipes?: true },
+): ChatMessageSwiped[];
+export function getChatMessages(
+  range: string | number,
+  { role = 'all', hide_state = 'all', include_swipes = false }: GetChatMessagesOption = {},
+): (ChatMessage | ChatMessageSwiped)[] {
   const range_demacroed = substituteParamsExtended(range.toString());
   const range_number = string_to_range(range_demacroed, 0, chat.length - 1);
   if (!range_number) {
@@ -86,7 +97,7 @@ export function getChatMessages(
     return 'assistant';
   };
 
-  const process_message = (message_id: number): ChatMessage | null => {
+  const process_message = (message_id: number): (ChatMessage | ChatMessageSwiped) | null => {
     const message = chat[message_id];
     if (!message) {
       console.warn(`没找到第 ${message_id} 楼的消息`);
@@ -109,6 +120,17 @@ export function getChatMessages(
     const swipes_data = message?.variables ?? [];
     const data = swipes_data[swipe_id] ?? {};
 
+    if (include_swipes) {
+      return {
+        message_id: message_id,
+        name: message.name,
+        role: message_role as 'system' | 'assistant' | 'user',
+        is_hidden: message.is_system,
+        swipe_id: swipe_id,
+        swipes: swipes,
+        swipes_data: swipes_data,
+      };
+    }
     return {
       message_id: message_id,
       name: message.name,
@@ -117,16 +139,14 @@ export function getChatMessages(
       message: message.mes,
       data: data,
 
+      // for compatibility
       swipe_id: swipe_id,
       swipes: swipes,
       swipes_data: swipes_data,
-
-      is_user: message.is_user,
-      is_system_or_hidden: message.is_system,
     };
   };
 
-  const chat_messages: ChatMessage[] = _.range(start, end + 1)
+  const chat_messages: (ChatMessage | ChatMessageSwiped)[] = _.range(start, end + 1)
     .map(i => process_message(i))
     .filter(chat_message => chat_message !== null);
 
@@ -134,25 +154,117 @@ export function getChatMessages(
     `获取${start == end ? `第 ${start} ` : ` ${start}-${end} `}楼的消息, 选项: ${JSON.stringify({
       role,
       hide_state,
+      include_swipes,
     })} `,
   );
   return structuredClone(chat_messages);
 }
 
-interface ChatMessageToSet {
-  message?: string;
-  data?: Record<string, any>;
+interface SetChatMessagesOption {
+  refresh?: 'none' | 'affected' | 'all';
 }
 
-interface SetChatMessageOption {
-  swipe_id?: 'current' | number;
-  refresh?: 'none' | 'display_current' | 'display_and_render_current' | 'all';
+export async function setChatMessages(
+  chat_messages: Array<{ message_id: number } & (Partial<ChatMessage> | Partial<ChatMessageSwiped>)>,
+  { refresh = 'affected' }: SetChatMessagesOption = {},
+): Promise<void> {
+  const is_chat_message = (
+    chat_message: { message_id: number } & (Partial<ChatMessage> | Partial<ChatMessageSwiped>),
+  ): chat_message is { message_id: number } & Partial<ChatMessage> => {
+    return _.has(chat_message, 'message');
+  };
+
+  const modify = async (chat_message: { message_id: number } & (Partial<ChatMessage> | Partial<ChatMessageSwiped>)) => {
+    const data = chat[chat_message.message_id];
+    if (chat_message.name) {
+      data.name = chat_message.name;
+    }
+    if (chat_message.role) {
+      data.is_user = chat_message.role === 'user';
+    }
+    if (chat_message.is_hidden) {
+      data.is_system = chat_message.is_hidden;
+    }
+    if (is_chat_message(chat_message)) {
+      if (chat_message.message) {
+        data.mes = chat_message.message;
+        if (data.swipes) {
+          data.swipes[data.swipe_id] = chat_message.message;
+        }
+      }
+      if (chat_message.data) {
+        if (!data.variables) {
+          data.variables = [];
+        }
+        data.variables[data.swipe_id ?? 0] = chat_message.data;
+      }
+    } else {
+      if (chat_message.swipes) {
+        data.swipes = chat_message.swipes;
+      }
+      if (chat_message.swipes_data) {
+        data.variables = chat_message.swipes_data;
+      }
+      if (chat_message.swipe_id) {
+        data.swipe_id = chat_message.swipe_id;
+        data.mes = data.swipes[data.swipe_id];
+      }
+    }
+  };
+
+  const render = async (message_id: number) => {
+    const $mes_html = $(`div.mes[mesid = "${message_id}"]`);
+    if (!$mes_html) {
+      return;
+    }
+
+    const chat_message = chat[message_id];
+    if (chat_message.swipes) {
+      $mes_html.find('.swipes-counter').text(`${chat_message.swipe_id + 1}\u200b/\u200b${chat_message.swipes.length}`);
+    }
+    $mes_html
+      .find('.mes_text')
+      .empty()
+      .append(
+        messageFormatting(
+          chat_message.mes,
+          chat_message.name,
+          chat_message.is_system,
+          chat_message.is_user,
+          message_id,
+        ),
+      );
+    await eventSource.emit(
+      chat_message.is_user ? event_types.USER_MESSAGE_RENDERED : event_types.CHARACTER_MESSAGE_RENDERED,
+      message_id,
+    );
+  };
+
+  await Promise.all(chat_messages.map(modify));
+  await saveChatConditional();
+  if (refresh === 'all') {
+    await reloadCurrentChat();
+  } else if (refresh === 'affected') {
+    await Promise.all(chat_messages.map(message => render(message.message_id)));
+  }
+  console.info(
+    `修改第 '${chat_messages.map(message => message.message_id).join(', ')}' 楼的消息, 选项: ${JSON.stringify({
+      refresh,
+    })}`,
+  );
 }
 
+/** @deprecated 请使用 `setChatMessages` 代替 */
 export async function setChatMessage(
-  field_values: ChatMessageToSet,
+  field_values: { message?: string; data?: Record<string, any> },
   message_id: number,
-  { swipe_id = 'current', refresh = 'display_and_render_current' }: SetChatMessageOption = {},
+  {
+    swipe_id = 'current',
+    refresh = 'display_and_render_current',
+  }: {
+    swipe_id?: 'current' | number;
+    refresh?: 'none' | 'display_current' | 'display_and_render_current' | 'all';
+  } = {},
 ): Promise<void> {
   field_values = typeof field_values === 'string' ? { message: field_values } : field_values;
   if (typeof swipe_id !== 'number' && swipe_id !== 'current') {

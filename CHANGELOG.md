@@ -1,5 +1,57 @@
 ## 3.1.1
 
+### ⏫功能
+
+- 新增了 `setChatMessages` 接口, 相比原来的 `setChatMessage` 更灵活——你现在可以直接地跳转开局、隐藏消息等等.
+
+  ```typescript
+  // 修改第 10 楼被 ai 使用的消息页的正文
+  await setChatMessages([{message_id: 10, message: '新的消息'}]);
+  ```
+
+  ```typescript
+  // 补充倒数第二楼的楼层变量
+  const chat_message = getChatMessages(-2)[0];
+  _.set(chat_message.data, '神乐光好感度', 5);
+  await setChatMessages([{message_id: 0, data: chat_message.data}]);
+  ```
+
+  ```typescript
+  // 切换为开局 3
+  await setChatMessages([{message_id: 0, swipe_id: 2}]);
+  ```
+
+  ```typescript
+  // 隐藏所有楼层
+  const last_message_id = getLastMessageId();
+  await setChatMessages(_.range(last_message_id + 1).map(message_id => ({message_id, is_hidden: true})));
+  ```
+
+- 调整了 `setChatMessage` 接口, 现在返回类型将根据是否获取 swipes 部分 (`{ include_swipes: boolean }`) 返回 `ChatMessage[]` 或 `ChatMessageSwiped[]`.
+
+  ```typescript
+  // 仅获取第 10 楼被 ai 使用的消息页
+  const chat_messages = getChatMessages(10);
+  const chat_messages = getChatMessages('10');
+  const chat_messages = getChatMessages('10', { include_swipes: false });
+  // 获取第 10 楼所有的消息页
+  const chat_messages = getChatMessages(10, { include_swipes: true });
+  ```
+
+  ```typescript
+  // 获取最新楼层被 ai 使用的消息页
+  const chat_message = getChatMessages(-1)[0];  // 或 getChatMessages('{{lastMessageId}}')[0]
+  // 获取最新楼层所有的消息页
+  const chat_message = getChatMessages(-1, { include_swipes: true })[0];  // 或 getChatMessages('{{lastMessageId}}', { include_swipes: true })[0]
+  ```
+
+  ```typescript
+  // 获取所有楼层被 ai 使用的消息页
+  const chat_messages = getChatMessages('0-{{lastMessageId}}');
+  // 获取所有楼层所有的消息页
+  const chat_messages = getChatMessages('0-{{lastMessageId}}', { include_swipes: true });
+  ```
+
 ### 🐛修复
 
 - 现在 `setChatMessage` 使用 `refresh: 'display_and_render_current'` 选项时将会发送对应的酒馆渲染事件从而激活对应的监听器, 而不只是渲染 iframe.
