@@ -19,7 +19,7 @@
   // 补充倒数第二楼的楼层变量
   const chat_message = getChatMessages(-2)[0];
   _.set(chat_message.data, '神乐光好感度', 5);
-  await setChatMessages([{message_id: 0, data: chat_message.data}]);
+  await setChatMessages([{message_id: 0, data: chat_message.data}], {refresh: 'none'});
   ```
 
   ```typescript
