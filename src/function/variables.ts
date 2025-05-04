@@ -2,9 +2,10 @@ import {
   getCharacterScriptVariables,
   replaceCharacterScriptVariables,
 } from '@/component/script_repository/script_repository';
+import { getChatMessages, setChatMessages } from '@/function/chat_message';
+
 import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
-import { getChatMessages, setChatMessage } from './chat_message';
 
 interface VariableOption {
   type?: 'message' | 'chat' | 'character' | 'global';
@@ -54,7 +55,7 @@ export async function replaceVariables(
         throw Error(`提供的 message_id(${message_id}) 超出了聊天消息楼层号范围`);
       }
       message_id = message_id === 'latest' ? -1 : message_id;
-      await setChatMessage({ data: variables }, message_id, { refresh: 'none' });
+      await setChatMessages([{ message_id, data: variables }]);
       break;
     case 'chat':
       _.set(chat_metadata, 'variables', variables);

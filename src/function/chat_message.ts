@@ -59,11 +59,11 @@ function string_to_range(input: string, min: number, max: number) {
 
 export function getChatMessages(
   range: string | number,
-  { role, hide_state, include_swipes }: Omit<GetChatMessagesOption, 'include_swipes'> & { include_swipes?: false },
+  { role, hide_state, include_swipes }?: Omit<GetChatMessagesOption, 'include_swipes'> & { include_swipes?: false },
 ): ChatMessage[];
 export function getChatMessages(
   range: string | number,
-  { role, hide_state, include_swipes }: Omit<GetChatMessagesOption, 'include_swipes'> & { include_swipes?: true },
+  { role, hide_state, include_swipes }?: Omit<GetChatMessagesOption, 'include_swipes'> & { include_swipes?: true },
 ): ChatMessageSwiped[];
 export function getChatMessages(
   range: string | number,
@@ -171,44 +171,55 @@ export async function setChatMessages(
   const is_chat_message = (
     chat_message: { message_id: number } & (Partial<ChatMessage> | Partial<ChatMessageSwiped>),
   ): chat_message is { message_id: number } & Partial<ChatMessage> => {
-    return _.has(chat_message, 'message');
+    return _.has(chat_message, 'message') || _.has(chat_message, 'data');
   };
 
   const modify = async (chat_message: { message_id: number } & (Partial<ChatMessage> | Partial<ChatMessageSwiped>)) => {
     const data = chat[chat_message.message_id];
-    if (chat_message.name) {
-      data.name = chat_message.name;
+    if (data === undefined) {
+      return;
     }
-    if (chat_message.role) {
-      data.is_user = chat_message.role === 'user';
+
+    if (chat_message?.name !== undefined) {
+      _.set(data, 'name', chat_message.name);
     }
-    if (chat_message.is_hidden) {
-      data.is_system = chat_message.is_hidden;
+    if (chat_message?.role !== undefined) {
+      _.set(data, 'is_user', chat_message.role === 'user');
     }
+    if (chat_message?.is_hidden !== undefined) {
+      _.set(data, 'is_system', chat_message.is_hidden);
+    }
+
     if (is_chat_message(chat_message)) {
-      if (chat_message.message) {
-        data.mes = chat_message.message;
-        if (data.swipes) {
-          data.swipes[data.swipe_id] = chat_message.message;
+      if (chat_message?.message !== undefined) {
+        _.set(data, 'mes', chat_message.message);
+        if (data?.swipes !== undefined) {
+          _.set(data, ['swipes', data.swipe_id], chat_message.message);
         }
       }
-      if (chat_message.data) {
-        if (!data.variables) {
-          data.variables = [];
+      if (chat_message?.data !== undefined) {
+        if (data?.variables === undefined) {
+          _.set(data, 'variables', _.times(data.swipes?.length ?? 1, _.constant({})));
         }
-        data.variables[data.swipe_id ?? 0] = chat_message.data;
+        _.set(data, ['variables', data.swipe_id ?? 0], chat_message.data);
       }
-    } else {
-      if (chat_message.swipes) {
-        data.swipes = chat_message.swipes;
-      }
-      if (chat_message.swipes_data) {
-        data.variables = chat_message.swipes_data;
-      }
-      if (chat_message.swipe_id) {
-        data.swipe_id = chat_message.swipe_id;
-        data.mes = data.swipes[data.swipe_id];
-      }
+    } else if (
+      chat_message?.swipe_id !== undefined ||
+      chat_message?.swipes !== undefined ||
+      chat_message?.swipes_data !== undefined
+    ) {
+      _.set(chat_message, 'swipe_id', chat_message.swipe_id ?? data.swipe_id ?? 0);
+      _.set(chat_message, 'swipes', chat_message.swipes ?? data.swipes ?? [data.mes]);
+      _.set(chat_message, 'swipes_data', chat_message.swipes_data ?? data.variables ?? [{}]);
+      const max_length =
+        _.max([chat_message.swipes?.length as number, chat_message.swipes_data?.length as number]) ?? 1;
+      (chat_message.swipes as string[]).length = max_length;
+      (chat_message.swipes_data as Record<string, any>[]).length = max_length;
+
+      _.set(data, 'swipes', chat_message.swipes);
+      _.set(data, 'variables', chat_message.swipes_data);
+      _.set(data, 'swipe_id', chat_message.swipe_id);
+      _.set(data, 'mes', data.swipes[data.swipe_id]);
     }
   };
 
@@ -295,11 +306,11 @@ export async function setChatMessage(
     if (!chat_message.swipes) {
       chat_message.swipe_id = 0;
       chat_message.swipes = [chat_message.mes];
-      chat_message.swipe_info = [{}];
+      chat_message.variables = [{}];
     }
     for (let i = chat_message.swipes.length; i <= swipe_id; ++i) {
       chat_message.swipes.push('');
-      chat_message.swipe_info.push({});
+      chat_message.variables.push({});
     }
     return true;
   };
