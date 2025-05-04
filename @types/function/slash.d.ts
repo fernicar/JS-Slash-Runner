@@ -14,4 +14,4 @@
  * // 获取当前聊天消息最后一条消息对应的 id
  * const last_message_id = await triggerSlash('/pass {{lastMessageId}}');
  */
-async function triggerSlash(command: string): Promise<string | undefined>;
+async function triggerSlash(command: string): Promise<string>;
