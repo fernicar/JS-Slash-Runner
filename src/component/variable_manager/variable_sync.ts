@@ -1,6 +1,6 @@
 import { eventSource } from '@sillytavern/script';
 
-import { VariableType } from '@/component/script_repository/variable_manager/types';
+import { VariableType } from '@/component/variable_manager/types';
 import { getVariables } from '@/function/variables';
 
 const VARIABLE_CACHE_KEY = 'variable_cache';

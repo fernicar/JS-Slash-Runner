@@ -723,8 +723,7 @@ export class VariableView implements IDomUpdater {
     const dataType = card.attr('data-type') as VariableDataType;
 
     switch (dataType) {
-      case 'array':
-      case 'list': {
+      case 'array': {
         const items: string[] = [];
         card.find('.list-item textarea').each(function () {
           items.push($(this).val() as string);
@@ -746,8 +745,7 @@ export class VariableView implements IDomUpdater {
           return {};
         }
       }
-      case 'string':
-      case 'text': {
+      case 'string': {
         return card.find('.string-input, .variable-content-input').val();
       }
       default:

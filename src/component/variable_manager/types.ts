@@ -6,7 +6,7 @@ export type VariableType = 'global' | 'character' | 'chat' | 'message';
 /**
  * 变量数据类型
  */
-export type VariableDataType = 'array' | 'boolean' | 'number' | 'object' | 'string' | 'text' | 'list';
+export type VariableDataType = 'array' | 'boolean' | 'number' | 'object' | 'string' ;
 
 /**
  * 变量项结构

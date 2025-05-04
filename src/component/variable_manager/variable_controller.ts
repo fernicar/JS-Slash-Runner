@@ -1,8 +1,9 @@
-import { VariableDataType, VariableType } from '@/component/script_repository/variable_manager/types';
-import { VariableModel } from '@/component/script_repository/variable_manager/variable_model';
-import { VariableSyncService } from '@/component/script_repository/variable_manager/variable_sync';
-import { VariableView } from '@/component/script_repository/variable_manager/variable_view';
+import { VariableDataType, VariableType } from '@/component/variable_manager/types';
+import { VariableModel } from '@/component/variable_manager/variable_model';
+import { VariableSyncService } from '@/component/variable_manager/variable_sync';
+import { VariableView } from '@/component/variable_manager/variable_view';
 import { getVariables } from '@/function/variables';
+
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
 
 export class VariableController {
@@ -112,7 +113,6 @@ export class VariableController {
    */
   private refreshVariableCards(): void {
     const type = this.model.getActiveVariableType();
-    const operationId = Date.now();
 
     try {
       if (type !== 'message') {
@@ -131,7 +131,7 @@ export class VariableController {
         }
       }
 
-      const filteredVariables = this.model.filterVariables(operationId);
+      const filteredVariables = this.model.filterVariables();
       this.view.refreshVariableCards(type, filteredVariables);
     } catch (error) {
       console.error(`[VariableManager] 刷新变量卡片失败:`, error);

@@ -1,5 +1,5 @@
 import { getSortableDelay } from '@sillytavern/scripts/utils';
-import { VariableDataType } from './types';
+import { VariableDataType } from '@/component/variable_manager/types';
 
 export class VariableCardFactory {
   /**

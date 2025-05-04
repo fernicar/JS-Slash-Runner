@@ -6,7 +6,7 @@ import {
   replaceVariables,
   updateVariablesWith,
 } from '@/function/variables';
-import { VariableDataType, VariableItem, VariableType } from './types';
+import { VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
 
 export class VariableModel {
   private currentVariables: Record<string, any> = {};
@@ -19,13 +19,10 @@ export class VariableModel {
     boolean: true,
     number: true,
     object: true,
-    list: true,
-    text: true,
   };
 
   private searchKeyword: string = '';
 
-  // 楼层筛选范围
   private floorMinRange: number | null = null;
   private floorMaxRange: number | null = null;
 
@@ -39,45 +36,34 @@ export class VariableModel {
     this.activeVariableType = type;
 
     if (type === 'message') {
-      // 对于消息变量，先检查是否已设置楼层范围
       const [currentMinFloor, currentMaxFloor] = this.getFloorRange();
       const hasExistingRange = currentMinFloor !== null && currentMaxFloor !== null;
 
-      // 如果楼层范围未设置，则设置默认范围
       if (!hasExistingRange) {
-        // 获取当前聊天中最新的消息ID
         const lastMessageId = getLastMessageId();
 
-        // 设置合理的楼层范围，默认显示最近5条消息的变量
-        const newMinFloor = Math.max(0, lastMessageId - 4); // 确保最小不小于0
+        const newMinFloor = Math.max(0, lastMessageId - 4);
         const newMaxFloor = lastMessageId;
 
-        // 更新楼层范围筛选
         this.updateFloorRange(newMinFloor, newMaxFloor);
       }
 
-      // 初始化一个空的变量集合
       this.currentVariables = {};
 
-      // 加载楼层范围内的变量
       if (hasExistingRange || (currentMinFloor !== null && currentMaxFloor !== null)) {
-        // 遍历楼层范围，获取各楼层变量
         const minFloor = currentMinFloor!;
         const maxFloor = currentMaxFloor!;
 
-        // 加载各楼层变量
         for (let floor = minFloor; floor <= maxFloor; floor++) {
           const floorVars = this.getFloorVariables(floor);
           const floorVarCount = Object.keys(floorVars).length;
 
           if (floorVarCount > 0) {
-            // 合并到变量集合
             Object.assign(this.currentVariables, floorVars);
           }
         }
       }
     } else {
-      // 其他类型变量正常加载
       this.currentVariables = getVariables({ type });
     }
   }
@@ -222,7 +208,6 @@ export class VariableModel {
    * @param max 最大楼层
    */
   public updateFloorRange(min: number | null, max: number | null): void {
-    // 确保最小楼层不小于0
     if (min !== null) {
       min = Math.max(0, min);
     }
@@ -237,19 +222,6 @@ export class VariableModel {
    */
   public getFloorRange(): [number | null, number | null] {
     return [this.floorMinRange, this.floorMaxRange];
-  }
-
-  /**
-   * 获取变量所属的楼层号
-   * @param messageId 消息ID
-   * @returns 楼层号
-   */
-  private getVariableFloor(messageId: number | string): number {
-    if (typeof messageId === 'string') {
-      const id = parseInt(messageId, 10);
-      return isNaN(id) ? 0 : id;
-    }
-    return messageId;
   }
 
   /**
@@ -282,11 +254,9 @@ export class VariableModel {
       if (Array.isArray(value)) {
         type = 'array';
       } else if (value === null) {
-        // 将null值转为字符串显示
         type = 'string';
         formattedValue = 'null';
       } else if (value === undefined) {
-        // 将undefined值转为字符串显示
         type = 'string';
         formattedValue = 'undefined';
       } else if (typeof value === 'boolean') {
@@ -314,29 +284,23 @@ export class VariableModel {
    * @param operationId 操作ID（用于日志追踪）
    * @returns 过滤后的变量列表
    */
-  public filterVariables(operationId: number = Date.now()): VariableItem[] {
-    // 记录过滤前变量数量
+  public filterVariables(): VariableItem[] {
     const initialVariables = this.formatVariablesForUI();
 
-    // 如果没有筛选，直接返回
     if (Object.values(this.filterState).every(value => value === true) && !this.searchKeyword) {
       return initialVariables;
     }
 
-    // 应用过滤
     const filteredVariables = initialVariables.filter(variable => {
-      // 1. 类型筛选
       const typeFilterPassed = this.filterState[variable.type];
       if (!typeFilterPassed) return false;
 
-      // 2. 关键词搜索
       if (this.searchKeyword) {
         const keyword = this.searchKeyword.toLowerCase();
         const nameMatch = variable.name.toLowerCase().includes(keyword);
 
-        // 对于简单类型，也搜索值
         let valueMatch = false;
-        if (['string', 'text', 'number', 'boolean'].includes(variable.type)) {
+        if (['string','number', 'boolean'].includes(variable.type)) {
           const valueStr = String(variable.value).toLowerCase();
           valueMatch = valueStr.includes(keyword);
         }
