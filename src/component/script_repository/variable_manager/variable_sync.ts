@@ -3,110 +3,136 @@ import { eventSource } from '@sillytavern/script';
 import { VariableType } from '@/component/script_repository/variable_manager/types';
 import { getVariables } from '@/function/variables';
 
-// 新增：定义统一的缓存键
 const VARIABLE_CACHE_KEY = 'variable_cache';
 let variableCache: Record<string, any> = {};
 
-// 修订后的 DOM 更新器接口
+const VARIABLE_EVENTS: Record<string, string> = {
+  GLOBAL: 'settings_updated',
+  CHARACTER: 'character_variables_changed',
+  MESSAGE: 'message_variables_changed',
+  // 聊天变量不使用事件，而是使用轮询
+  CHAT: '',
+};
+
+// 定义轮询间隔（毫秒）
+const CHAT_POLLING_INTERVAL = 2000;
+
 export interface IDomUpdater {
   addVariableCard(name: string, value: any): void;
   removeVariableCard(name: string): void;
   updateVariableCard(name: string, value: any): void;
+  updateWithoutAnimation(isSkipAnimation: boolean): void;
 }
 
-/**
- * 变量同步服务 - 负责处理变量变更并更新UI
- *
- * 工作原理:
- * 1. 初始化时，不立即绑定监听器，而是等待设置当前变量类型
- * 2. 当setCurrentType被调用时:
- *    - 解绑之前的监听器（如果有）
- *    - 设置新的变量类型
- *    - 初始化该类型的缓存
- *    - 绑定settings_updated事件监听器（包括测试监听器用于调试）
- * 3. 当settings_updated事件触发时:
- *    - 获取最新变量并与缓存比较
- *    - 更新UI反映变更（添加、删除、更新）
- *    - 更新缓存
- * 4. 如需手动触发更新，可调用manualUpdate方法
- */
+// 定义监听器状态映射接口
+interface ListenerStatus {
+  bound: boolean;
+  handler: (...args: any[]) => Promise<void>;
+}
+
 export class VariableSyncService {
   private domUpdater: IDomUpdater;
   private currentType: VariableType | null = null;
-  // 新增：存储绑定的监听器函数引用
-  private _boundHandleSettingsUpdate: () => Promise<void>;
-  // 新增：存储测试监听器函数引用
-  private _boundTestListener: () => void;
-  // 新增：标记监听器是否已绑定
-  private _isListenerBound: boolean = false;
-  // 新增：标记测试监听器是否已绑定
-  private _isTestListenerBound: boolean = false;
+  private _boundListeners: Record<VariableType, ListenerStatus> = {
+    global: { bound: false, handler: this._handleVariableUpdate.bind(this, 'global') },
+    character: { bound: false, handler: this._handleVariableUpdate.bind(this, 'character') },
+    chat: { bound: false, handler: this._handleVariableUpdate.bind(this, 'chat') },
+    message: { bound: false, handler: this._handleVariableUpdate.bind(this, 'message') },
+  };
+  // 用于聊天变量轮询的定时器ID
+  private _chatPollingInterval: number | null = null;
+  // 标记监听器是否处于激活状态
+  private _listenersActive: boolean = false;
+  // 标记是否正在进行类型切换
+  private _isTypeChanging: boolean = false;
 
   constructor(domUpdater: IDomUpdater) {
     this.domUpdater = domUpdater;
-    // 初始化绑定后的函数引用，但不立即绑定监听器
-    this._boundHandleSettingsUpdate = this._handleSettingsUpdate.bind(this);
-    // 初始化测试监听器函数引用
-    this._boundTestListener = () => {
-
-      this._handleSettingsUpdate();
-    };
-
   }
 
-  // 新增：清理方法，用于断开监听和清空缓存
-  public async cleanup(): Promise<void> {
+  // 获取当前是否正在进行类型切换
+  public get isTypeChanging(): boolean {
+    return this._isTypeChanging;
+  }
 
-    // 移除事件监听器（如果已绑定）
-    this._unbindEventListener();
+  public async cleanup(): Promise<void> {
+    this._unbindAllEventListeners();
+    this._stopChatPolling();
 
     try {
-      // 清空缓存
       variableCache = {};
-
     } catch (error) {
-      console.error(`【变量同步服务】：清空缓存键 ${VARIABLE_CACHE_KEY} 时出错:`, error);
-      // 即使缓存清除失败，也应认为清理过程已尝试
+      console.error(`[VariableManager]：清空缓存键 ${VARIABLE_CACHE_KEY} 时出错:`, error);
     }
-    this.currentType = null; // 重置当前类型
-
+    this.currentType = null;
   }
 
+  /**
+   * 设置当前变量类型，并相应地初始化监听器或轮询
+   * @param type 变量类型
+   */
   public async setCurrentType(type: VariableType): Promise<void> {
     if (this.currentType !== type) {
-      // 先移除旧的监听器（如果有）
-      this._unbindEventListener();
+      // 设置标记表示正在进行类型切换
+      this._isTypeChanging = true;
+      // 告知DOM更新器禁用动画效果
+      this.domUpdater.updateWithoutAnimation(true);
 
-
+      this._unbindAllEventListeners();
+      this._stopChatPolling();
 
       this.currentType = type;
 
-      // 初始化此类型的缓存
       await this.initializeCacheForType(type);
 
-      // 只有当是全局变量类型时才绑定settings_updated事件监听器
-      if (type === 'global') {
-        this._bindEventListener();
-      } else {
+      if (this._listenersActive) {
+        if (type === 'chat') {
+          this._startChatPolling();
+        } else {
+          this._bindVariableListener(type);
+        }
+      }
 
-        // 对于非全局变量类型，立即执行一次更新以获取最新数据
-        await this._handleOtherVariablesUpdate(type);
+      await this._handleVariableUpdate(type);
+
+      this._isTypeChanging = false;
+      this.domUpdater.updateWithoutAnimation(false);
+    }
+  }
+
+  /**
+   * 激活当前类型的事件监听器或轮询
+   * 应在标签页激活时调用
+   */
+  public activateListeners(): void {
+    this._listenersActive = true;
+    if (this.currentType) {
+      if (this.currentType === 'chat') {
+        this._startChatPolling();
+      } else {
+        this._bindVariableListener(this.currentType);
       }
     }
+  }
+
+  /**
+   * 停用当前的事件监听器或轮询
+   * 应在标签页停用时调用，以节省性能
+   */
+  public deactivateListeners(): void {
+    this._listenersActive = false;
+    this._unbindAllEventListeners();
+    this._stopChatPolling();
   }
 
   public async initializeCacheForType(type: VariableType): Promise<void> {
     try {
       const currentVariables = getVariables({ type });
-      // 读取整个缓存对象
       const fullCache = variableCache || {};
-      // 更新特定类型的部分 - 使用深拷贝
       fullCache[type] = _.cloneDeep(currentVariables);
-      // 写回整个缓存对象
       variableCache = fullCache;
-
     } catch (error) {
-      console.error(`【变量同步服务】：初始化类型 ${type} 的缓存时出错:`, error);
+      console.error(`[VariableManager]：初始化类型 ${type} 的缓存时出错:`, error);
     }
   }
 
@@ -115,145 +141,139 @@ export class VariableSyncService {
    * @returns Promise<void>
    */
   public async manualUpdate(): Promise<void> {
-
-
-    if (!this.currentType) {
-
-      return;
-    }
-
-    if (this.currentType === 'global') {
-      // 全局变量使用settings_updated事件处理函数
-      await this._handleSettingsUpdate();
-    } else {
-      // 非全局变量使用专用处理函数
-      await this._handleOtherVariablesUpdate(this.currentType);
-    }
-
-
-  }
-
-  // 新增：绑定事件监听器
-  private _bindEventListener(): void {
-
-    // 只有当类型为 global 时才绑定监听器
-    if (this.currentType !== 'global') {
-
-      return;
-    }
-
-    // 绑定主要监听器
-    if (!this._isListenerBound && this.currentType) {
-
-      try {
-        eventSource.on('settings_updated', this._boundHandleSettingsUpdate);
-        this._isListenerBound = true;
-
-      } catch (error) {
-        console.error(`【变量同步服务】：绑定设置更新事件监听器时出错:`, error);
-        this._isListenerBound = false;
-      }
-    }
-
-    // 绑定测试监听器
-    if (!this._isTestListenerBound && this.currentType) {
-
-      try {
-        eventSource.on('settings_updated', this._boundTestListener);
-        this._isTestListenerBound = true;
-
-      } catch (error) {
-        console.error(`【变量同步服务】：绑定测试监听器时出错:`, error);
-        this._isTestListenerBound = false;
-      }
-    }
-  }
-
-  // 新增：解绑事件监听器
-  private _unbindEventListener(): void {
-    // 移除主要监听器
-    if (this._isListenerBound) {
-
-      eventSource.removeListener('settings_updated', this._boundHandleSettingsUpdate);
-      this._isListenerBound = false;
-
-    }
-
-    // 移除测试监听器
-    if (this._isTestListenerBound) {
-
-      eventSource.removeListener('settings_updated', this._boundTestListener);
-      this._isTestListenerBound = false;
-
+    if (this.currentType) {
+      await this._handleVariableUpdate(this.currentType);
     }
   }
 
   /**
-   * 处理非全局变量类型的更新
-   * 当前为空实现，未来可能会扩展支持其他类型变量的自动更新
+   * 统一的变量监听器绑定方法
    * @param type 变量类型
-   * @returns Promise<void>
+   * @private
    */
-  private async _handleOtherVariablesUpdate(type: VariableType): Promise<void> {
-    if (type === 'global') {
-      // 全局变量类型应该使用 _handleSettingsUpdate() 处理
-      return;
+  private _bindVariableListener(type: VariableType): void {
+    if (type === 'chat') return;
+
+    const eventName = VARIABLE_EVENTS[type.toUpperCase()];
+    const listenerStatus = this._boundListeners[type];
+
+    if (!listenerStatus.bound && eventName) {
+      try {
+        eventSource.on(eventName, listenerStatus.handler);
+        this._boundListeners[type].bound = true;
+      } catch (error) {
+        console.error(`[VariableSyncService]：绑定${type}变量事件监听器时出错:`, error);
+        this._boundListeners[type].bound = false;
+      }
     }
-
-
-    // 未来可以在这里添加其他类型的变量更新实现
   }
 
-  private async _handleSettingsUpdate(): Promise<void> {
-    if (!this.currentType) {
+  /**
+   * 解绑所有事件监听器
+   * @private
+   */
+  private _unbindAllEventListeners(): void {
+    for (const type of Object.keys(this._boundListeners) as VariableType[]) {
+      if (type === 'chat') continue;
 
-      return;
+      const eventName = VARIABLE_EVENTS[type.toUpperCase()];
+      const listenerStatus = this._boundListeners[type];
+
+      if (listenerStatus.bound && eventName) {
+        try {
+          eventSource.removeListener(eventName, listenerStatus.handler);
+          this._boundListeners[type].bound = false;
+        } catch (error) {
+          console.error(`[VariableManager]：解绑${type}变量事件监听器时出错:`, error);
+        }
+      }
     }
+  }
 
-    // 确保只处理全局变量类型
-    if (this.currentType !== 'global') {
+  /**
+   * 启动聊天变量的轮询
+   * @private
+   */
+  private _startChatPolling(): void {
+    this._stopChatPolling();
 
+    if (this.currentType === 'chat' && this._listenersActive) {
+      try {
+        // 设置定时器定期检查聊天变量
+        this._chatPollingInterval = window.setInterval(async () => {
+          await this._handleVariableUpdate('chat');
+        }, CHAT_POLLING_INTERVAL);
+      } catch (error) {
+        console.error('[VariableManager]：启动聊天变量轮询时出错:', error);
+        this._chatPollingInterval = null;
+      }
+    }
+  }
+
+  /**
+   * 停止聊天变量的轮询
+   * @private
+   */
+  private _stopChatPolling(): void {
+    if (this._chatPollingInterval !== null) {
+      try {
+        window.clearInterval(this._chatPollingInterval);
+        this._chatPollingInterval = null;
+      } catch (error) {
+        console.error('[VariableManager]：停止聊天变量轮询时出错:', error);
+      }
+    }
+  }
+
+  /**
+   * 统一的变量更新处理方法
+   * 适用于所有变量类型（全局、角色、聊天、消息）
+   * @param type 变量类型
+   * @param data 可选的事件数据（角色变量事件会提供）
+   * @private
+   */
+  private async _handleVariableUpdate(type: VariableType, data?: any): Promise<void> {
+    if (!this.currentType || this.currentType !== type) {
       return;
     }
 
     try {
+      // 获取最新变量
+      // 角色变量和消息变量事件会直接提供变量数据
+      let currentVariables: Record<string, any>;
+      if ((type === 'character' || type === 'message') && data && data.variables) {
+        currentVariables = data.variables;
+      } else {
+        // 其他类型需要通过getVariables获取
+        currentVariables = getVariables({ type });
+      }
 
-      // 获取当前变量
-      const currentVariables = getVariables({ type: this.currentType });
-
-
-      // 获取缓存变量
       const fullCache = variableCache || {};
-      const cachedVariables = fullCache[this.currentType] || {};
-
+      const cachedVariables = fullCache[type] || {};
 
       // 比较变量并更新DOM
       const { added, removed, updated } = this._compareVariableRecords(cachedVariables, currentVariables);
 
       // 处理变量添加
       Object.entries(added).forEach(([name, value]) => {
-
         this.domUpdater.addVariableCard(name, value);
       });
 
       // 处理变量删除
       removed.forEach(name => {
-
         this.domUpdater.removeVariableCard(name);
       });
 
       // 处理变量更新
       Object.entries(updated).forEach(([name, value]) => {
-
         this.domUpdater.updateVariableCard(name, value);
       });
 
-      // 更新缓存 - 使用深拷贝
-      fullCache[this.currentType] = _.cloneDeep(currentVariables);
+      // 更新缓存
+      fullCache[type] = _.cloneDeep(currentVariables);
       variableCache = fullCache;
-
     } catch (error) {
-      console.error(`【变量同步服务】：处理设置更新时出错:`, error);
+      console.error(`[VariableManager]：处理${type}变量更新时出错:`, error);
     }
   }
 
@@ -277,21 +297,15 @@ export class VariableSyncService {
     for (const key of cachedKeys) {
       if (!currentKeys.has(key)) {
         removed.push(key);
-
       }
     }
 
     // 检查已添加或已更新的变量
     for (const key of currentKeys) {
       if (!cachedKeys.has(key)) {
-        // 使用深拷贝确保缓存独立
         added[key] = _.cloneDeep(current[key]);
-
       } else if (!_.isEqual(current[key], cached[key])) {
-        // 使用 lodash 的 isEqual 进行深比较
-        // 使用深拷贝确保缓存独立
         updated[key] = _.cloneDeep(current[key]);
-
       }
     }
 

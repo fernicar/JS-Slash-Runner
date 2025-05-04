@@ -2,7 +2,7 @@ import {
   getCharacterScriptVariables,
   replaceCharacterScriptVariables,
 } from '@/component/script_repository/script_repository';
-import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
+import { chat, chat_metadata, eventSource, saveMetadata, saveSettings } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { getChatMessages, setChatMessage } from './chat_message';
 
@@ -55,6 +55,8 @@ export async function replaceVariables(
       }
       message_id = message_id === 'latest' ? -1 : message_id;
       await setChatMessage({ data: variables }, message_id, { refresh: 'none' });
+      // 发出变量变化事件，包含角色ID和变量数据
+      eventSource.emit('message_variables_changed', { variables });
       break;
     case 'chat':
       _.set(chat_metadata, 'variables', variables);
@@ -62,6 +64,8 @@ export async function replaceVariables(
       break;
     case 'character':
       await replaceCharacterScriptVariables(variables);
+      // 发出变量变化事件，包含角色ID和变量数据
+      eventSource.emit('character_variables_changed', { variables });
       break;
     case 'global':
       _.set(extension_settings.variables, 'global', variables);

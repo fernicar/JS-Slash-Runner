@@ -1,10 +1,39 @@
 import { getSortableDelay } from '@sillytavern/scripts/utils';
 import { VariableDataType } from './types';
 
-/**
- * 变量卡片类，负责创建各种类型的变量卡片
- */
 export class VariableCardFactory {
+  /**
+   * 从值推断变量数据类型
+   * @param value 要推断类型的值
+   * @returns 推断出的变量数据类型
+   */
+  public inferDataType(value: any): VariableDataType {
+    if (Array.isArray(value)) {
+      return 'array';
+    } else if (typeof value === 'boolean') {
+      return 'boolean';
+    } else if (typeof value === 'number') {
+      return 'number';
+    } else if (typeof value === 'object' && value !== null) {
+      return 'object';
+    }
+    return 'string';
+  }
+
+  /**
+   * 设置变量卡片的数据属性
+   * @param card 变量卡片jQuery对象
+   * @param name 变量名称
+   * @param value 变量值
+   * @returns 设置了属性的变量卡片jQuery对象
+   */
+  public setCardDataAttributes(card: JQuery<HTMLElement>, name: string, value: any): JQuery<HTMLElement> {
+    card.attr('data-name', name);
+    card.attr('data-original-name', name);
+    card.attr('data-value', JSON.stringify(value));
+    return card;
+  }
+
   /**
    * 创建变量卡片
    * @param type 变量数据类型
@@ -13,21 +42,30 @@ export class VariableCardFactory {
    * @returns 变量卡片jQuery对象
    */
   public createCard(type: VariableDataType, name: string, value: any): JQuery<HTMLElement> {
+    let card: JQuery<HTMLElement>;
     switch (type) {
       case 'array':
-        return this.createArrayCard(name, value as any[]);
+        card = this.createArrayCard(name, value as any[]);
+        break;
       case 'boolean':
-        return this.createBooleanCard(name, value as boolean);
+        card = this.createBooleanCard(name, value as boolean);
+        break;
       case 'number':
-        return this.createNumberCard(name, value as number);
+        card = this.createNumberCard(name, value as number);
+        break;
       case 'object':
-        return this.createObjectCard(name, value as object);
+        card = this.createObjectCard(name, value as object);
+        break;
       case 'string':
-        return this.createStringCard(name, value as string);
+        card = this.createStringCard(name, String(value));
+        break;
       default:
         // 默认返回字符串变量卡片（包括处理null和undefined值）
-        return this.createStringCard(name, String(value));
+        card = this.createStringCard(name, String(value));
     }
+
+    // 设置数据属性
+    return this.setCardDataAttributes(card, name, value);
   }
 
   /**
@@ -37,7 +75,6 @@ export class VariableCardFactory {
    * @returns 数组变量卡片jQuery对象
    */
   private createArrayCard(name: string, items: any[]): JQuery<HTMLElement> {
-    // 创建基本卡片
     const card = $(`
       <div class="variable-card" data-type="array" data-name="${name}">
         <div class="variable-card-header">
@@ -68,9 +105,7 @@ export class VariableCardFactory {
     listContainer.sortable({
       delay: getSortableDelay(),
       handle: '.drag-handle',
-      stop: function () {
-        // 处理排序后的更新逻辑将由Controller负责
-      },
+      // 此处只记录排序事件，实际保存由保存按钮触发
     });
 
     return card;
@@ -133,9 +168,7 @@ export class VariableCardFactory {
       </div>
     `);
 
-    // 添加按钮点击事件，更新显示值
     card.find('.boolean-btn').on('click', function () {
-      // 更新按钮状态
       card.find('.boolean-btn').removeClass('active');
       $(this).addClass('active');
     });
@@ -182,7 +215,6 @@ export class VariableCardFactory {
    * @returns 对象变量卡片jQuery对象
    */
   private createObjectCard(name: string, value: object): JQuery<HTMLElement> {
-    // 将对象转换为格式化的JSON字符串
     const jsonString = JSON.stringify(value, null, 2);
 
     const card = $(`

@@ -1,3 +1,4 @@
+import { getLastMessageId } from '@/function/util';
 import {
   deleteVariable,
   getVariables,
@@ -7,23 +8,11 @@ import {
 } from '@/function/variables';
 import { VariableDataType, VariableItem, VariableType } from './types';
 
-/**
- * 变量数据模型类，负责变量数据的管理和存储
- */
 export class VariableModel {
-  /**
-   * 存储当前加载的变量
-   */
   private currentVariables: Record<string, any> = {};
 
-  /**
-   * 当前活动的变量类型
-   */
   private activeVariableType: VariableType = 'global';
 
-  /**
-   * 筛选状态
-   */
   private filterState: Record<VariableDataType, boolean> = {
     string: true,
     array: true,
@@ -34,27 +23,63 @@ export class VariableModel {
     text: true,
   };
 
-  /**
-   * 搜索关键词
-   */
   private searchKeyword: string = '';
 
-  /**
-   * 构造函数
-   */
-  constructor() {
-    // 初始化模型
-  }
+  // 楼层筛选范围
+  private floorMinRange: number | null = null;
+  private floorMaxRange: number | null = null;
+
+  constructor() {}
 
   /**
    * 加载指定类型的变量
-   * @param type 变量类型(global/character/chat)
+   * @param type 变量类型(global/character/chat/message)
    */
   public async loadVariables(type: VariableType): Promise<void> {
-    console.log(`[VariableModel] 开始加载${type}变量`);
     this.activeVariableType = type;
-    this.currentVariables = getVariables({ type });
-    console.log(`[VariableModel] 加载${type}变量完成`, JSON.stringify(this.currentVariables));
+
+    if (type === 'message') {
+      // 对于消息变量，先检查是否已设置楼层范围
+      const [currentMinFloor, currentMaxFloor] = this.getFloorRange();
+      const hasExistingRange = currentMinFloor !== null && currentMaxFloor !== null;
+
+      // 如果楼层范围未设置，则设置默认范围
+      if (!hasExistingRange) {
+        // 获取当前聊天中最新的消息ID
+        const lastMessageId = getLastMessageId();
+
+        // 设置合理的楼层范围，默认显示最近5条消息的变量
+        const newMinFloor = Math.max(0, lastMessageId - 4); // 确保最小不小于0
+        const newMaxFloor = lastMessageId;
+
+        // 更新楼层范围筛选
+        this.updateFloorRange(newMinFloor, newMaxFloor);
+      }
+
+      // 初始化一个空的变量集合
+      this.currentVariables = {};
+
+      // 加载楼层范围内的变量
+      if (hasExistingRange || (currentMinFloor !== null && currentMaxFloor !== null)) {
+        // 遍历楼层范围，获取各楼层变量
+        const minFloor = currentMinFloor!;
+        const maxFloor = currentMaxFloor!;
+
+        // 加载各楼层变量
+        for (let floor = minFloor; floor <= maxFloor; floor++) {
+          const floorVars = this.getFloorVariables(floor);
+          const floorVarCount = Object.keys(floorVars).length;
+
+          if (floorVarCount > 0) {
+            // 合并到变量集合
+            Object.assign(this.currentVariables, floorVars);
+          }
+        }
+      }
+    } else {
+      // 其他类型变量正常加载
+      this.currentVariables = getVariables({ type });
+    }
   }
 
   /**
@@ -84,62 +109,49 @@ export class VariableModel {
 
   /**
    * 保存变量数据
-   * @param type 变量类型(global/character/chat)
+   * @param type 变量类型(global/character/chat/message)
    * @param name 变量名称
    * @param dataType 数据类型
    * @param value 变量值
    */
-  public async saveVariableData(
-    type: VariableType,
-    name: string,
-    dataType: VariableDataType,
-    value: any,
-  ): Promise<void> {
-    // 更新内存中的变量
+  public async saveVariableData(type: VariableType, name: string, value: any): Promise<void> {
     if (type === this.activeVariableType) {
       this.currentVariables[name] = value;
     }
 
-    // 调用系统变量保存函数
     await insertOrAssignVariables({ [name]: value }, { type });
   }
 
   /**
    * 删除变量
-   * @param type 变量类型(global/character/chat)
+   * @param type 变量类型(global/character/chat/message)
    * @param name 变量名称
    */
   public async deleteVariableData(type: VariableType, name: string): Promise<void> {
-    // 从内存中删除变量
     if (type === this.activeVariableType && this.currentVariables[name]) {
       delete this.currentVariables[name];
     }
 
-    // 调用系统变量删除函数
     await deleteVariable(name, { type });
   }
 
   /**
    * 重命名变量（在单个事务中完成）
-   * @param type 变量类型(global/character/chat)
+   * @param type 变量类型(global/character/chat/message)
    * @param oldName 旧变量名称
    * @param newName 新变量名称
    * @param value 变量值
    */
   public async renameVariable(type: VariableType, oldName: string, newName: string, value: any): Promise<void> {
-    // 在一个事务中完成重命名操作
     await updateVariablesWith(
       variables => {
-        // 设置新值
         _.set(variables, newName, value);
-        // 删除旧值
         _.unset(variables, oldName);
         return variables;
       },
       { type },
     );
 
-    // 更新内存中的变量
     if (type === this.activeVariableType) {
       this.currentVariables[newName] = value;
       delete this.currentVariables[oldName];
@@ -148,12 +160,11 @@ export class VariableModel {
 
   /**
    * 更新列表变量的顺序
-   * @param type 变量类型(global/character/chat)
+   * @param type 变量类型(global/character/chat/message)
    * @param name 变量名称
    * @param items 新的列表顺序
    */
   public async updateListOrder(type: VariableType, name: string, items: string[]): Promise<void> {
-    // 更新列表变量顺序
     if (type === this.activeVariableType && this.currentVariables[name] && Array.isArray(this.currentVariables[name])) {
       this.currentVariables[name] = items;
       await insertOrAssignVariables({ [name]: items }, { type });
@@ -162,15 +173,13 @@ export class VariableModel {
 
   /**
    * 清除所有变量
-   * @param type 变量类型(global/character/chat)
+   * @param type 变量类型(global/character/chat/message)
    */
   public async clearAllVariables(type: VariableType): Promise<void> {
-    // 清除内存中的变量
     if (type === this.activeVariableType) {
       this.currentVariables = {};
     }
 
-    // 替换为空对象
     await replaceVariables({}, { type });
   }
 
@@ -208,6 +217,57 @@ export class VariableModel {
   }
 
   /**
+   * 更新楼层范围筛选
+   * @param min 最小楼层
+   * @param max 最大楼层
+   */
+  public updateFloorRange(min: number | null, max: number | null): void {
+    // 确保最小楼层不小于0
+    if (min !== null) {
+      min = Math.max(0, min);
+    }
+
+    this.floorMinRange = min;
+    this.floorMaxRange = max;
+  }
+
+  /**
+   * 获取当前楼层范围筛选
+   * @returns 当前楼层范围 [min, max]
+   */
+  public getFloorRange(): [number | null, number | null] {
+    return [this.floorMinRange, this.floorMaxRange];
+  }
+
+  /**
+   * 获取变量所属的楼层号
+   * @param messageId 消息ID
+   * @returns 楼层号
+   */
+  private getVariableFloor(messageId: number | string): number {
+    if (typeof messageId === 'string') {
+      const id = parseInt(messageId, 10);
+      return isNaN(id) ? 0 : id;
+    }
+    return messageId;
+  }
+
+  /**
+   * 获取特定楼层的变量数据
+   * @param messageId 消息ID
+   * @returns 楼层变量数据对象
+   */
+  public getFloorVariables(messageId: number): Record<string, any> {
+    try {
+      const variables = getVariables({ type: 'message', message_id: messageId });
+      return variables || {};
+    } catch (error) {
+      console.error(`获取第${messageId}层变量失败:`, error);
+      return {};
+    }
+  }
+
+  /**
    * 转换变量到UI显示格式
    * @returns 格式化后的变量列表，用于UI显示
    */
@@ -216,10 +276,9 @@ export class VariableModel {
 
     for (const name in this.currentVariables) {
       const value = this.currentVariables[name];
-      let type: VariableDataType;
+      let type: VariableDataType = 'string';
       let formattedValue = value;
 
-      // 检测JavaScript数据类型
       if (Array.isArray(value)) {
         type = 'array';
       } else if (value === null) {
@@ -238,9 +297,6 @@ export class VariableModel {
         type = 'object';
       } else if (typeof value === 'string') {
         type = 'string';
-      } else {
-        // 兼容原有类型
-        type = Array.isArray(value) ? 'list' : 'text';
       }
 
       result.push({
@@ -255,23 +311,42 @@ export class VariableModel {
 
   /**
    * 过滤变量列表
+   * @param operationId 操作ID（用于日志追踪）
    * @returns 过滤后的变量列表
    */
-  public filterVariables(): VariableItem[] {
-    const variables = this.formatVariablesForUI();
+  public filterVariables(operationId: number = Date.now()): VariableItem[] {
+    // 记录过滤前变量数量
+    const initialVariables = this.formatVariablesForUI();
 
-    return variables.filter(variable => {
-      // 筛选类型
-      if (!this.filterState[variable.type]) {
-        return false;
-      }
+    // 如果没有筛选，直接返回
+    if (Object.values(this.filterState).every(value => value === true) && !this.searchKeyword) {
+      return initialVariables;
+    }
 
-      // 搜索匹配
-      if (this.searchKeyword && !variable.name.toLowerCase().includes(this.searchKeyword.toLowerCase())) {
-        return false;
+    // 应用过滤
+    const filteredVariables = initialVariables.filter(variable => {
+      // 1. 类型筛选
+      const typeFilterPassed = this.filterState[variable.type];
+      if (!typeFilterPassed) return false;
+
+      // 2. 关键词搜索
+      if (this.searchKeyword) {
+        const keyword = this.searchKeyword.toLowerCase();
+        const nameMatch = variable.name.toLowerCase().includes(keyword);
+
+        // 对于简单类型，也搜索值
+        let valueMatch = false;
+        if (['string', 'text', 'number', 'boolean'].includes(variable.type)) {
+          const valueStr = String(variable.value).toLowerCase();
+          valueMatch = valueStr.includes(keyword);
+        }
+
+        return nameMatch || valueMatch;
       }
 
       return true;
     });
+
+    return filteredVariables;
   }
 }

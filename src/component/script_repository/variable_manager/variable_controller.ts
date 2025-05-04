@@ -1,12 +1,10 @@
+import { VariableDataType, VariableType } from '@/component/script_repository/variable_manager/types';
+import { VariableModel } from '@/component/script_repository/variable_manager/variable_model';
+import { VariableSyncService } from '@/component/script_repository/variable_manager/variable_sync';
+import { VariableView } from '@/component/script_repository/variable_manager/variable_view';
 import { getVariables } from '@/function/variables';
-import { VariableDataType, VariableType } from './types';
-import { VariableModel } from './variable_model';
-import { VariableSyncService } from './variable_sync';
-import { VariableView } from './variable_view';
+import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
 
-/**
- * 变量控制器类，负责协调Model和View
- */
 export class VariableController {
   /**
    * 变量数据模型
@@ -40,22 +38,10 @@ export class VariableController {
    * @param container UI容器
    */
   public async init(container: JQuery<HTMLElement>): Promise<void> {
-    // 初始化视图
     this.view.initUI();
-
-    // 注册为变量变更监听器
-    // this.syncService.registerChangeListener(this.handleVariableChange.bind(this));
-
-    // 绑定UI事件处理
     this.bindEvents(container);
-
-    // 设置初始活动类型为global
     await this.syncService.setCurrentType('global');
-
-    // 默认注册全局变量的事件监听
-    // this.registerVariableListener('global');
-
-    // 加载初始变量数据（默认加载全局变量）
+    this.syncService.activateListeners();
     await this.loadVariables('global');
   }
 
@@ -64,38 +50,17 @@ export class VariableController {
    * @param container UI容器
    */
   private bindEvents(container: JQuery<HTMLElement>): void {
-    // 绑定标签页切换事件
     container.find('.tab-item').on('click', this.handleTabChange.bind(this));
-
-    // 绑定添加列表项按钮事件
     container.on('click', '.add-list-item', this.handleAddListItem.bind(this));
-
-    // 绑定删除列表项按钮事件
     container.on('click', '.list-item-delete', this.handleDeleteListItem.bind(this));
-
-    // 绑定删除变量卡片按钮事件
     container.on('click', '.delete-btn', this.handleDeleteVariableCard.bind(this));
-
-    // 绑定保存变量卡片按钮事件
     container.on('click', '.save-btn', this.handleSaveVariableCard.bind(this));
-
-    // 绑定新建变量按钮事件
     container.on('click', '#add-variable', this.handleAddVariable.bind(this));
-
-    // 绑定清空全部按钮事件
     container.on('click', '#clear-all', this.handleClearAll.bind(this));
-
-    // 绑定筛选图标点击事件
     container.on('click', '#filter-icon', this.handleFilterIconClick.bind(this));
-
-    // 绑定筛选选项变更事件
     container.on('change', '.filter-checkbox', this.handleFilterOptionChange.bind(this));
-
-    // 绑定搜索框输入事件
     container.on('input', '#variable-search', this.handleVariableSearch.bind(this));
-
-    // 绑定拖拽排序停止事件
-    container.on('sortupdate', '.list-items-container', this.handleListSortUpdate.bind(this));
+    container.on('click', '#floor-filter-btn', this.handleFloorRangeFilter.bind(this));
   }
 
   /**
@@ -103,21 +68,28 @@ export class VariableController {
    * @param type 变量类型
    */
   public async loadVariables(type: VariableType): Promise<void> {
-    console.log(`[VariableController] 开始加载${type}变量数据`);
+    const isListeningActive = this.syncService['_listenersActive'];
+    if (isListeningActive) {
+      this.syncService.deactivateListeners();
+    }
 
-    // 先加载变量数据到模型
-    await this.model.loadVariables(type);
+    try {
+      await this.model.loadVariables(type);
 
-    // 使用setTimeout确保DOM已完全准备好后再刷新UI
-    // 这有助于解决初始加载时DOM可能未完全初始化的问题
-    setTimeout(() => {
-      console.log(`[VariableController] DOM准备就绪，刷新${type}变量卡片`);
+      if (type === 'message') {
+        this.view.getContainer().find('#floor-filter-container').show();
+        const [minFloor, maxFloor] = this.model.getFloorRange();
+        this.view.updateFloorRangeInputs(minFloor, maxFloor);
+      } else {
+        this.view.getContainer().find('#floor-filter-container').hide();
+      }
+
       this.refreshVariableCards();
-
-      // 移除强制刷新调用，这超出了强制刷新的预期使用范围
-      // 强制刷新应该只在浮窗打开和标签切换时触发
-      // setTimeout(() => this.forceRefresh(), 200);
-    }, 50);
+    } finally {
+      if (isListeningActive) {
+        this.syncService.activateListeners();
+      }
+    }
   }
 
   /**
@@ -125,22 +97,13 @@ export class VariableController {
    */
   public forceRefresh(): void {
     const type = this.model.getActiveVariableType();
-    console.log(`[VariableController] 强制刷新${type}变量数据和UI`);
 
     try {
-      // 先强制刷新同步服务的缓存
-      // this.syncService.forceRefreshVariables(type);
-
-      // 立即获取最新数据并更新模型
       const latestVariables = getVariables({ type });
       Object.assign(this.model.getCurrentVariables(), latestVariables);
-
-      // 然后刷新UI，确保使用最新数据
       this.refreshVariableCards();
-
-      console.log(`[VariableController] ${type}变量强制刷新完成`);
     } catch (error) {
-      console.error(`[VariableController] 强制刷新变量数据失败:`, error);
+      console.error(`[VariableManager] 强制刷新变量数据失败:`, error);
     }
   }
 
@@ -149,33 +112,30 @@ export class VariableController {
    */
   private refreshVariableCards(): void {
     const type = this.model.getActiveVariableType();
-    console.log(`[VariableController] 开始刷新${type}变量卡片UI`);
+    const operationId = Date.now();
 
     try {
-      // 确保使用最新变量数据（避免缓存问题）
-      const currentVariables = getVariables({ type });
+      if (type !== 'message') {
+        const currentVariables = getVariables({ type });
+        const currentModelVars = this.model.getCurrentVariables();
 
-      // 如果当前模型数据与系统实际数据不一致，更新模型数据
-      const currentModelVars = this.model.getCurrentVariables();
-      const isDifferent = JSON.stringify(currentModelVars) !== JSON.stringify(currentVariables);
+        let isDifferent = false;
+        try {
+          isDifferent = JSON.stringify(currentModelVars) !== JSON.stringify(currentVariables);
+        } catch (e) {
+          isDifferent = true;
+        }
 
-      if (isDifferent) {
-        console.log(`[VariableController] 检测到${type}变量数据变化，更新模型数据`);
-        // 直接更新模型中的变量
-        Object.assign(currentModelVars, currentVariables);
+        if (isDifferent) {
+          Object.assign(currentModelVars, currentVariables);
+        }
       }
 
-      // 获取过滤后的变量列表和总数
-      const filteredVariables = this.model.filterVariables();
+      const filteredVariables = this.model.filterVariables(operationId);
       const totalVariables = this.model.formatVariablesForUI().length;
-
-      // 更新UI
-      console.log(`[VariableController] 渲染${filteredVariables.length}/${totalVariables}个变量卡片`);
       this.view.refreshVariableCards(type, filteredVariables, totalVariables);
-
-      console.log(`[VariableController] ${type}变量卡片UI刷新完成`);
     } catch (error) {
-      console.error(`[VariableController] 刷新变量卡片失败:`, error);
+      console.error(`[VariableManager] 刷新变量卡片失败:`, error);
     }
   }
 
@@ -189,29 +149,15 @@ export class VariableController {
 
     if (!tabId) return;
 
-    const contentId = tabId.replace('-tab', '-content');
     const type = tabId.replace('-tab', '') as VariableType;
     const currentType = this.model.getActiveVariableType();
 
-    // 如果当前已经是这个标签页，不做任何处理
     if (type === currentType) return;
 
-    console.log(`[VariableController] 标签页切换: ${currentType} -> ${type}`);
-
-    // 更新UI，切换标签页和内容区域的激活状态
     this.view.setActiveTab(type);
-
-    // 移除旧类型的监听器
-    // this.removeVariableListener(currentType);
-
-    // 更新同步服务中的活动类型
-    // 注意：模型中的 activeVariableType 会在 loadVariables 中隐式更新
+    this.syncService.deactivateListeners();
     await this.syncService.setCurrentType(type);
-
-    // 注册新类型的监听器
-    // this.registerVariableListener(type);
-
-    // 加载新类型的数据并刷新UI
+    this.syncService.activateListeners();
     await this.loadVariables(type);
   }
 
@@ -255,25 +201,19 @@ export class VariableController {
   private handleDeleteVariableCard(event: JQuery.ClickEvent): void {
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
-    const variableName = this.view.getVariableCardName(card);
+    const name = this.view.getVariableCardName(card);
     const type = this.model.getActiveVariableType();
 
-    // 弹出确认对话框
-    this.view.showConfirmDialog(`确定要删除变量 "${variableName}" 吗？`, async confirmed => {
+    this.view.showConfirmDialog(`确定要删除变量 "${name}" 吗？`, async confirmed => {
       if (confirmed) {
-        await this.model.deleteVariableData(type, variableName);
-
-        // 从UI中移除卡片
-        card.fadeOut(300, () => {
-          card.remove();
-
-          // 检查是否需要显示"暂无变量"提示
-          const remainingCards = $(`#${type}-content`).find('.variable-card').length;
-          if (remainingCards === 0) {
-            // 仅在没有剩余卡片时触发普通刷新，显示"暂无变量"提示
-            this.refreshVariableCards();
-          }
-        });
+        try {
+          await this.model.deleteVariableData(type, name);
+          card.fadeOut(300, function () {
+            $(this).remove();
+          });
+        } catch (error) {
+          console.error(`[VariableManager] 删除变量失败:`, error);
+        }
       }
     });
   }
@@ -285,104 +225,77 @@ export class VariableController {
   private async handleSaveVariableCard(event: JQuery.ClickEvent): Promise<void> {
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
-    const dataType = card.attr('data-type') as VariableDataType;
-    const oldName = card.attr('data-original-name');
-    const newName = this.view.getVariableCardName(card);
-    const value = this.view.getVariableCardValue(card);
+    const oldName = this.view.getVariableCardName(card);
+    const newName = card.find('.variable-name-input').val() as string;
     const type = this.model.getActiveVariableType();
+    const value = this.view.getVariableCardValue(card);
 
-    // 验证变量名
     if (!newName || newName.trim() === '') {
-      alert('变量名不能为空');
+      callGenericPopup('变量名不能为空', POPUP_TYPE.TEXT);
       return;
     }
 
     try {
-      // 标记是否为重命名操作
-      const isRename = oldName && oldName !== newName;
+      if (oldName !== newName) {
+        if (this.model.getVariableValue(newName) !== undefined) {
+          const userConfirmed = await new Promise<boolean>(resolve => {
+            this.view.showConfirmDialog(`变量 "${newName}" 已存在，确定要覆盖吗？`, confirmed => resolve(confirmed));
+          });
 
-      if (isRename) {
-        // 重命名变量前先更新DOM属性，防止后续事件处理中出现重复项
-        card.attr('data-original-name', newName);
-        card.attr('data-name', newName);
+          if (!userConfirmed) return;
+        }
 
-        // 重命名变量（单个事务）
         await this.model.renameVariable(type, oldName, newName, value);
-
-        // 阻止重命名操作触发refreshVariableCards
-        // 因为DOM已经正确更新，不需要完全刷新变量列表
-        console.log(`[VariableController] 变量重命名完成: ${oldName} -> ${newName}`);
       } else {
-        // 正常保存变量
-        await this.model.saveVariableData(type, newName, dataType, value);
-
-        // 更新卡片属性
-        card.attr('data-original-name', newName);
-        card.attr('data-name', newName);
+        await this.model.saveVariableData(type, newName, value);
       }
 
-      // 显示保存成功
-      button.html('<i class="fa-solid fa-check"></i>');
-      setTimeout(() => {
-        button.html('<i class="fa-regular fa-save"></i>');
-      }, 1000);
+      card.removeClass('editing');
+      card.find('.variable-actions').show();
+      const nameEl = card.find('.variable-name');
+      nameEl.text(newName).show();
+      card.find('.variable-name-input').hide();
+
+      this.refreshVariableCards();
     } catch (error) {
-      console.error('保存变量失败:', error);
-      alert(`保存失败: ${error}`);
+      console.error(`[VariableManager] 保存变量失败:`, error);
+      callGenericPopup('保存变量失败：' + (error as Error).message, POPUP_TYPE.TEXT);
     }
   }
 
   /**
    * 处理添加变量
-   * @param event 点击事件
    */
-  private async handleAddVariable(event: JQuery.ClickEvent): Promise<void> {
-    const type = this.model.getActiveVariableType();
-
-    // 显示变量类型选择对话框
-    await this.view.showAddVariableDialog(dataType => {
-      // 创建新变量卡片
-      this.view.createNewVariableCard(type, dataType);
+  private async handleAddVariable(): Promise<void> {
+    this.view.showAddVariableDialog(dataType => {
+      this.view.createNewVariableCard(this.model.getActiveVariableType(), dataType);
     });
   }
 
   /**
    * 处理清空全部变量
-   * @param event 点击事件
    */
-  private async handleClearAll(event: JQuery.ClickEvent): Promise<void> {
+  private async handleClearAll(): Promise<void> {
     const type = this.model.getActiveVariableType();
-    let typeName: string;
+    const typeText = {
+      global: '全局',
+      character: '角色',
+      chat: '聊天',
+      message: '消息',
+    }[type];
 
-    switch (type) {
-      case 'global':
-        typeName = '全局';
-        break;
-      case 'character':
-        typeName = '角色';
-        break;
-      case 'chat':
-        typeName = '聊天';
-        break;
-      case 'message':
-        typeName = '消息';
-        break;
-      default:
-        typeName = '所有';
-    }
-
-    // 显示确认对话框
-    this.view.showConfirmDialog(`确定要清空所有${typeName}变量吗？此操作不可撤销！`, async confirmed => {
+    this.view.showConfirmDialog(`确定要清空所有${typeText}变量吗？此操作不可恢复！`, async confirmed => {
       if (confirmed) {
         try {
           await this.model.clearAllVariables(type);
 
-          // 移除直接调用refreshVariableCards的代码
-          // 这里不应直接刷新，而应由settings_updated事件触发刷新
-          // this.refreshVariableCards();
+          const $content = this.view.getContainer().find(`#${type}-content`);
+          $content.find('.variable-list').empty();
+
+          callGenericPopup(`已清空所有${typeText}变量`, POPUP_TYPE.TEXT);
         } catch (error) {
-          console.error('清空变量失败:', error);
-          alert(`清空失败: ${error}`);
+          console.error(`[VariableManager] 清空变量失败:`, error);
+          callGenericPopup('清空变量失败：' + (error as Error).message, POPUP_TYPE.TEXT);
         }
       }
     });
@@ -390,16 +303,10 @@ export class VariableController {
 
   /**
    * 处理筛选图标点击
-   * @param event 点击事件
    */
-  private handleFilterIconClick(event: JQuery.ClickEvent): void {
-    const filterPanel = $('#filter-options');
-
-    if (filterPanel.is(':visible')) {
-      filterPanel.slideUp(200);
-    } else {
-      filterPanel.slideDown(200);
-    }
+  private handleFilterIconClick(): void {
+    const $filterOptions = this.view.getContainer().find('.filter-options');
+    $filterOptions.toggle();
   }
 
   /**
@@ -407,11 +314,11 @@ export class VariableController {
    * @param event 变更事件
    */
   private handleFilterOptionChange(event: JQuery.ChangeEvent): void {
-    const checkbox = $(event.currentTarget);
-    const type = checkbox.attr('data-type') as VariableDataType;
-    const checked = checkbox.is(':checked');
+    const $checkbox = $(event.currentTarget);
+    const type = $checkbox.data('type') as VariableDataType;
+    const isChecked = $checkbox.is(':checked');
 
-    this.model.updateFilterState(type, checked);
+    this.model.updateFilterState(type, isChecked);
     this.refreshVariableCards();
   }
 
@@ -420,42 +327,78 @@ export class VariableController {
    * @param event 输入事件
    */
   private handleVariableSearch(event: JQuery.TriggeredEvent): void {
-    const input = $(event.currentTarget);
-    const keyword = input.val() as string;
-
+    const keyword = $(event.currentTarget).val() as string;
     this.model.updateSearchKeyword(keyword);
     this.refreshVariableCards();
   }
 
   /**
-   * 处理列表排序更新
-   * @param event 排序更新事件
+   * 处理楼层范围筛选
    */
-  private async handleListSortUpdate(event: JQuery.TriggeredEvent): Promise<void> {
-    const listContainer = $(event.currentTarget);
-    const card = listContainer.closest('.variable-card');
-    const variableName = this.view.getVariableCardName(card);
-    const type = this.model.getActiveVariableType();
+  private handleFloorRangeFilter(): void {
+    const $minInput = this.view.getContainer().find('#floor-min');
+    const $maxInput = this.view.getContainer().find('#floor-max');
 
-    // 获取新的排序
-    const items: string[] = [];
-    listContainer.find('.variable-content-input').each(function () {
-      items.push($(this).val() as string);
-    });
+    const minVal = $minInput.val() as string;
+    const maxVal = $maxInput.val() as string;
 
-    // 更新排序
-    await this.model.updateListOrder(type, variableName, items);
+    const min = minVal ? parseInt(minVal) : null;
+    const max = maxVal ? parseInt(maxVal) : null;
+
+    if ((min !== null && isNaN(min)) || (max !== null && isNaN(max))) {
+      this.view.showFloorFilterError('请输入有效的数字');
+      return;
+    }
+
+    if (min !== null && max !== null && min > max) {
+      this.view.showFloorFilterError('最小值不能大于最大值');
+      return;
+    }
+
+    this.view.hideFloorFilterError();
+
+    if (min !== null || max !== null) {
+      this.applyFloorRangeAndReload(min || 0, max === null ? Infinity : max);
+    }
+  }
+
+  /**
+   * 应用楼层范围并重新加载变量
+   * @param min 最小楼层
+   * @param max 最大楼层
+   */
+  private async applyFloorRangeAndReload(min: number, max: number): Promise<void> {
+    this.model.updateFloorRange(min, max === Infinity ? null : max);
+
+    this.syncService.deactivateListeners();
+    try {
+      await this.model.loadVariables('message');
+      this.refreshVariableCards();
+    } finally {
+      this.syncService.activateListeners();
+    }
   }
 
   /**
    * 清理控制器资源
-   * 包括同步服务的事件监听和缓存
    */
   public cleanup(): void {
-    console.log('[VariableController] 清理资源');
-    if (this.syncService) {
+    this.view.getContainer().find('.tab-item').off('click');
+    this.view.getContainer().off('click', '.add-list-item');
+    this.view.getContainer().off('click', '.list-item-delete');
+    this.view.getContainer().off('click', '.delete-btn');
+    this.view.getContainer().off('click', '.save-btn');
+    this.view.getContainer().off('click', '#add-variable');
+    this.view.getContainer().off('click', '#clear-all');
+    this.view.getContainer().off('click', '#filter-icon');
+    this.view.getContainer().off('change', '.filter-checkbox');
+    this.view.getContainer().off('input', '#variable-search');
+    this.view.getContainer().off('click', '#floor-filter-btn');
+
+    try {
       this.syncService.cleanup();
+    } catch (error) {
+      console.error(`[VariableManager] 清理同步服务失败:`, error);
     }
-    console.log('[VariableController] 资源清理完成');
   }
 }
