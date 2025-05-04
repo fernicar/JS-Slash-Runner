@@ -10,7 +10,7 @@ import { renderExtensionTemplateAsync, writeExtensionField } from '@sillytavern/
 // @ts-ignore
 import { selected_group } from '@sillytavern/scripts/group-chats';
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
-import { download, getFileText, getSortableDelay, uuidv4 } from '@sillytavern/scripts/utils';
+import { download, getFileText, getSortableDelay, loadFileToDocument, uuidv4 } from '@sillytavern/scripts/utils';
 
 interface IFrameElement extends HTMLIFrameElement {
   cleanup: () => void;
@@ -135,6 +135,12 @@ export class ScriptRepository {
    * 加载脚本库到界面
    */
   async loadScriptLibrary() {
+    // 加载脚本管理器样式
+    await loadFileToDocument(
+      `/scripts/extensions/${extensionFolderPath}/src/component/script_repository/style.css`,
+      'css',
+    );
+
     this.loadScripts();
 
     $('#global-script-list').empty();

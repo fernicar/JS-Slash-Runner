@@ -132,8 +132,7 @@ export class VariableController {
       }
 
       const filteredVariables = this.model.filterVariables(operationId);
-      const totalVariables = this.model.formatVariablesForUI().length;
-      this.view.refreshVariableCards(type, filteredVariables, totalVariables);
+      this.view.refreshVariableCards(type, filteredVariables);
     } catch (error) {
       console.error(`[VariableManager] 刷新变量卡片失败:`, error);
     }

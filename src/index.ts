@@ -18,7 +18,7 @@ import {
 } from '@/util/check_update';
 import { Collapsible } from '@/util/collapsible';
 import { extensionFolderPath, extensionName, extensionSettingName } from '@/util/extension_variables';
-
+import { initVariableManager } from '@/component/variable_manager';
 
 import { event_types, eventSource, saveSettings } from '@sillytavern/script';
 import { extension_settings, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
@@ -54,14 +54,14 @@ function handleSettingPageChange(event: JQuery.ClickEvent) {
     $('#main-settings-title').removeClass('title-item-active');
     $('#render-settings-title').removeClass('title-item-active');
     $('#script-settings-title').removeClass('title-item-active');
-    $('#audio-settings-title').removeClass('title-item-active');
+    $('#toolbox-settings-title').removeClass('title-item-active');
   }
 
   function hideAllContentPanels() {
     $('#main-settings-content').hide();
     $('#render-settings-content').hide();
     $('#script-settings-content').hide();
-    $('#audio-settings-content').hide();
+    $('#toolbox-settings-content').hide();
   }
 
   resetAllTitleClasses();
@@ -80,9 +80,9 @@ function handleSettingPageChange(event: JQuery.ClickEvent) {
       $('#script-settings-title').addClass('title-item-active');
       $('#script-settings-content').show();
       break;
-    case 'audio':
-      $('#audio-settings-title').addClass('title-item-active');
-      $('#audio-settings-content').show();
+    case 'toolbox':
+      $('#toolbox-settings-title').addClass('title-item-active');
+      $('#toolbox-settings-content').show();
       break;
   }
 }
@@ -97,9 +97,13 @@ async function initExtensionPanel() {
   const $iframe_container = $(await renderExtensionTemplateAsync(`${templatePath}/message_iframe`, 'index'));
   $('#render-settings-content').append($iframe_container);
   const $audio_container = $(await renderExtensionTemplateAsync(`${templatePath}/audio`, 'index'));
-  $('#audio-settings-content').append($audio_container);
+  $('#toolbox-settings-content').append($audio_container);
   const $reference_container = $(await renderExtensionTemplateAsync(`${templatePath}/reference`, 'index'));
   $('#extension-reference').append($reference_container);
+  const $variables_container = $(
+    await renderExtensionTemplateAsync(`${templatePath}/variable_manager`, 'variable_manager_entry'),
+  );
+  $('#toolbox-settings-content').prepend($variables_container);
 }
 
 /**
@@ -136,13 +140,13 @@ jQuery(async () => {
   $('#main-settings-content').show();
   $('#render-settings-content').hide();
   $('#script-settings-content').hide();
-  $('#audio-settings-content').hide();
+  $('#toolbox-settings-content').hide();
 
   // 监听设置选项卡切换
   $('#main-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
   $('#render-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
   $('#script-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
-  $('#audio-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
+  $('#toolbox-settings-title').on('click', (event: JQuery.ClickEvent) => handleSettingPageChange(event));
 
   eventSource.once(event_types.APP_READY, async () => {
     initExtensionMainPanel();
@@ -154,6 +158,7 @@ jQuery(async () => {
     await initIframePanel();
     await initReference();
     await initListener();
+    initVariableManager();
   });
 
   // 通用Collapsible折叠功能

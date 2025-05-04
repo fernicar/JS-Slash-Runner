@@ -1,9 +1,9 @@
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
 import { getSortableDelay } from '@sillytavern/scripts/utils';
 
-import { VariableDataType, VariableItem, VariableType } from '@/component/script_repository/variable_manager/types';
-import { VariableCardFactory } from '@/component/script_repository/variable_manager/variable_card';
-import { IDomUpdater } from '@/component/script_repository/variable_manager/variable_sync';
+import { VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
+import { VariableCardFactory } from '@/component/variable_manager/variable_card';
+import { IDomUpdater } from '@/component/variable_manager/variable_sync';
 import { getLastMessageId } from '@/function/util';
 
 export interface IController {
@@ -292,7 +292,6 @@ export class VariableView implements IDomUpdater {
    * 刷新变量卡片
    * @param type 变量类型
    * @param variables 过滤后的变量列表
-   * @param totalCount 总变量数量
    */
   public refreshVariableCards(type: VariableType, variables: VariableItem[]): void {
     const operationId = Date.now();
