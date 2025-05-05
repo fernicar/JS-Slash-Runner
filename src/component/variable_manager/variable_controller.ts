@@ -2,7 +2,6 @@ import { VariableDataType, VariableType } from '@/component/variable_manager/typ
 import { VariableModel } from '@/component/variable_manager/variable_model';
 import { VariableSyncService } from '@/component/variable_manager/variable_sync';
 import { VariableView } from '@/component/variable_manager/variable_view';
-import { getVariables } from '@/function/variables';
 
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
 
@@ -69,14 +68,27 @@ export class VariableController {
    * @param type 变量类型
    */
   public async loadVariables(type: VariableType): Promise<void> {
+    // 如果正在加载，忽略重复请求
+    if (this.model.isLoading) {
+      console.log(`[VariableController] 忽略重复的${type}变量加载请求`);
+      return;
+    }
+
     const isListeningActive = this.syncService['_listenersActive'];
     if (isListeningActive) {
       this.syncService.deactivateListeners();
     }
 
     try {
-      await this.model.loadVariables(type);
+      // 加载变量数据
+      const loadSuccess = await this.model.loadVariables(type);
 
+      if (!loadSuccess) {
+        console.warn(`[VariableController] ${type}变量加载未完成或被取消`);
+        return;
+      }
+
+      // 更新UI相关配置
       if (type === 'message') {
         this.view.getContainer().find('#floor-filter-container').show();
         const [minFloor, maxFloor] = this.model.getFloorRange();
@@ -85,6 +97,7 @@ export class VariableController {
         this.view.getContainer().find('#floor-filter-container').hide();
       }
 
+      // 刷新变量卡片显示
       this.refreshVariableCards();
     } finally {
       if (isListeningActive) {
@@ -97,11 +110,8 @@ export class VariableController {
    * 强制刷新当前活动变量
    */
   public forceRefresh(): void {
-    const type = this.model.getActiveVariableType();
-
     try {
-      const latestVariables = getVariables({ type });
-      Object.assign(this.model.getCurrentVariables(), latestVariables);
+      this.model.forceRefreshVariables();
       this.refreshVariableCards();
     } catch (error) {
       console.error(`[VariableManager] 强制刷新变量数据失败:`, error);
@@ -115,22 +125,6 @@ export class VariableController {
     const type = this.model.getActiveVariableType();
 
     try {
-      if (type !== 'message') {
-        const currentVariables = getVariables({ type });
-        const currentModelVars = this.model.getCurrentVariables();
-
-        let isDifferent = false;
-        try {
-          isDifferent = JSON.stringify(currentModelVars) !== JSON.stringify(currentVariables);
-        } catch (e) {
-          isDifferent = true;
-        }
-
-        if (isDifferent) {
-          Object.assign(currentModelVars, currentVariables);
-        }
-      }
-
       const filteredVariables = this.model.filterVariables();
       this.view.refreshVariableCards(type, filteredVariables);
     } catch (error) {
@@ -153,11 +147,20 @@ export class VariableController {
 
     if (type === currentType) return;
 
+    // 先更新UI标签状态
     this.view.setActiveTab(type);
+
+    // 停用当前监听器
     this.syncService.deactivateListeners();
+
+    // 设置新的变量类型，但不会触发变量加载
     await this.syncService.setCurrentType(type);
-    this.syncService.activateListeners();
+
+    // 加载新类型的变量（这里是唯一一次加载变量的地方）
     await this.loadVariables(type);
+
+    // 激活新类型的监听器
+    this.syncService.activateListeners();
   }
 
   /**

@@ -73,9 +73,7 @@ export class VariableSyncService {
    */
   public async setCurrentType(type: VariableType): Promise<void> {
     if (this.currentType !== type) {
-      // 设置标记表示正在进行类型切换
       this._isTypeChanging = true;
-      // 告知DOM更新器禁用动画效果
       this.domUpdater.updateWithoutAnimation(true);
 
       this._unbindAllEventListeners();
@@ -83,6 +81,7 @@ export class VariableSyncService {
 
       this.currentType = type;
 
+      // 初始化类型对应的缓存（但不执行变量更新）
       await this.initializeCacheForType(type);
 
       if (this._listenersActive) {
@@ -92,8 +91,6 @@ export class VariableSyncService {
           this._bindVariableListener(type);
         }
       }
-
-      await this._handleVariableUpdate(type);
 
       this._isTypeChanging = false;
       this.domUpdater.updateWithoutAnimation(false);
@@ -233,7 +230,7 @@ export class VariableSyncService {
    * @private
    */
   private async _handleVariableUpdate(type: VariableType, data?: any): Promise<void> {
-    if (!this.currentType || this.currentType !== type) {
+    if (!this.currentType || this.currentType !== type || this._isTypeChanging) {
       return;
     }
 

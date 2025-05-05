@@ -74,14 +74,6 @@ export class VariableView implements IDomUpdater {
   public initUI(): void {
     this.container.find('#global-tab').addClass('active');
     this.container.find('#global-content').addClass('active');
-    const tabContentIds = ['global-content', 'character-content', 'chat-content', 'message-content'];
-    tabContentIds.forEach(contentId => {
-      const $content = this.container.find(`#${contentId}`);
-      if ($content.find('.variable-list').length === 0) {
-        const $variableList = $('<div class="variable-list"></div>');
-        $content.append($variableList);
-      }
-    });
 
     // 初始化时隐藏楼层筛选控件（仅在消息标签页时才显示）
     this.container.find('#floor-filter-container').hide();
@@ -195,7 +187,7 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
-   * 获取指定类型的变量列表容器，如果不存在则创建一个
+   * 获取指定类型的变量列表容器
    * @param typeOrContent 变量类型或已找到的内容元素
    * @returns 变量列表jQuery对象
    */
@@ -207,13 +199,7 @@ export class VariableView implements IDomUpdater {
     } else {
       $content = typeOrContent;
     }
-
-    let $variableList = $content.find('.variable-list');
-    if ($variableList.length === 0) {
-      $variableList = $('<div class="variable-list"></div>');
-      $content.append($variableList);
-    }
-
+    const $variableList = $content.find('.variable-list');
     return $variableList;
   }
 
@@ -294,40 +280,49 @@ export class VariableView implements IDomUpdater {
    * @param variables 过滤后的变量列表
    */
   public refreshVariableCards(type: VariableType, variables: VariableItem[]): void {
+    // 为每次渲染请求生成唯一ID
     const operationId = Date.now();
     this._lastRenderRequestId = operationId;
 
+    // 更新标签文本
     this.container.find('.variable-type-label').text(`${type}变量`);
+
+    // 获取当前活动的内容容器
     const activeContent = this.container.find(`#${type}-content`);
     const $variableList = this.getOrCreateVariableList(activeContent);
 
+    // 保存滚动位置
     const scrollTop = $variableList.scrollTop() || 0;
 
+    // 清空变量列表
     $variableList.empty();
 
+    // 如果没有变量，显示空状态
     if (variables.length === 0) {
       $variableList.html('<div class="empty-state"><p>暂无变量</p></div>');
       return;
     }
 
+    // 根据变量类型选择不同的渲染方式
     if (type === 'message') {
       this.renderMessageVariablesByFloor($variableList, operationId)
         .then(result => {
-          if (this._lastRenderRequestId !== operationId) {
+          // 如果当前渲染请求已经过时或被取消，不执行后续操作
+          if (this._lastRenderRequestId !== operationId || result.cancelled) {
             return;
           }
 
-          if (result.cancelled) {
-            return;
-          }
-
+          // 恢复滚动位置
           $variableList.scrollTop(scrollTop);
         })
         .catch(error => {
           console.error(`[VariableView] 楼层变量渲染出错:`, error);
         });
     } else {
+      // 渲染普通变量列表
       this.renderRegularVariables(variables, $variableList);
+
+      // 恢复滚动位置
       $variableList.scrollTop(scrollTop);
     }
   }
@@ -338,9 +333,15 @@ export class VariableView implements IDomUpdater {
    * @param $container 容器元素
    */
   private renderRegularVariables(variables: VariableItem[], $container: JQuery<HTMLElement>): void {
+    // 使用DocumentFragment提高渲染性能
+    const fragment = document.createDocumentFragment();
+
     variables.forEach(variable => {
-      this.createAndAppendCard(variable.name, variable.value, variable.type, undefined, $container);
+      const card = this.createAndAppendCard(variable.name, variable.value, variable.type);
+      fragment.appendChild(card[0]);
     });
+
+    $container.append(fragment);
   }
 
   /**
@@ -852,9 +853,7 @@ export class VariableView implements IDomUpdater {
     $('body').append(this.dialog);
 
     this.initDraggableDialog();
-
     this.centerDialog();
-
     this.container.show();
   }
 

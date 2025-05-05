@@ -1,3 +1,4 @@
+import { VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
 import { getLastMessageId } from '@/function/util';
 import {
   deleteVariable,
@@ -6,7 +7,6 @@ import {
   replaceVariables,
   updateVariablesWith,
 } from '@/function/variables';
-import { VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
 
 export class VariableModel {
   private currentVariables: Record<string, any> = {};
@@ -26,46 +26,110 @@ export class VariableModel {
   private floorMinRange: number | null = null;
   private floorMaxRange: number | null = null;
 
+  /**
+   * 变量加载状态标志
+   * @private
+   */
+  private _isLoading: boolean = false;
+
+  /**
+   * 变量加载防抖计时器
+   * @private
+   */
+  private _loadDebounceTimeout: number | null = null;
+
+  /**
+   * 变量加载请求ID，用于取消过时的请求
+   * @private
+   */
+  private _loadRequestId: number = 0;
+
   constructor() {}
+
+  /**
+   * 获取变量是否正在加载
+   */
+  public get isLoading(): boolean {
+    return this._isLoading;
+  }
 
   /**
    * 加载指定类型的变量
    * @param type 变量类型(global/character/chat/message)
+   * @returns Promise<boolean> 加载是否成功完成
    */
-  public async loadVariables(type: VariableType): Promise<void> {
-    this.activeVariableType = type;
-
-    if (type === 'message') {
-      const [currentMinFloor, currentMaxFloor] = this.getFloorRange();
-      const hasExistingRange = currentMinFloor !== null && currentMaxFloor !== null;
-
-      if (!hasExistingRange) {
-        const lastMessageId = getLastMessageId();
-
-        const newMinFloor = Math.max(0, lastMessageId - 4);
-        const newMaxFloor = lastMessageId;
-
-        this.updateFloorRange(newMinFloor, newMaxFloor);
-      }
-
-      this.currentVariables = {};
-
-      if (hasExistingRange || (currentMinFloor !== null && currentMaxFloor !== null)) {
-        const minFloor = currentMinFloor!;
-        const maxFloor = currentMaxFloor!;
-
-        for (let floor = minFloor; floor <= maxFloor; floor++) {
-          const floorVars = this.getFloorVariables(floor);
-          const floorVarCount = Object.keys(floorVars).length;
-
-          if (floorVarCount > 0) {
-            Object.assign(this.currentVariables, floorVars);
-          }
-        }
-      }
-    } else {
-      this.currentVariables = getVariables({ type });
+  public async loadVariables(type: VariableType): Promise<boolean> {
+    // 如果类型没变，则不重新加载
+    if (this.activeVariableType === type && Object.keys(this.currentVariables).length > 0) {
+      return true;
     }
+
+    // 取消之前的防抖计时器
+    if (this._loadDebounceTimeout !== null) {
+      window.clearTimeout(this._loadDebounceTimeout);
+      this._loadDebounceTimeout = null;
+    }
+
+    // 生成新的请求ID
+    const requestId = ++this._loadRequestId;
+
+    // 返回一个Promise，在防抖后执行实际加载
+    return new Promise<boolean>(resolve => {
+      this._loadDebounceTimeout = window.setTimeout(async () => {
+        // 如果当前请求已经过时，则取消
+        if (requestId !== this._loadRequestId) {
+          resolve(false);
+          return;
+        }
+
+        // 设置加载状态
+        this._isLoading = true;
+
+        try {
+          this.activeVariableType = type;
+
+          if (type === 'message') {
+            const [currentMinFloor, currentMaxFloor] = this.getFloorRange();
+            const hasExistingRange = currentMinFloor !== null && currentMaxFloor !== null;
+
+            if (!hasExistingRange) {
+              const lastMessageId = getLastMessageId();
+
+              const newMinFloor = Math.max(0, lastMessageId - 4);
+              const newMaxFloor = lastMessageId;
+
+              this.updateFloorRange(newMinFloor, newMaxFloor);
+            }
+
+            this.currentVariables = {};
+
+            if (hasExistingRange || (currentMinFloor !== null && currentMaxFloor !== null)) {
+              const minFloor = currentMinFloor!;
+              const maxFloor = currentMaxFloor!;
+
+              for (let floor = minFloor; floor <= maxFloor; floor++) {
+                const floorVars = this.getFloorVariables(floor);
+                const floorVarCount = Object.keys(floorVars).length;
+
+                if (floorVarCount > 0) {
+                  Object.assign(this.currentVariables, floorVars);
+                }
+              }
+            }
+          } else {
+            this.currentVariables = getVariables({ type });
+          }
+
+          resolve(true);
+        } catch (error) {
+          console.error(`[VariableModel] 加载${type}变量失败:`, error);
+          resolve(false);
+        } finally {
+          this._isLoading = false;
+          this._loadDebounceTimeout = null;
+        }
+      }, 50); // 50ms防抖延迟
+    });
   }
 
   /**
@@ -300,7 +364,7 @@ export class VariableModel {
         const nameMatch = variable.name.toLowerCase().includes(keyword);
 
         let valueMatch = false;
-        if (['string','number', 'boolean'].includes(variable.type)) {
+        if (['string', 'number', 'boolean'].includes(variable.type)) {
           const valueStr = String(variable.value).toLowerCase();
           valueMatch = valueStr.includes(keyword);
         }
@@ -312,5 +376,22 @@ export class VariableModel {
     });
 
     return filteredVariables;
+  }
+
+  /**
+   * 强制刷新当前变量数据
+   * @returns 是否刷新成功
+   */
+  public forceRefreshVariables(): boolean {
+    try {
+      if (this.activeVariableType !== 'message') {
+        const latestVariables = getVariables({ type: this.activeVariableType });
+        this.currentVariables = { ...latestVariables };
+      }
+      return true;
+    } catch (error) {
+      console.error(`[VariableModel] 强制刷新变量失败:`, error);
+      return false;
+    }
   }
 }

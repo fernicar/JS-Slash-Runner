@@ -253,9 +253,11 @@ export class ScriptRepository {
     }
 
     if (type === ScriptType.GLOBAL && !this._isGlobalScriptEnabled) {
+      console.log('全局脚本未启用');
       return;
     }
     if (type === ScriptType.CHARACTER && !this._isScopedScriptEnabled) {
+      console.log('局部脚本未启用');
       return;
     }
 
