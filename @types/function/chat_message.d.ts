@@ -5,6 +5,7 @@ interface ChatMessage {
   is_hidden: boolean;
   message: string;
   data: Record<string, any>;
+  extra: Record<string, any>;
 }
 
 interface ChatMessageSwiped {
@@ -15,6 +16,7 @@ interface ChatMessageSwiped {
   swipe_id: number;
   swipes: string[];
   swipes_data: Record<string, any>[];
+  swipes_info: Record<string, any>[];
 }
 
 interface GetChatMessagesOption {

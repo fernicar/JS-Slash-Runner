@@ -16,6 +16,7 @@ interface ChatMessage {
   is_hidden: boolean;
   message: string;
   data: Record<string, any>;
+  extra: Record<string, any>;
 }
 
 interface ChatMessageSwiped {
@@ -26,6 +27,7 @@ interface ChatMessageSwiped {
   swipe_id: number;
   swipes: string[];
   swipes_data: Record<string, any>[];
+  swipes_info: Record<string, any>[];
 }
 
 interface GetChatMessagesOption {
@@ -117,8 +119,10 @@ export function getChatMessages(
 
     const swipe_id = message?.swipe_id ?? 0;
     const swipes = message?.swipes ?? [message.mes];
-    const swipes_data = message?.variables ?? [];
-    const data = swipes_data[swipe_id] ?? {};
+    const swipes_data = message?.variables ?? [{}];
+    const swipes_info = message?.swipes_info ?? [message?.extra ?? {}];
+    const extra = swipes_info[swipe_id];
+    const data = swipes_data[swipe_id];
 
     if (include_swipes) {
       return {
@@ -129,6 +133,7 @@ export function getChatMessages(
         swipe_id: swipe_id,
         swipes: swipes,
         swipes_data: swipes_data,
+        swipes_info: swipes_info,
       };
     }
     return {
@@ -138,6 +143,7 @@ export function getChatMessages(
       is_hidden: message.is_system,
       message: message.mes,
       data: data,
+      extra: extra,
 
       // for compatibility
       swipe_id: swipe_id,
@@ -203,23 +209,35 @@ export async function setChatMessages(
         }
         _.set(data, ['variables', data.swipe_id ?? 0], chat_message.data);
       }
+      if (chat_message?.extra !== undefined) {
+        if (data?.swipes_info === undefined) {
+          _.set(data, 'swipe_info', _.times(data.swipes?.length ?? 1, _.constant({})));
+        }
+        _.set(data, 'extra', chat_message?.extra);
+        _.set(data, ['swipe_info', data.swipe_id ?? 0], chat_message?.extra);
+      }
     } else if (
       chat_message?.swipe_id !== undefined ||
       chat_message?.swipes !== undefined ||
-      chat_message?.swipes_data !== undefined
+      chat_message?.swipes_data !== undefined ||
+      chat_message?.swipes_info !== undefined
     ) {
       _.set(chat_message, 'swipe_id', chat_message.swipe_id ?? data.swipe_id ?? 0);
       _.set(chat_message, 'swipes', chat_message.swipes ?? data.swipes ?? [data.mes]);
       _.set(chat_message, 'swipes_data', chat_message.swipes_data ?? data.variables ?? [{}]);
+      _.set(chat_message, 'swipes_info', chat_message.swipes_info ?? data.swipe_info ?? [{}]);
       const max_length =
-        _.max([chat_message.swipes?.length as number, chat_message.swipes_data?.length as number]) ?? 1;
+        _.max([chat_message.swipes?.length, chat_message.swipes_data?.length, chat_message.swipes_info?.length]) ?? 1;
       (chat_message.swipes as string[]).length = max_length;
       (chat_message.swipes_data as Record<string, any>[]).length = max_length;
+      (chat_message.swipes_info as Record<string, any>[]).length = max_length;
 
       _.set(data, 'swipes', chat_message.swipes);
       _.set(data, 'variables', chat_message.swipes_data);
+      _.set(data, 'swipe_info', chat_message.swipes_info);
       _.set(data, 'swipe_id', chat_message.swipe_id);
       _.set(data, 'mes', data.swipes[data.swipe_id]);
+      _.set(data, 'extra', data.swipe_info[data.swipe_id]);
     }
   };
 
