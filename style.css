@@ -174,7 +174,7 @@
 .box-container {
   padding: 1em;
   border-radius: 10px;
-  border: 1px solid var(--SmartThemeBorderColor);
+  border: 1px solid var(--grey5050a);
 }
 
 /* 自定义开关控件样式 */

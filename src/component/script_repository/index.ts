@@ -1,170 +1,149 @@
-import {
-  purgeEmbeddedScripts,
-  ScriptRepository,
-  ScriptType,
-  templatePath,
-} from '@/component/script_repository/script_repository';
-
+import { purgeEmbeddedScripts, ScriptData } from '@/component/script_repository/data';
+import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
+import { ScriptManager } from '@/component/script_repository/script_controller';
+import { ScriptType } from '@/component/script_repository/types';
+import { UIController } from '@/component/script_repository/ui_controller';
 import { event_types, eventSource } from '@sillytavern/script';
-import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
-import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 
 const load_events = [event_types.CHAT_CHANGED] as const;
 const delete_events = [event_types.CHARACTER_DELETED] as const;
 
-let scriptRepo: ScriptRepository;
-
-let qrBarObserver: MutationObserver | null = null;
-let qrBarDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-
 /**
- * 初始化脚本库界面
+ * 脚本仓库应用 - 使用事件驱动架构
+ * 负责整合ScriptManager和UIManager，提供统一的接口
  */
-export async function initScriptRepository() {
-  scriptRepo.handleScriptToggle(ScriptType.GLOBAL, scriptRepo.isGlobalScriptEnabled, false);
+export class ScriptRepositoryApp {
+  private static instance: ScriptRepositoryApp;
+  private scriptManager: ScriptManager;
+  private uiManager: UIController;
+  private initialized: boolean = false;
 
-  $('#global-script-enable-toggle')
-    .prop('checked', scriptRepo.isGlobalScriptEnabled)
-    .on('click', (event: JQuery.ClickEvent) =>
-      scriptRepo.handleScriptToggle(ScriptType.GLOBAL, event.target.checked, true),
-    );
-  $('#scoped-script-enable-toggle')
-    .prop('checked', scriptRepo.isScopedScriptEnabled)
-    .on('click', (event: JQuery.ClickEvent) =>
-      scriptRepo.handleScriptToggle(ScriptType.CHARACTER, event.target.checked, true),
-    );
+  private constructor() {
+    this.scriptManager = ScriptManager.getInstance();
+    this.uiManager = UIController.getInstance();
 
-  $('#open-global-script-editor').on('click', () => scriptRepo.openScriptEditor(ScriptType.GLOBAL, undefined));
-  $('#open-scoped-script-editor').on('click', () => scriptRepo.openScriptEditor(ScriptType.CHARACTER, undefined));
+    // 监听角色切换事件
+    this.registerEvents();
+  }
 
-  $('#import-script-file').on('change', async function () {
-    let target = 'global';
-    const template = $(await renderExtensionTemplateAsync(`${templatePath}`, 'script_import_target'));
-    template.find('#script-import-target-global').on('input', () => (target = 'global'));
-    template.find('#script-import-target-scoped').on('input', () => (target = 'scoped'));
-    const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
-      okButton: '确认',
-      cancelButton: '取消',
-    });
-
-    if (result) {
-      const inputElement = this instanceof HTMLInputElement && this;
-      if (inputElement && inputElement.files) {
-        for (const file of inputElement.files) {
-          await scriptRepo.onScriptImportFileChange(
-            file,
-            target === 'global' ? ScriptType.GLOBAL : ScriptType.CHARACTER,
-          );
-        }
-        inputElement.value = '';
-      }
+  /**
+   * 获取应用实例
+   */
+  public static getInstance(): ScriptRepositoryApp {
+    if (!ScriptRepositoryApp.instance) {
+      ScriptRepositoryApp.instance = new ScriptRepositoryApp();
     }
-  });
+    return ScriptRepositoryApp.instance;
+  }
 
-  $('#import-script').on('click', function () {
-    $('#import-script-file').trigger('click');
-  });
+  /**
+   * 销毁应用实例
+   */
+  public static destroyInstance(): void {
+    if (ScriptRepositoryApp.instance) {
+      ScriptRepositoryApp.instance.cleanup();
+      ScriptRepositoryApp.instance = undefined as unknown as ScriptRepositoryApp;
+      ScriptManager.destroyInstance();
+      UIController.destroyInstance();
+      ScriptData.destroyInstance();
+    }
+  }
 
-  $('#default-script').on('click', () => scriptRepo.loadDefaultScriptsRepository());
+  /**
+   * 初始化应用
+   */
+  public async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
 
-  // 修复和正则同时存在white-space:nowrap时布局出错的问题
-  $('#extensions_settings').css('min-width', '0');
-}
+    try {
+      // 初始化UI
+      await this.uiManager.initialize();
+      this.initialized = true;
+      console.info('[ScriptRepositoryApp] 初始化完成');
+    } catch (error) {
+      console.error('[ScriptRepositoryApp] 初始化失败:', error);
+      this.initialized = false;
+    }
+  }
 
-/**
- * 构建脚本库
- */
-export async function buildScriptRepository() {
-  scriptRepo = ScriptRepository.getInstance();
-  await scriptRepo.loadScriptLibrary();
-  scriptRepo.initButtonContainer();
-  MutationObserverQrBarCreated();
-}
-
-/**刷新脚本库 */
-export async function refreshScriptRepository() {
-  scriptRepo.cancelRunScriptsByType(ScriptType.CHARACTER);
-  scriptRepo.removeButtonsByType(ScriptType.CHARACTER);
-  await scriptRepo.checkEmbeddedScripts();
-  await scriptRepo.loadScriptLibrary();
-  await scriptRepo.runScriptsByType(ScriptType.CHARACTER);
-  scriptRepo.addButtonsByType(ScriptType.CHARACTER);
-}
-
-/** 移除脚本库 */
-export async function removeScriptRepository() {
-  scriptRepo.cancelRunScriptsByType(ScriptType.GLOBAL);
-  scriptRepo.cancelRunScriptsByType(ScriptType.CHARACTER);
-  scriptRepo.removeButtonsByType(ScriptType.GLOBAL);
-  scriptRepo.removeButtonsByType(ScriptType.CHARACTER);
-  ScriptRepository.destroyInstance();
-  removeMutationObserverQrBarCreated();
-}
-
-/**
- * 监听#qr--bar的元素移除
- */
-function MutationObserverQrBarCreated() {
-  qrBarObserver = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-      if (mutation.type === 'childList') {
-        if (qrBarDebounceTimer) {
-          clearTimeout(qrBarDebounceTimer);
-          qrBarDebounceTimer = null;
-        }
-
-        qrBarDebounceTimer = setTimeout(() => {
-          scriptRepo.initButtonContainer();
-          qrBarDebounceTimer = null;
-        }, 1000);
-      }
+  /**
+   * 注册事件监听
+   */
+  private registerEvents(): void {
+    // 注册SillyTavern事件
+    load_events.forEach(eventType => {
+      eventSource.on(eventType, this.refreshRepository.bind(this));
     });
-  });
 
-  qrBarObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+    delete_events.forEach(eventType => {
+      eventSource.on(eventType, (character: any) => purgeEmbeddedScripts({ character }));
+    });
+  }
+
+  /**
+   * 刷新脚本库
+   */
+  private async refreshRepository(): Promise<void> {
+    if (!this.initialized) {
+      return;
+    }
+
+    console.info('[ScriptRepositoryApp] 刷新脚本库');
+    // 通知刷新
+    scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refreshAll' });
+  }
+
+  /**
+   * 清理资源
+   */
+  public async cleanup(): Promise<void> {
+    try {
+      // 注销SillyTavern事件
+      load_events.forEach(eventType => {
+        eventSource.removeListener(eventType, this.refreshRepository.bind(this));
+      });
+
+      // 清理组件资源
+      await this.scriptManager.cleanup();
+      this.uiManager.cleanup();
+
+      this.initialized = false;
+      console.info('[ScriptRepositoryApp] 清理完成');
+    } catch (error) {
+      console.error('[ScriptRepositoryApp] 清理失败:', error);
+    }
+  }
 }
 
 /**
- * 取消监听#qr--bar
+ * 构建脚本库应用
  */
-function removeMutationObserverQrBarCreated() {
-  if (qrBarObserver) {
-    qrBarObserver.disconnect();
-    qrBarObserver = null;
-  }
+export async function buildScriptRepository(): Promise<void> {
+  const app = ScriptRepositoryApp.getInstance();
+  await app.initialize();
+}
 
-  if (qrBarDebounceTimer) {
-    clearTimeout(qrBarDebounceTimer);
-    qrBarDebounceTimer = null;
-  }
+/**
+ * 移除脚本库应用
+ */
+export async function removeScriptRepository(): Promise<void> {
+  ScriptRepositoryApp.destroyInstance();
 }
 
 /**
  * 扩展开启时构建脚本库
  */
-export async function buildScriptRepositoryOnExtension() {
-  const register_events = () => {
-    load_events.forEach(eventType => {
-      eventSource.on(eventType, refreshScriptRepository);
-    });
-    delete_events.forEach(eventType => {
-      eventSource.on(eventType, (character: any) => purgeEmbeddedScripts({ character }));
-    });
-  };
-
+export async function buildScriptRepositoryOnExtension(): Promise<void> {
   await buildScriptRepository();
-  register_events();
 }
 
 /**
  * 扩展关闭时销毁脚本库
  */
-export function destroyScriptRepositoryOnExtension() {
-  load_events.forEach(eventType => {
-    eventSource.removeListener(eventType, refreshScriptRepository);
-  });
+export function destroyScriptRepositoryOnExtension(): void {
   removeScriptRepository();
 }
+
+export { ScriptType };

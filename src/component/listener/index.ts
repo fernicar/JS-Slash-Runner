@@ -9,7 +9,8 @@ import { characters, reloadCurrentChat, saveChatConditional, this_chid } from '@
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 
 import { io } from 'socket.io-client';
-import { ScriptRepository, ScriptType } from '../script_repository/script_repository';
+import { ScriptType } from '../script_repository/index';
+import { ScriptManager } from '../script_repository/script_controller';
 
 const templatePath = `${extensionFolderPath}/src/component/listener`;
 const default_settings = {
@@ -33,9 +34,12 @@ async function refresh_iframe(): Promise<void> {
   if (character) {
     await saveChatConditional();
   }
-  const script_repository = ScriptRepository.getInstance();
-  await script_repository.cancelRunScriptsByType(ScriptType.GLOBAL);
-  await script_repository.runScriptsByType(ScriptType.GLOBAL);
+
+  const scriptManager = ScriptManager.getInstance();
+  const globalScripts = scriptManager.getGlobalScripts();
+
+  await scriptManager.stopScriptsByType(globalScripts, ScriptType.GLOBAL);
+  await scriptManager.runScriptsByType(globalScripts, ScriptType.GLOBAL);
   await reloadCurrentChat();
 }
 

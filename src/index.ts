@@ -3,8 +3,8 @@ import { initListener } from '@/component/listener';
 import { initExtensionMainPanel } from '@/component/main';
 import { defaultIframeSettings, initIframePanel } from '@/component/message_iframe';
 import { initReference } from '@/component/reference';
-import { initScriptRepository } from '@/component/script_repository/index';
-import { defaultScriptSettings } from '@/component/script_repository/script_repository';
+import { buildScriptRepository } from '@/component/script_repository/index';
+import { defaultScriptSettings } from '@/component/script_repository/types';
 import { initTavernHelperObject } from '@/function';
 import { initAudioSlashCommands } from '@/slash_command/audio';
 import { initSlashEventEmit } from '@/slash_command/event';
@@ -92,7 +92,7 @@ async function initExtensionPanel() {
   const getContainer = () => $('#extensions_settings');
   const windowHtml = await renderExtensionTemplateAsync(`${extensionFolderPath}`, 'index');
   getContainer().append(windowHtml);
-  const $script_container = $(await renderExtensionTemplateAsync(`${templatePath}/script_repository`, 'index'));
+  const $script_container = $(await renderExtensionTemplateAsync(`${templatePath}/script_repository/public`, 'index'));
   $('#script-settings-content').append($script_container);
   const $iframe_container = $(await renderExtensionTemplateAsync(`${templatePath}/message_iframe`, 'index'));
   $('#render-settings-content').append($iframe_container);
@@ -154,7 +154,7 @@ jQuery(async () => {
     await initAudioComponents();
     initAudioSlashCommands();
     initSlashEventEmit();
-    await initScriptRepository();
+    await buildScriptRepository();
     await initIframePanel();
     await initReference();
     await initListener();
