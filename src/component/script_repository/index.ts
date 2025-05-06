@@ -3,7 +3,10 @@ import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repo
 import { ScriptManager } from '@/component/script_repository/script_controller';
 import { ScriptType } from '@/component/script_repository/types';
 import { UIController } from '@/component/script_repository/ui_controller';
-import { event_types, eventSource } from '@sillytavern/script';
+import { extensionFolderPath, getSettingValue } from '@/util/extension_variables';
+
+import { characters, event_types, eventSource, this_chid } from '@sillytavern/script';
+import { loadFileToDocument } from '@sillytavern/scripts/utils';
 
 const load_events = [event_types.CHAT_CHANGED] as const;
 const delete_events = [event_types.CHARACTER_DELETED] as const;
@@ -58,7 +61,10 @@ export class ScriptRepositoryApp {
     }
 
     try {
-      // 初始化UI
+      await loadFileToDocument(
+        `/scripts/extensions/${extensionFolderPath}/src/component/script_repository/public/style.css`,
+        'css',
+      );
       await this.uiManager.initialize();
       this.initialized = true;
       console.info('[ScriptRepositoryApp] 初始化完成');
@@ -90,9 +96,19 @@ export class ScriptRepositoryApp {
       return;
     }
 
-    console.info('[ScriptRepositoryApp] 刷新脚本库');
-    // 通知刷新
-    scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refreshAll' });
+    console.info('[script_repository] 刷新脚本库');
+
+    // 刷新UI
+    scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refreshCharactScripts' });
+
+    // 等待UI刷新完成后再检查嵌入式脚本
+    // 使用 setTimeout 让刷新事件的处理先完成
+    setTimeout(async () => {
+      // 检查嵌入式脚本
+      if (this_chid) {
+        await this.uiManager.checkEmbeddedScripts(this_chid);
+      }
+    }, 10);
   }
 
   /**

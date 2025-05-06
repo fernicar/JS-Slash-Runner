@@ -3,7 +3,6 @@ import { getChatMessages, setChatMessages } from '@/function/chat_message';
 
 import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
-import { getChatMessages, setChatMessage } from './chat_message';
 
 interface VariableOption {
   type?: 'message' | 'chat' | 'character' | 'global';

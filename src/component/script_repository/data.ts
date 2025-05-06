@@ -91,7 +91,7 @@ export class ScriptData {
    * @param type 脚本类型
    */
   async saveScript(script: Script, type: ScriptType): Promise<void> {
-    if (!script.hasName()) {
+    if (!script.name || script.name.trim() === '') {
       throw new Error('[Script] 保存失败，脚本名称为空');
     }
 

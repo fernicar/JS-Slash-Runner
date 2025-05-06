@@ -2,9 +2,9 @@ import { ButtonFactory, ButtonManager } from '@/component/script_repository/butt
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import { ScriptManager } from '@/component/script_repository/script_controller';
 import { Script, ScriptType } from '@/component/script_repository/types';
-import { extensionFolderPath } from '@/util/extension_variables';
+import { extensionFolderPath, getSettingValue } from '@/util/extension_variables';
 import { renderMarkdown } from '@/util/render_markdown';
-import { this_chid } from '@sillytavern/script';
+import { characters, this_chid } from '@sillytavern/script';
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 import { download, getSortableDelay, uuidv4 } from '../../../../../../utils';
@@ -211,7 +211,7 @@ export class UIController {
       switch (action) {
         case 'scriptToggled':
           // 脚本启用状态切换
-          await this.refreshScriptState(data.script, data.type, data.enable);
+          await this.refreshScriptState(data.script, data.enable);
           break;
         case 'typeToggled':
           // 脚本类型启用状态切换
@@ -241,8 +241,12 @@ export class UIController {
           // 加载默认脚本
           await this.loadDefaultScriptsRepository();
           break;
+        case 'refreshCharactScripts':
+          // 只刷新角色脚本列表
+          await this.refreshCharacterScriptList();
+          break;
         default:
-          console.warn(`[UIController] 未处理的UI刷新事件: ${action}`);
+          console.warn(`[script_repository] 未处理的UI刷新事件: ${action}`);
       }
     });
 
@@ -363,6 +367,18 @@ export class UIController {
   }
 
   /**
+   * 刷新角色脚本列表
+   */
+  private async refreshCharacterScriptList(): Promise<void> {
+    // 清空角色脚本列表
+    this.clearCharacterScriptList();
+
+    // 获取并渲染角色脚本
+    const characterScripts = this.scriptManager.getCharacterScripts();
+    await this.renderCharacterScriptList(characterScripts);
+  }
+
+  /**
    * 显示空脚本列表提示
    * @param type 脚本类型
    */
@@ -376,10 +392,9 @@ export class UIController {
   /**
    * 刷新脚本状态
    * @param script 脚本
-   * @param type 脚本类型
    * @param enable 是否启用
    */
-  private async refreshScriptState(script: Script, type: ScriptType, enable: boolean): Promise<void> {
+  private async refreshScriptState(script: Script, enable: boolean): Promise<void> {
     // 更新UI状态
     const $script = $(`#${script.id}`);
     if ($script.length > 0) {
@@ -680,11 +695,21 @@ export class UIController {
   }
 
   /**
+   * 创建默认脚本库容器
+   * 避免重复渲染模板
+   */
+  private createDefaultScriptContainer(): JQuery<HTMLElement> {
+    // 创建一个简单的容器，而不是重新渲染完整模板
+    return $('<div class="default-script-repository-container"></div>');
+  }
+
+  /**
    * 加载默认脚本库
    */
   private async loadDefaultScriptsRepository(): Promise<void> {
     const createDefaultScripts = (await import('./builtin_scripts')).createDefaultScripts;
-    const container = $(await renderExtensionTemplateAsync(this.templatePath, 'script_default_repository'));
+    // 使用创建容器的方法，避免重复渲染相同模板
+    const container = this.createDefaultScriptContainer();
 
     const defaultScripts = await createDefaultScripts();
     for (const script of defaultScripts) {
@@ -994,69 +1019,59 @@ export class UIController {
 
   /**
    * 检查角色中的嵌入式脚本
-   * @param characterScripts 角色脚本数组
-   * @param charactersWithScripts 角色脚本名称数组
-   * @param avatar 角色头像
+   * @param characterId 角色id
    */
-  public async checkEmbeddedScripts(
-    characterScripts: Script[],
-    charactersWithScripts: string[],
-    avatar: string | undefined,
-  ): Promise<void> {
-    if (
-      Array.isArray(characterScripts) &&
-      characterScripts.length > 0 &&
-      avatar &&
-      !charactersWithScripts.includes(avatar)
-    ) {
-      const characterScript = characterScripts.map((scriptData: Script) => new Script(scriptData));
+  public async checkEmbeddedScripts(characterId: any): Promise<void> {
+    const charactersWithScripts = getSettingValue('script.characters_with_scripts') || [];
+    const avatar = characters[characterId]?.avatar;
+    if (charactersWithScripts.includes(avatar)) {
+      return;
+    }
 
-      // 添加脚本到UI
-      for (const script of characterScript) {
-        await this.renderScript(script, ScriptType.CHARACTER);
+    // 获取当前角色的脚本
+    const characterScripts = this.scriptManager.getCharacterScripts();
+
+    // 先将所有角色脚本设置为启用状态并保存
+    for (const script of characterScripts) {
+      // 只有当脚本状态为禁用时才需要更新
+      if (!script.enabled) {
+        script.enabled = true;
+
+        // 保存到数据层
+        await this.scriptManager.saveScript(script, ScriptType.CHARACTER);
+
+        // 更新DOM显示
+        await this.refreshScriptState(script, true);
       }
+    }
 
-      // 弹出确认对话框
-      const template = await renderExtensionTemplateAsync(
-        `${extensionFolderPath}/src/component/script_repository`,
-        'script_allow_popup',
-      );
-      const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
-        okButton: '确认',
-        cancelButton: '取消',
+    const template = await renderExtensionTemplateAsync(
+      `${extensionFolderPath}/src/component/script_repository/public`,
+      'script_allow_popup',
+    );
+    const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
+      okButton: '确认',
+      cancelButton: '取消',
+    });
+
+    if (result) {
+      // 仅更新开关状态和发送事件，不直接操作脚本项
+      $('#character-script-enable-toggle').prop('checked', true);
+
+      scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
+        type: ScriptType.CHARACTER,
+        enable: true,
+        userInput: false,
       });
+    } else {
+      // 仅更新开关状态和发送事件，不直接操作脚本项
+      $('#character-script-enable-toggle').prop('checked', false);
 
-      if (result) {
-        // 启用所有脚本
-        $('#character-script-enable-toggle').prop('checked', true);
-        $('#character-script-list')
-          .find('.script-toggle:not(.enabled)')
-          .each(function () {
-            $(this).trigger('click');
-          });
-
-        // 通过事件总线切换脚本类型状态
-        scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
-          type: ScriptType.CHARACTER,
-          enable: true,
-          userInput: false,
-        });
-      } else {
-        // 禁用所有脚本
-        $('#character-script-enable-toggle').prop('checked', false);
-        $('#character-script-list')
-          .find('.script-toggle.enabled')
-          .each(function () {
-            $(this).trigger('click');
-          });
-
-        // 通过事件总线切换脚本类型状态
-        scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
-          type: ScriptType.CHARACTER,
-          enable: false,
-          userInput: false,
-        });
-      }
+      scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
+        type: ScriptType.CHARACTER,
+        enable: false,
+        userInput: false,
+      });
     }
   }
 }

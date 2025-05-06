@@ -114,3 +114,11 @@
   justify-content: space-between;
   gap: 10px;
 }
+
+.default-script-repository-container{
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 5px 0;
+}

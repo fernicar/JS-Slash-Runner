@@ -16,10 +16,6 @@ export class Script {
     this.enabled = data?.enabled || false;
     this.buttons = data?.buttons || [];
   }
-
-  hasName(): boolean {
-    return Boolean(this.name);
-  }
 }
 
 export enum ScriptType {
