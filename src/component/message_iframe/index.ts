@@ -1053,7 +1053,6 @@ function removeAllCodeToggleButtons() {
  * 添加前端卡渲染优化设置
  */
 export function addRenderingOptimizeSettings() {
-  injectCodeBlockHideStyles();
   hljs.highlightElement = function () {
     return;
   };
@@ -1064,8 +1063,6 @@ export function addRenderingOptimizeSettings() {
  */
 export function removeRenderingOptimizeSettings() {
   hljs.highlightElement = originalHighlightElement;
-  removeCodeBlockHideStyles();
-  removeAllCodeToggleButtons();
 }
 
 /**
