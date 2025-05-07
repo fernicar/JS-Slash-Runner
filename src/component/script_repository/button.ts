@@ -142,12 +142,19 @@ export class ButtonManager {
 
   // 添加按钮
   addButton(button: Button): void {
-    if (!this.container) return;
     if (!button.visible) return;
+    setTimeout(() => {
+      // 先移除可能存在的相同DOM ID按钮
+      $(`#${button.id}`).remove();
 
-    this.buttons.push(button);
-    this.container?.append(button.render());
-    button.bindEvents();
+      // 同时从buttons数组中移除相同ID的按钮
+      this.buttons = this.buttons.filter(btn => btn.id !== button.id);
+
+      // 添加新按钮
+      this.buttons.push(button);
+      $('.qr--buttons')?.append(button.render());
+      button.bindEvents();
+    }, 3000);
   }
 
   // 移除按钮

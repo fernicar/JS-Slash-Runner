@@ -14,7 +14,7 @@ export class VariableView implements IDomUpdater {
   /**
    * 最小浮窗宽度（像素）
    */
-  private static readonly MIN_DIALOG_WIDTH = 350;
+  private static readonly MIN_DIALOG_WIDTH = 250;
 
   /**
    * 最小浮窗高度（像素）

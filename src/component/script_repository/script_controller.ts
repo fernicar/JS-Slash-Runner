@@ -199,6 +199,34 @@ export class ScriptManager {
       const { script, fromType } = data;
       await this.moveScript(script, fromType);
     });
+
+    // UI加载完成事件 - 自动运行已启用的脚本
+    scriptEvents.on(ScriptRepositoryEventType.UI_LOADED, async () => {
+      // 检查扩展是否启用
+      if (!getSettingValue('enabled_extension')) {
+        return;
+      }
+
+      // 获取全局和角色脚本列表
+      const globalScripts = this.scriptData.getGlobalScripts();
+      const characterScripts = this.scriptData.getCharacterScripts();
+
+      // 检查全局脚本类型开关是否启用
+      if (this.scriptData.isGlobalScriptEnabled) {
+        console.info('[Script] 全局脚本类型已启用，运行所有已启用的全局脚本');
+        await this.runScriptsByType(globalScripts, ScriptType.GLOBAL);
+      } else {
+        console.info('[Script] 全局脚本类型未启用，跳过运行全局脚本');
+      }
+
+      // 检查角色脚本类型开关是否启用
+      if (this.scriptData.isCharacterScriptEnabled) {
+        console.info('[Script] 角色脚本类型已启用，运行所有已启用的角色脚本');
+        await this.runScriptsByType(characterScripts, ScriptType.CHARACTER);
+      } else {
+        console.info('[Script] 角色脚本类型未启用，跳过运行角色脚本');
+      }
+    });
   }
 
   /**
