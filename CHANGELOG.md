@@ -13,7 +13,9 @@
   ```typescript
   // 在末尾插入一条消息
   await createChatMessages([{role: 'user', message: '你好'}]);
+  ```
 
+  ```typescript
   // 在第 10 楼前插入两条消息且不需要刷新显示
   await createChatMessages([{role: 'user', message: '你好'}, {role: 'assistant', message: '我好'}], {insert_at: 10});
   ```
@@ -23,7 +25,9 @@
   ```typescript
   // 删除第 10 楼、第 15 楼、倒数第二楼和最后一楼
   await deleteChatMessages([10, 15, -2, getLastMessageId()]);
+  ```
 
+  ```typescript
   // 删除所有楼层
   await deleteChatMessages(_.range(getLastMessageId() + 1));
   ```
@@ -31,12 +35,21 @@
 - 新增了 `rotateChatMessages` 接口来调整消息顺序
 
   ```typescript
+  // 将 [4, 7) 楼放到 [2, 4) 楼之前, 即, 将 4-6 楼放到 2-3 楼之前
+  await rotateChatMessages(2, 4, 7);
+  ```
+
+  ```typescript
   // 将最后一楼放到第 5 楼之前
   await rotateChatMessages(5, getLastMessageId(), getLastMessageId() + 1);
+  ```
 
+  ```typescript
   // 将最后 3 楼放到第 1 楼之前
   await rotateChatMessages(1, getLastMessageId() - 2, getLastMessageId() + 1);
+  ```
 
+  ```typescript
   // 将前 3 楼放到最后
   await rotateChatMessages(0, 3, getLastMessageId() + 1);
   ```
