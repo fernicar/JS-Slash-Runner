@@ -134,8 +134,10 @@ const config = (_env: any, argv: any): webpack.Configuration => {
         }
         callback();
       },
+      /^highlight\.js$/i,
       /^(jquery|\$)$/i,
-      /^_$/,
+      /^jqueryui$/i,
+      /^lodash$/i,
       /^toastr$/i,
     ],
   };
