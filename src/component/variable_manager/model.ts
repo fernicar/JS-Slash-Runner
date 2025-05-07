@@ -44,6 +44,21 @@ export class VariableModel {
    */
   private _loadRequestId: number = 0;
 
+  /**
+   * 操作来源标记
+   * 标记当前是否为内部操作（用户界面触发）
+   * 用于避免同步服务对内部操作产生的事件进行重复处理
+   * @private
+   */
+  private _isInternalOperation: boolean = false;
+
+  /**
+   * 操作计数器
+   * 用于处理嵌套操作场景，确保最外层操作结束后才重置标记
+   * @private
+   */
+  private _internalOperationCount: number = 0;
+
   constructor() {}
 
   /**
@@ -54,11 +69,50 @@ export class VariableModel {
   }
 
   /**
+   * 标记开始内部操作
+   * 通过内部操作标记，使同步服务能够识别并忽略由内部操作触发的事件
+   */
+  public beginInternalOperation(): void {
+    this._internalOperationCount++;
+    this._isInternalOperation = true;
+  }
+
+  /**
+   * 标记结束内部操作
+   * 仅当所有嵌套操作都完成时才重置标记
+   */
+  public endInternalOperation(): void {
+    this._internalOperationCount = Math.max(0, this._internalOperationCount - 1);
+
+    if (this._internalOperationCount === 0) {
+      this._isInternalOperation = false;
+    }
+  }
+
+  /**
+   * 检查当前是否为内部操作
+   * @returns 是否为内部操作
+   */
+  public isInternalOperation(): boolean {
+    return this._isInternalOperation;
+  }
+
+  /**
+   * 强制重置内部操作状态
+   * 用于异常情况下的恢复
+   */
+  public resetInternalOperationState(): void {
+    this._internalOperationCount = 0;
+    this._isInternalOperation = false;
+  }
+
+  /**
    * 加载指定类型的变量
    * @param type 变量类型(global/character/chat/message)
+   * @param preloadedVariables 预加载的变量数据，如果提供则直接使用而不再获取
    * @returns Promise<boolean> 加载是否成功完成
    */
-  public async loadVariables(type: VariableType): Promise<boolean> {
+  public async loadVariables(type: VariableType, preloadedVariables?: Record<string, any>): Promise<boolean> {
     // 如果类型没变，则不重新加载
     if (this.activeVariableType === type && Object.keys(this.currentVariables).length > 0) {
       return true;
@@ -116,7 +170,11 @@ export class VariableModel {
                 }
               }
             }
+          } else if (preloadedVariables) {
+            // 如果提供了预加载的变量，则直接使用
+            this.currentVariables = preloadedVariables;
           } else {
+            // 否则重新获取变量
             this.currentVariables = getVariables({ type });
           }
 

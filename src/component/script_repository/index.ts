@@ -78,7 +78,6 @@ export class ScriptRepositoryApp {
    * 注册事件监听
    */
   private registerEvents(): void {
-    // 注册SillyTavern事件
     load_events.forEach(eventType => {
       eventSource.on(eventType, this.refreshRepository.bind(this));
     });

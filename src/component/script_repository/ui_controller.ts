@@ -385,7 +385,7 @@ export class UIController {
   private showEmptyScriptListTip(type: ScriptType): void {
     const container = type === ScriptType.GLOBAL ? $('#global-script-list') : $('#character-script-list');
     if (container.find('small').length === 0) {
-      container.append('<small>没有脚本</small>');
+      container.append('<small>暂无脚本</small>');
     }
   }
 

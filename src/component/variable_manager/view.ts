@@ -1,9 +1,9 @@
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
 import { getSortableDelay } from '@sillytavern/scripts/utils';
 
+import { VariableCardFactory } from '@/component/variable_manager/card';
+import { IDomUpdater } from '@/component/variable_manager/sync';
 import { VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
-import { VariableCardFactory } from '@/component/variable_manager/variable_card';
-import { IDomUpdater } from '@/component/variable_manager/variable_sync';
 import { getLastMessageId } from '@/function/util';
 
 export interface IController {
@@ -604,6 +604,7 @@ export class VariableView implements IDomUpdater {
     const defaultName = 'new_variable';
     const newCard = this.createAndAppendCard(defaultName, defaultValue, dataType, type, $content);
     newCard.attr('data-type', dataType);
+    newCard.attr('data-status', 'new');
   }
 
   /**
@@ -783,10 +784,9 @@ export class VariableView implements IDomUpdater {
 
     content.find('.variable-type-options div').on('click', function () {
       const dataType = $(this).attr('data-type') as VariableDataType;
-
-      $('.popup_close_button').trigger('click');
-
       callback(dataType);
+
+      $('.popup').find('.popup-button-close').trigger('click');
     });
 
     await callGenericPopup(content, POPUP_TYPE.DISPLAY);

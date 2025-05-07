@@ -28,10 +28,11 @@ import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from 
 import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { initializeToastr } from '@/component/toastr';
-
+import { checkQrEnabledStatus } from '@/component/script_repository/button';
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
 const handleChatChanged = async () => {
+  checkQrEnabledStatus();
   await renderAllIframes();
   if (getSettingValue('render.rendering_optimize')) {
     addCodeToggleButtonsToAllMessages();
@@ -89,7 +90,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
     buildScriptRepositoryOnExtension();
-
+    checkQrEnabledStatus();
     // 重新注入前端卡优化的样式和设置
     if (userAction && getSettingValue('render.rendering_optimize')) {
       addRenderingOptimizeSettings();

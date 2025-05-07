@@ -1,7 +1,7 @@
+import { ScriptManager } from '@/component/script_repository/script_controller';
 import { eventSource } from '@sillytavern/script';
 import { Script } from './types';
 
-// 按钮基类
 export abstract class Button {
   id: string;
   name: string;
@@ -61,18 +61,24 @@ export class ButtonManager {
   private container: JQuery<HTMLElement> | null = null;
   private buttons: Button[] = [];
 
-  // 初始化容器
-  initContainer(): void {
-    const $qrBar = $('#qr--bar');
-    if (!$qrBar.length) {
-      $('#send_form').append(
-        '<div class="flex-container" id="qr--bar" style="gap: 0px;"><div class="qr--buttons qr--color" id="TH-script-buttons"></div></div>',
-      );
-    } else if (!$qrBar.find('#TH-script-buttons').length) {
-      $qrBar.css('gap', '0px').append('<div class="qr--buttons qr--color" id="TH-script-buttons"></div>');
-    }
+  // 更新容器引用
+  updateContainer(): void {
+    this.container = $('.qr--buttons');
+  }
 
-    this.container = $('#TH-script-buttons');
+  // 将按钮从旧容器迁移到新容器
+  migrateButtonsToNewContainer(oldContainerId: string, newContainerId: string): void {
+    const $oldButtons = $(`#${oldContainerId} .qr--button`);
+    const $newContainer = $(`#${newContainerId}`);
+
+    if ($oldButtons.length && $newContainer.length) {
+      $oldButtons.detach().appendTo($newContainer);
+
+      // 重新绑定事件
+      this.buttons.forEach(button => {
+        button.bindEvents();
+      });
+    }
   }
 
   // 从脚本数据创建按钮
@@ -109,8 +115,6 @@ export class ButtonManager {
       return;
     }
 
-    this.initContainer();
-
     // 处理全局脚本按钮
     if (isGlobalEnabled) {
       this.addScriptButtons(globalScripts);
@@ -138,7 +142,7 @@ export class ButtonManager {
 
   // 添加按钮
   addButton(button: Button): void {
-    if (!this.container) this.initContainer();
+    if (!this.container) return;
     if (!button.visible) return;
 
     this.buttons.push(button);
@@ -158,4 +162,58 @@ export class ButtonManager {
     this.buttons.forEach(btn => btn.remove());
     this.buttons = [];
   }
+}
+
+// 创建按钮管理器实例
+const buttonManager = new ButtonManager();
+
+// 检查qr--isEnabled状态并处理容器
+export function checkQrEnabledStatus() {
+  const setButton = () => {
+    // 更新容器引用
+    buttonManager.updateContainer();
+    // 获取脚本管理器实例
+    const scriptManager = ScriptManager.getInstance();
+
+    // 获取脚本数据
+    const globalScripts = scriptManager.getGlobalScripts();
+    const characterScripts = scriptManager.getCharacterScripts();
+    const isGlobalEnabled = scriptManager.isGlobalScriptEnabled;
+    const isCharacterEnabled = scriptManager.isCharacterScriptEnabled;
+
+    // 重新创建按钮
+    buttonManager.createButtonsFromScripts(globalScripts, characterScripts, isGlobalEnabled, isCharacterEnabled);
+  };
+  const isQrEnabled = $('#qr--isEnabled').prop('checked');
+  if (isQrEnabled) {
+    // 如果已勾选，检查qr--bar是否已存在
+    const $qrBar = $('#qr--bar');
+    if ($qrBar.length) {
+      // 容器已存在，检查子容器
+      if ($qrBar.find('.qr--buttons').length === 0) {
+        $qrBar.append('<div class="qr--buttons qr--color"></div>');
+      }
+    }
+  } else {
+    $('#send_form').append(
+      '<div class="flex-container flexGap5" id="qr--bar"><div class="qr--buttons qr--color"></div></div>',
+    );
+  }
+
+  setButton();
+  console.log('[ScriptManager] 创建按钮');
+
+  $(`#qr--isEnabled`).on('change', function () {
+    const isChecked = $(this).prop('checked');
+    if (!isChecked) {
+      // 新建容器
+      $('#send_form').append(
+        '<div class="flex-container flexGap5" id="qr--bar"><div class="qr--buttons qr--color"></div></div>',
+      );
+    }
+
+    setButton();
+
+    console.log('[ScriptManager] 更新按钮');
+  });
 }

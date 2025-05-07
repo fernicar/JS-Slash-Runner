@@ -458,8 +458,6 @@ function observeIframeContent(iframe: HTMLIFrameElement) {
     window._observedElements?.set(docBody, { iframe });
     resizeObserver.observe(docBody);
 
-    console.log(`[Render] 观察 ${iframe.id || 'unnamed'} 的内容变化`);
-
     adjustIframeHeight(iframe);
   } catch (error) {
     console.error('[Render] 设置 iframe 内容观察时出错:', error);
@@ -518,7 +516,6 @@ export function destroyIframe(iframe: HTMLIFrameElement): Promise<void> {
         if (data.iframe === iframe) {
           window._sharedResizeObserver.unobserve(element);
           window._observedElements.delete(element);
-          console.log(`[Render] 停止观察 ${iframe.id || 'unnamed'} 的内容变化`);
           break;
         }
       }

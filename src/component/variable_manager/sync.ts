@@ -1,9 +1,9 @@
 import { eventSource } from '@sillytavern/script';
 
+import { VariableModel } from '@/component/variable_manager/model';
 import { VariableType } from '@/component/variable_manager/types';
 import { getVariables } from '@/function/variables';
 
-const VARIABLE_CACHE_KEY = 'variable_cache';
 let variableCache: Record<string, any> = {};
 
 const VARIABLE_EVENTS: Record<string, string> = {
@@ -24,7 +24,6 @@ export interface IDomUpdater {
   updateWithoutAnimation(isSkipAnimation: boolean): void;
 }
 
-// 定义监听器状态映射接口
 interface ListenerStatus {
   bound: boolean;
   handler: (...args: any[]) => Promise<void>;
@@ -32,6 +31,7 @@ interface ListenerStatus {
 
 export class VariableSyncService {
   private domUpdater: IDomUpdater;
+  private model: VariableModel;
   private currentType: VariableType | null = null;
   private _boundListeners: Record<VariableType, ListenerStatus> = {
     global: { bound: false, handler: this._handleVariableUpdate.bind(this, 'global') },
@@ -45,14 +45,62 @@ export class VariableSyncService {
   private _listenersActive: boolean = false;
   // 标记是否正在进行类型切换
   private _isTypeChanging: boolean = false;
+  // 记录最近处理的变量映射：键为变量名，值为处理时间戳
+  private _recentlyProcessedVariables: Map<string, number> = new Map();
+  // 上次清理记录时间
+  private _lastCleanupTimestamp: number = 0;
 
-  constructor(domUpdater: IDomUpdater) {
+  /**
+   * 构造函数
+   * @param domUpdater DOM更新器
+   * @param model 变量数据模型
+   */
+  constructor(domUpdater: IDomUpdater, model: VariableModel) {
     this.domUpdater = domUpdater;
+    this.model = model;
   }
 
   // 获取当前是否正在进行类型切换
   public get isTypeChanging(): boolean {
     return this._isTypeChanging;
+  }
+
+  /**
+   * 将变量标记为最近处理过
+   * @param name 变量名
+   */
+  public markVariableAsProcessed(name: string): void {
+    this._recentlyProcessedVariables.set(name, Date.now());
+  }
+
+  /**
+   * 检查变量是否最近被处理过
+   * @param name 变量名
+   * @param maxAgeMs 最长有效期(毫秒)，默认3000ms
+   * @returns 变量是否最近被处理过
+   */
+  public wasRecentlyProcessed(name: string, maxAgeMs: number = 3000): boolean {
+    const timestamp = this._recentlyProcessedVariables.get(name);
+    if (!timestamp) return false;
+    return Date.now() - timestamp < maxAgeMs;
+  }
+
+  /**
+   * 清理过期的处理记录
+   * @param maxAgeMs 记录最长有效期(毫秒)，默认5000ms
+   * @private
+   */
+  private _cleanupProcessedRecords(maxAgeMs: number = 5000): void {
+    const now = Date.now();
+    // 每30秒最多进行一次清理操作
+    if (now - this._lastCleanupTimestamp < 30000) return;
+
+    this._lastCleanupTimestamp = now;
+    this._recentlyProcessedVariables.forEach((timestamp, name) => {
+      if (now - timestamp > maxAgeMs) {
+        this._recentlyProcessedVariables.delete(name);
+      }
+    });
   }
 
   public async cleanup(): Promise<void> {
@@ -61,8 +109,9 @@ export class VariableSyncService {
 
     try {
       variableCache = {};
+      this._recentlyProcessedVariables.clear();
     } catch (error) {
-      console.error(`[VariableManager]：清空缓存键 ${VARIABLE_CACHE_KEY} 时出错:`, error);
+      console.error(`[VariableManager]：清空缓存时出错:`, error);
     }
     this.currentType = null;
   }
@@ -70,19 +119,18 @@ export class VariableSyncService {
   /**
    * 设置当前变量类型，并相应地初始化监听器或轮询
    * @param type 变量类型
+   * @returns 获取到的变量数据
    */
-  public async setCurrentType(type: VariableType): Promise<void> {
+  public async setCurrentType(type: VariableType): Promise<Record<string, any>> {
+    let loadedVariables = {};
+
     if (this.currentType !== type) {
       this._isTypeChanging = true;
       this.domUpdater.updateWithoutAnimation(true);
 
-      this._unbindAllEventListeners();
-      this._stopChatPolling();
-
       this.currentType = type;
 
-      // 初始化类型对应的缓存（但不执行变量更新）
-      await this.initializeCacheForType(type);
+      loadedVariables = await this.initializeCacheForType(type);
 
       if (this._listenersActive) {
         if (type === 'chat') {
@@ -95,6 +143,8 @@ export class VariableSyncService {
       this._isTypeChanging = false;
       this.domUpdater.updateWithoutAnimation(false);
     }
+
+    return loadedVariables;
   }
 
   /**
@@ -122,14 +172,16 @@ export class VariableSyncService {
     this._stopChatPolling();
   }
 
-  public async initializeCacheForType(type: VariableType): Promise<void> {
+  public async initializeCacheForType(type: VariableType): Promise<Record<string, any>> {
     try {
       const currentVariables = getVariables({ type });
       const fullCache = variableCache || {};
       fullCache[type] = _.cloneDeep(currentVariables);
       variableCache = fullCache;
+      return currentVariables;
     } catch (error) {
       console.error(`[VariableManager]：初始化类型 ${type} 的缓存时出错:`, error);
+      return {};
     }
   }
 
@@ -230,11 +282,21 @@ export class VariableSyncService {
    * @private
    */
   private async _handleVariableUpdate(type: VariableType, data?: any): Promise<void> {
-    if (!this.currentType || this.currentType !== type || this._isTypeChanging) {
+    // 如果当前类型不匹配或正在切换类型，或者是内部操作触发的更新，则忽略
+    if (!this.currentType || this.currentType !== type || this._isTypeChanging || this.model.isInternalOperation()) {
+      // 添加更详细的日志，特别是针对聊天变量轮询情况
+      if (type === 'chat' && this.model.isInternalOperation()) {
+        console.debug(`[VariableSyncService] 忽略聊天变量轮询更新：当前为内部操作`);
+      }
       return;
     }
 
     try {
+      // 如果是聊天变量轮询，触发清理过期记录
+      if (type === 'chat') {
+        this._cleanupProcessedRecords();
+      }
+
       // 获取最新变量
       // 角色变量和消息变量事件会直接提供变量数据
       let currentVariables: Record<string, any>;
@@ -251,20 +313,61 @@ export class VariableSyncService {
       // 比较变量并更新DOM
       const { added, removed, updated } = this._compareVariableRecords(cachedVariables, currentVariables);
 
-      // 处理变量添加
-      Object.entries(added).forEach(([name, value]) => {
-        this.domUpdater.addVariableCard(name, value);
-      });
+      // 针对聊天变量的特殊处理
+      if (type === 'chat' && Object.keys(added).length > 0) {
+        // 过滤掉已经在DOM中存在或最近处理过的变量
+        const filteredAdded: Record<string, any> = {};
+
+        for (const [name, value] of Object.entries(added)) {
+          // 检查变量是否最近被处理过
+          if (this.wasRecentlyProcessed(name)) {
+            console.debug(`[VariableSyncService] 聊天变量轮询：变量"${name}"刚被处理过，跳过添加`);
+            continue;
+          }
+
+          // 检查DOM中是否已存在此变量的卡片
+          const existingCard = $(`.variable-card[data-name="${name}"]`);
+          if (existingCard.length === 0) {
+            filteredAdded[name] = value;
+          } else {
+            console.debug(`[VariableSyncService] 聊天变量轮询：变量"${name}"已存在于DOM中，跳过重复添加`);
+          }
+        }
+
+        // 使用过滤后的添加列表
+        Object.entries(filteredAdded).forEach(([name, value]) => {
+          this.domUpdater.addVariableCard(name, value);
+        });
+      } else {
+        // 其他变量类型正常处理
+        // 处理变量添加
+        Object.entries(added).forEach(([name, value]) => {
+          this.domUpdater.addVariableCard(name, value);
+        });
+      }
 
       // 处理变量删除
       removed.forEach(name => {
         this.domUpdater.removeVariableCard(name);
       });
 
-      // 处理变量更新
-      Object.entries(updated).forEach(([name, value]) => {
-        this.domUpdater.updateVariableCard(name, value);
-      });
+      // 处理变量更新，但对于聊天变量，跳过最近处理过的变量
+      if (type === 'chat' && Object.keys(updated).length > 0) {
+        Object.entries(updated).forEach(([name, value]) => {
+          // 检查变量是否最近被处理过
+          if (this.wasRecentlyProcessed(name)) {
+            console.debug(`[VariableSyncService] 聊天变量轮询：变量"${name}"刚被处理过，跳过更新`);
+            return;
+          }
+
+          this.domUpdater.updateVariableCard(name, value);
+        });
+      } else {
+        // 其他变量类型正常处理更新
+        Object.entries(updated).forEach(([name, value]) => {
+          this.domUpdater.updateVariableCard(name, value);
+        });
+      }
 
       // 更新缓存
       fullCache[type] = _.cloneDeep(currentVariables);
@@ -290,6 +393,7 @@ export class VariableSyncService {
 
     const cachedKeys = new Set(Object.keys(cached));
     const currentKeys = new Set(Object.keys(current));
+
     // 检查已删除的变量
     for (const key of cachedKeys) {
       if (!currentKeys.has(key)) {
@@ -300,9 +404,31 @@ export class VariableSyncService {
     // 检查已添加或已更新的变量
     for (const key of currentKeys) {
       if (!cachedKeys.has(key)) {
-        added[key] = _.cloneDeep(current[key]);
+        // 新增的变量
+        if (this.currentType === 'chat') {
+          // 对于聊天变量，检查是否最近处理过
+          if (!this.wasRecentlyProcessed(key)) {
+            // 检查DOM中是否存在（备用检查，避免边缘情况）
+            const existingCard = $(`.variable-card[data-name="${key}"]`);
+            if (existingCard.length === 0) {
+              added[key] = _.cloneDeep(current[key]);
+            }
+          }
+        } else {
+          // 其他变量类型正常处理
+          added[key] = _.cloneDeep(current[key]);
+        }
       } else if (!_.isEqual(current[key], cached[key])) {
-        updated[key] = _.cloneDeep(current[key]);
+        // 处理变量更新
+        if (this.currentType === 'chat') {
+          // 对于聊天变量，仅当变量未被最近处理时才标记更新
+          if (!this.wasRecentlyProcessed(key)) {
+            updated[key] = _.cloneDeep(current[key]);
+          }
+        } else {
+          // 其他变量类型正常处理
+          updated[key] = _.cloneDeep(current[key]);
+        }
       }
     }
 

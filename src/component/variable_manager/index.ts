@@ -1,13 +1,13 @@
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import { loadFileToDocument } from '@sillytavern/scripts/utils';
 
-import { VariableController } from '@/component/variable_manager/variable_controller';
-import { VariableModel } from '@/component/variable_manager/variable_model';
-import { VariableSyncService } from '@/component/variable_manager/variable_sync';
-import { VariableView } from '@/component/variable_manager/variable_view';
+import { VariableController } from '@/component/variable_manager/controller';
+import { VariableModel } from '@/component/variable_manager/model';
+import { VariableSyncService } from '@/component/variable_manager/sync';
+import { VariableView } from '@/component/variable_manager/view';
 import { extensionFolderPath } from '@/util/extension_variables';
 
-const templatePath = `${extensionFolderPath}/src/component/variable_manager`;
+const templatePath = `${extensionFolderPath}/src/component/variable_manager/public`;
 
 let variableView: VariableView | null = null;
 let variableController: VariableController | null = null;
@@ -22,7 +22,9 @@ export async function openVariableManager() {
 
   const model = new VariableModel();
   variableView = new VariableView($variableManagerContainer);
-  const syncService = new VariableSyncService(variableView);
+
+  const syncService = new VariableSyncService(variableView, model);
+
   variableController = new VariableController(model, variableView, syncService);
 
   variableView.setController(variableController);

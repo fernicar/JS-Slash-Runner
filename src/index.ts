@@ -101,7 +101,7 @@ async function initExtensionPanel() {
   const $reference_container = $(await renderExtensionTemplateAsync(`${templatePath}/reference`, 'index'));
   $('#extension-reference').append($reference_container);
   const $variables_container = $(
-    await renderExtensionTemplateAsync(`${templatePath}/variable_manager`, 'variable_manager_entry'),
+    await renderExtensionTemplateAsync(`${templatePath}/variable_manager/public`, 'variable_manager_entry'),
   );
   $('#toolbox-settings-content').prepend($variables_container);
 }
