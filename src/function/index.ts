@@ -19,10 +19,12 @@ import {
   createLorebook,
   deleteLorebook,
   getCharLorebooks,
+  getChatLorebook,
   getCurrentCharPrimaryLorebook,
   getLorebooks,
   getLorebookSettings,
   getOrCreateChatLorebook,
+  setChatLorebook,
   setCurrentCharLorebooks,
   setLorebookSettings,
 } from '@/function/lorebook';
@@ -111,6 +113,8 @@ function getTavernHelper() {
     deleteLorebook,
     createLorebook,
     getCurrentCharPrimaryLorebook,
+    getChatLorebook,
+    setChatLorebook,
     getOrCreateChatLorebook,
 
     // slash

@@ -54,6 +54,14 @@
   await rotateChatMessages(0, 3, getLastMessageId() + 1);
   ```
 
+- 新增了 `getChatLorebook` 和 `setChatLorebook` 对聊天世界书进行更直接的控制
+- 为 `getOrCreateChatLorebook` 新增一个可选参数, 从而允许自定义聊天世界书名称:
+
+  ```typescript
+  // 如果聊天世界书不存在, 则尝试创建一个名为 '你好' 的世界书作为聊天世界书
+  const lorebook = await getOrCreateChatLorebook('你好');
+  ```
+
 ### 🐛修复
 
 - 修复 `getCharLorebooks` 不能获取到附加世界书的问题
