@@ -5,7 +5,14 @@ import {
   getChatHistoryBrief,
   getChatHistoryDetail,
 } from '@/function/character';
-import { getChatMessages, setChatMessage, setChatMessages } from '@/function/chat_message';
+import {
+  createChatMessages,
+  deleteChatMessages,
+  getChatMessages,
+  rotateChatMessages,
+  setChatMessage,
+  setChatMessages,
+} from '@/function/chat_message';
 import { formatAsDisplayedMessage, retrieveDisplayedMessage } from '@/function/displayed_message';
 import { builtin_prompt_default_order, generate, generateRaw } from '@/function/generate';
 import {
@@ -72,6 +79,9 @@ function getTavernHelper() {
     getChatMessages,
     setChatMessages,
     setChatMessage,
+    createChatMessages,
+    deleteChatMessages,
+    rotateChatMessages,
 
     // displayed_message
     formatAsDisplayedMessage,

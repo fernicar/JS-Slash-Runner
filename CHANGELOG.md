@@ -8,6 +8,38 @@
 ### ⏫功能
 
 - 为 `ChatMessage` 补充了 `extra` 字段, 为 `ChatMessageSwiped` 补充了 `swipes_info` 字段.
+- 新增了 `createChatMessages` 接口来增加新的消息, 相比于 `/send` 和 `/sendas`, 它支持批量创建
+
+  ```typescript
+  // 在末尾插入一条消息
+  await createChatMessages([{role: 'user', message: '你好'}]);
+
+  // 在第 10 楼前插入两条消息且不需要刷新显示
+  await createChatMessages([{role: 'user', message: '你好'}, {role: 'assistant', message: '我好'}], {insert_at: 10});
+  ```
+
+- 新增了 `deleteChatMessages` 接口来删除消息, 相比于 `/del`, 它支持批量删除以及零散地进行删除
+
+  ```typescript
+  // 删除第 10 楼、第 15 楼、倒数第二楼和最后一楼
+  await deleteChatMessages([10, 15, -2, getLastMessageId()]);
+
+  // 删除所有楼层
+  await deleteChatMessages(_.range(getLastMessageId() + 1));
+  ```
+
+- 新增了 `rotateChatMessages` 接口来调整消息顺序
+
+  ```typescript
+  // 将最后一楼放到第 5 楼之前
+  await rotateChatMessages(5, getLastMessageId(), getLastMessageId() + 1);
+
+  // 将最后 3 楼放到第 1 楼之前
+  await rotateChatMessages(1, getLastMessageId() - 2, getLastMessageId() + 1);
+
+  // 将前 3 楼放到最后
+  await rotateChatMessages(0, 3, getLastMessageId() + 1);
+  ```
 
 ### 🐛修复
 
