@@ -23,9 +23,9 @@ interface LorebookEntry {
   order: number;
   probability: number;
 
-  key: string[];
+  keys: string[];
   logic: 'and_any' | 'and_all' | 'not_all' | 'not_any';
-  filter: string[];
+  filters: string[];
 
   scan_depth: 'same_as_global' | number;
   case_sensitive: 'same_as_global' | boolean;
