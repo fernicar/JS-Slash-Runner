@@ -219,28 +219,37 @@ export class VariableModel {
    * 保存变量数据
    * @param type 变量类型(global/character/chat/message)
    * @param name 变量名称
-   * @param dataType 数据类型
    * @param value 变量值
+   * @param message_id 消息ID(仅用于message类型)
    */
-  public async saveVariableData(type: VariableType, name: string, value: any): Promise<void> {
+  public async saveVariableData(type: VariableType, name: string, value: any, message_id?: number): Promise<void> {
     if (type === this.activeVariableType) {
       this.currentVariables[name] = value;
     }
 
-    await insertOrAssignVariables({ [name]: value }, { type });
+    if (type === 'message' && message_id !== undefined) {
+      await insertOrAssignVariables({ [name]: value }, { type, message_id });
+    } else {
+      await insertOrAssignVariables({ [name]: value }, { type });
+    }
   }
 
   /**
    * 删除变量
    * @param type 变量类型(global/character/chat/message)
    * @param name 变量名称
+   * @param message_id 消息ID(仅用于message类型)
    */
-  public async deleteVariableData(type: VariableType, name: string): Promise<void> {
+  public async deleteVariableData(type: VariableType, name: string, message_id?: number): Promise<void> {
     if (type === this.activeVariableType && this.currentVariables[name]) {
       delete this.currentVariables[name];
     }
 
-    await deleteVariable(name, { type });
+    if (type === 'message' && message_id !== undefined) {
+      await deleteVariable(name, { type, message_id });
+    } else {
+      await deleteVariable(name, { type });
+    }
   }
 
   /**
@@ -288,7 +297,28 @@ export class VariableModel {
       this.currentVariables = {};
     }
 
-    await replaceVariables({}, { type });
+    // 消息类型变量需要逐层清除
+    if (type === 'message') {
+      const [minFloor, maxFloor] = this.getFloorRange();
+
+      // 如果没有设置有效的楼层范围，则不执行操作
+      if (minFloor === null || maxFloor === null) {
+        console.warn('[VariableModel] 清除message变量失败: 未设置有效的楼层范围');
+        return;
+      }
+
+      // 逐层清除变量
+      for (let floor = minFloor; floor <= maxFloor; floor++) {
+        try {
+          await replaceVariables({}, { type: 'message', message_id: floor });
+        } catch (error) {
+          console.error(`[VariableModel] 清除第${floor}层变量失败:`, error);
+        }
+      }
+    } else {
+      // 其他类型变量直接替换为空对象
+      await replaceVariables({}, { type });
+    }
   }
 
   /**

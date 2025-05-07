@@ -167,23 +167,53 @@ export class ButtonManager {
 // 创建按钮管理器实例
 const buttonManager = new ButtonManager();
 
-// 检查qr--isEnabled状态并处理容器
+// 新增：提取出来的 setButton 逻辑
+function _setButtonLogic() {
+  // 更新容器引用
+  buttonManager.updateContainer();
+  // 获取脚本管理器实例
+  const scriptManager = ScriptManager.getInstance();
+
+  // 获取脚本数据
+  const globalScripts = scriptManager.getGlobalScripts();
+  const characterScripts = scriptManager.getCharacterScripts();
+  const isGlobalEnabled = scriptManager.isGlobalScriptEnabled;
+  const isCharacterEnabled = scriptManager.isCharacterScriptEnabled;
+
+  // 重新创建按钮
+  buttonManager.createButtonsFromScripts(globalScripts, characterScripts, isGlobalEnabled, isCharacterEnabled);
+}
+
+/**
+ * qr启用或者禁用时重新添加按钮
+ */
+function bindQrEnabledChangeListener() {
+  $(`#qr--isEnabled`).on('change', function () {
+    const isChecked = $(this).prop('checked');
+    if (!isChecked) {
+      // 新建容器
+      $('#send_form').append(
+        '<div class="flex-container flexGap5" id="qr--bar"><div class="qr--buttons qr--color"></div></div>',
+      );
+    }
+
+    _setButtonLogic();
+
+    console.log('[script_manager] 创建按钮');
+  });
+}
+
+/**
+ * 解绑 qr--isEnabled 元素的 change 事件监听器
+ */
+export function unbindQrEnabledChangeListener() {
+  $(`#qr--isEnabled`).off('change');
+}
+
+/**
+ * 根据qr--isEnabled状态处理容器
+ */
 export function checkQrEnabledStatus() {
-  const setButton = () => {
-    // 更新容器引用
-    buttonManager.updateContainer();
-    // 获取脚本管理器实例
-    const scriptManager = ScriptManager.getInstance();
-
-    // 获取脚本数据
-    const globalScripts = scriptManager.getGlobalScripts();
-    const characterScripts = scriptManager.getCharacterScripts();
-    const isGlobalEnabled = scriptManager.isGlobalScriptEnabled;
-    const isCharacterEnabled = scriptManager.isCharacterScriptEnabled;
-
-    // 重新创建按钮
-    buttonManager.createButtonsFromScripts(globalScripts, characterScripts, isGlobalEnabled, isCharacterEnabled);
-  };
   const isQrEnabled = $('#qr--isEnabled').prop('checked');
   if (isQrEnabled) {
     // 如果已勾选，检查qr--bar是否已存在
@@ -200,20 +230,13 @@ export function checkQrEnabledStatus() {
     );
   }
 
-  setButton();
-  console.log('[ScriptManager] 创建按钮');
+  _setButtonLogic();
+}
 
-  $(`#qr--isEnabled`).on('change', function () {
-    const isChecked = $(this).prop('checked');
-    if (!isChecked) {
-      // 新建容器
-      $('#send_form').append(
-        '<div class="flex-container flexGap5" id="qr--bar"><div class="qr--buttons qr--color"></div></div>',
-      );
-    }
-
-    setButton();
-
-    console.log('[ScriptManager] 更新按钮');
-  });
+/**
+ * 初始化脚本按钮，包括确认qr容器和绑定change事件
+ */
+export function initScriptButton() {
+  checkQrEnabledStatus();
+  bindQrEnabledChangeListener();
 }

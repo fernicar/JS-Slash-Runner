@@ -239,6 +239,11 @@ export class VariableView implements IDomUpdater {
       ? this.getOrCreateVariableList(targetContent)
       : this.getOrCreateVariableList(targetType);
 
+    const $emptyState = $variableList.find('.empty-state');
+    if ($emptyState.length > 0) {
+      $emptyState.remove();
+    }
+
     const newCard = this.cardFactory.createCard(dataType, name, value);
     this.cardFactory.setCardDataAttributes(newCard, name, value);
 
@@ -574,10 +579,10 @@ export class VariableView implements IDomUpdater {
    * 创建新变量卡片
    * @param type 变量类型
    * @param dataType 变量数据类型
+   * @param floorId 楼层ID(仅用于message类型)
    */
-  public createNewVariableCard(type: VariableType, dataType: VariableDataType): void {
+  public createNewVariableCard(type: VariableType, dataType: VariableDataType, floorId?: number): void {
     const $content = this.container.find(`#${type}-content`);
-
     $content.find('.empty-state').remove();
 
     let defaultValue: any;
@@ -602,9 +607,55 @@ export class VariableView implements IDomUpdater {
     }
 
     const defaultName = 'new_variable';
-    const newCard = this.createAndAppendCard(defaultName, defaultValue, dataType, type, $content);
-    newCard.attr('data-type', dataType);
-    newCard.attr('data-status', 'new');
+
+    // message类型特殊处理
+    if (type === 'message' && floorId !== undefined) {
+      // 查找或创建楼层面板
+      const $floorPanel = $content.find(`.floor-panel[data-floor="${floorId}"]`);
+
+      if ($floorPanel.length === 0) {
+        // 创建新的楼层面板
+        this.createFloorPanel(floorId, true).then($panel => {
+          $content.find('.variable-list').append($panel);
+
+          // 在面板中创建卡片
+          const $panelBody = $panel.find('.floor-panel-body');
+          const newCard = this.cardFactory.createCard(dataType, defaultName, defaultValue);
+          this.cardFactory.setCardDataAttributes(newCard, defaultName, defaultValue);
+
+          // 添加楼层信息用于保存
+          newCard.attr('data-floor', floorId.toString());
+          newCard.attr('data-type', dataType);
+          newCard.attr('data-status', 'new');
+
+          $panelBody.append(newCard);
+        });
+      } else {
+        // 在已有面板中创建卡片
+        const $panelBody = $floorPanel.find('.floor-panel-body');
+
+        // 确保面板展开
+        if (!$panelBody.hasClass('expanded')) {
+          $floorPanel.find('.floor-panel-icon').addClass('expanded');
+          $panelBody.addClass('expanded');
+        }
+
+        const newCard = this.cardFactory.createCard(dataType, defaultName, defaultValue);
+        this.cardFactory.setCardDataAttributes(newCard, defaultName, defaultValue);
+
+        // 添加楼层信息用于保存
+        newCard.attr('data-floor', floorId.toString());
+        newCard.attr('data-type', dataType);
+        newCard.attr('data-status', 'new');
+
+        $panelBody.append(newCard);
+      }
+    } else {
+      // 其他类型变量正常处理
+      const newCard = this.createAndAppendCard(defaultName, defaultValue, dataType, type, $content);
+      newCard.attr('data-type', dataType);
+      newCard.attr('data-status', 'new');
+    }
   }
 
   /**
@@ -768,7 +819,78 @@ export class VariableView implements IDomUpdater {
    * 显示添加变量选择对话框
    * @param callback 选择后的回调函数
    */
-  public async showAddVariableDialog(callback: (dataType: VariableDataType) => void): Promise<void> {
+  public async showAddVariableDialog(callback: (dataType: VariableDataType, floorId?: number) => void): Promise<void> {
+    const currentType = this.getActiveVariableType();
+
+    // 处理消息类型变量
+    if (currentType === 'message') {
+      await this.showFloorInputDialog(async floorId => {
+        if (floorId === null) return;
+
+        // 确认楼层后，再显示变量类型选择
+        await this.showVariableTypeDialog(dataType => {
+          callback(dataType, floorId);
+        }, floorId);
+      });
+      return;
+    }
+
+    // 处理其他类型变量
+    await this.showVariableTypeDialog(dataType => {
+      callback(dataType);
+    });
+  }
+
+  /**
+   * 显示楼层输入对话框
+   * @param callback 输入完成后的回调函数
+   */
+  public async showFloorInputDialog(callback: (floorId: number | null) => void): Promise<void> {
+    const content = $(`
+      <div>
+        <h3>输入楼层号码</h3>
+        <div class="floor-input-dialog">
+          <input type="number" id="floor-input" min="0" placeholder="请输入楼层号码" />
+          <div id="floor-input-error" class="floor-filter-error" style="display: none">请输入有效的楼层号码</div>
+        </div>
+      </div>
+    `);
+
+    const $inputField = content.find('#floor-input');
+    const $errorMsg = content.find('#floor-input-error');
+
+    // 获取当前最新楼层作为默认值
+    const lastMessageId = getLastMessageId();
+    if (lastMessageId >= 0) {
+      $inputField.val(lastMessageId);
+    }
+
+    const result = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', {
+      okButton: '确认',
+      cancelButton: '取消',
+    });
+
+    if (!result) {
+      callback(null);
+      return;
+    }
+
+    const floorId = parseInt($inputField.val() as string, 10);
+    if (isNaN(floorId) || floorId < 0) {
+      $errorMsg.show();
+      setTimeout(() => this.showFloorInputDialog(callback), 10);
+      return;
+    }
+
+    callback(floorId);
+  }
+
+  /**
+   * 显示变量类型选择对话框
+   * @param callback 选择后的回调函数
+   * @param floorId 楼层ID(仅用于message类型)
+   */
+  public async showVariableTypeDialog(callback: (dataType: VariableDataType) => void, floorId?: number): Promise<void> {
     const content = $(`
       <div>
         <h3>选择变量类型</h3>
@@ -963,8 +1085,19 @@ export class VariableView implements IDomUpdater {
       const $card = this.container.find(`.variable-card[data-name="${name}"]`);
 
       if ($card.length > 0) {
+        // 检查变量卡片是否在楼层面板内
+        const $floorPanel = $card.closest('.floor-panel');
+
         if (this._skipAnimation) {
           $card.remove();
+
+          // 如果是楼层面板内的最后一个变量卡片，移除整个面板
+          if ($floorPanel.length > 0) {
+            const $remainingCards = $floorPanel.find('.variable-card');
+            if ($remainingCards.length === 0) {
+              $floorPanel.remove();
+            }
+          }
         } else {
           $card.addClass('variable-deleted');
 
@@ -979,8 +1112,33 @@ export class VariableView implements IDomUpdater {
           $card.on('animationend.variableDeleted', function () {
             $(this).off('animationend.variableDeleted');
             $(this).remove();
+
+            // 动画结束后检查楼层面板
+            if ($floorPanel.length > 0) {
+              const $remainingCards = $floorPanel.find('.variable-card');
+              if ($remainingCards.length === 0) {
+                $floorPanel.remove();
+              }
+            }
           });
         }
+
+        // 检查变量列表是否为空，显示空状态
+        const activeContent = this.container.find('.tab-content.active');
+        const $variableList = this.getOrCreateVariableList(activeContent);
+
+        setTimeout(
+          () => {
+            if (
+              $variableList.find('.variable-card').length === 0 &&
+              $variableList.find('.floor-panel').length === 0 &&
+              $variableList.find('.empty-state').length === 0
+            ) {
+              $variableList.html('<div class="empty-state"><p>暂无变量</p></div>');
+            }
+          },
+          this._skipAnimation ? 0 : 300,
+        ); // 等待动画完成
       } else {
         console.warn(`[VariableView (IDomUpdater)] 未找到要移除的卡片: ${name}`);
       }

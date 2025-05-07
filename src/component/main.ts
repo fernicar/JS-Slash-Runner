@@ -28,7 +28,7 @@ import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from 
 import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { initializeToastr } from '@/component/toastr';
-import { checkQrEnabledStatus } from '@/component/script_repository/button';
+import { initScriptButton, checkQrEnabledStatus, unbindQrEnabledChangeListener } from '@/component/script_repository/button';
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
 const handleChatChanged = async () => {
@@ -90,7 +90,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
     buildScriptRepositoryOnExtension();
-    checkQrEnabledStatus();
+    initScriptButton();
     // 重新注入前端卡优化的样式和设置
     if (userAction && getSettingValue('render.rendering_optimize')) {
       addRenderingOptimizeSettings();
@@ -126,10 +126,12 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     destroyMacroOnExtension();
     destroyCharacterLevelOnExtension();
     destroyScriptRepositoryOnExtension();
+    unbindQrEnabledChangeListener();
 
     if (getSettingValue('render.rendering_optimize')) {
       removeRenderingOptimizeSettings();
     }
+
     if (getSettingValue('render.render_hide_style')) {
       removeRenderingHideStyleSettings();
     }

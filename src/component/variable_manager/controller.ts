@@ -45,9 +45,6 @@ export class VariableController {
       const preloadedVariables = await this.syncService.setCurrentType('global');
       this.syncService.activateListeners();
       await this.loadVariables('global', preloadedVariables);
-
-      // 添加日志说明
-      console.info('[VariableManager] 已启用变量卡片操作动画效果，替代吐司通知');
     } finally {
       this.model.endInternalOperation();
     }
@@ -237,24 +234,48 @@ export class VariableController {
     const name = this.view.getVariableCardName(card);
     const type = this.model.getActiveVariableType();
 
+    // 获取楼层信息（如果在楼层面板内）
+    let floorId: number | undefined = undefined;
+    if (type === 'message') {
+      const floorPanel = card.closest('.floor-panel');
+      if (floorPanel.length > 0) {
+        floorId = parseInt(floorPanel.attr('data-floor') || '', 10);
+        if (isNaN(floorId)) {
+          floorId = undefined;
+        }
+      }
+    }
+
     this.view.showConfirmDialog(`确定要删除变量 "${name}" 吗？`, async confirmed => {
       if (confirmed) {
         try {
           this.model.beginInternalOperation();
-          await this.model.deleteVariableData(type, name);
+          await this.model.deleteVariableData(type, name, floorId);
 
-          // 使用删除动画效果替代直接消失
-          card.addClass('variable-deleted');
-
-          // 等待动画完成后才从DOM中移除卡片
-          setTimeout(() => {
-            card.remove();
-          }, 1000); // 动画持续时间为1秒
+          // 不再直接处理DOM操作，而是通过removeVariableCard方法
+          this.view.removeVariableCard(name);
         } catch (error) {
           console.error(`[VariableManager] 删除变量失败:`, error);
         } finally {
           this.model.endInternalOperation();
         }
+      }
+    });
+  }
+
+  /**
+   * 处理添加变量
+   */
+  private async handleAddVariable(): Promise<void> {
+    const type = this.model.getActiveVariableType();
+
+    this.view.showAddVariableDialog((dataType, floorId) => {
+      try {
+        this.model.beginInternalOperation();
+        // 传递floorId参数到createNewVariableCard
+        this.view.createNewVariableCard(type, dataType, floorId);
+      } finally {
+        this.model.endInternalOperation();
       }
     });
   }
@@ -272,6 +293,9 @@ export class VariableController {
     const value = this.view.getVariableCardValue(card);
     const isNewCard = card.attr('data-status') === 'new';
 
+    // 获取楼层ID (用于message类型)
+    const floorId = type === 'message' ? parseInt(card.attr('data-floor') || '-1', 10) : undefined;
+
     if (!newName || newName.trim() === '') {
       toastr.error('变量名不能为空');
       return;
@@ -287,8 +311,12 @@ export class VariableController {
           return;
         }
 
-        // 保存新变量
-        await this.model.saveVariableData(type, newName, value);
+        // 保存新变量 (根据类型决定是否传递message_id)
+        if (type === 'message' && floorId !== undefined && floorId >= 0) {
+          await this.model.saveVariableData(type, newName, value, floorId);
+        } else {
+          await this.model.saveVariableData(type, newName, value);
+        }
 
         // 更新卡片状态
         card.removeAttr('data-status');
@@ -363,20 +391,6 @@ export class VariableController {
   }
 
   /**
-   * 处理添加变量
-   */
-  private async handleAddVariable(): Promise<void> {
-    this.view.showAddVariableDialog(dataType => {
-      try {
-        this.model.beginInternalOperation();
-        this.view.createNewVariableCard(this.model.getActiveVariableType(), dataType);
-      } finally {
-        this.model.endInternalOperation();
-      }
-    });
-  }
-
-  /**
    * 处理清除所有变量
    */
   private async handleClearAll(): Promise<void> {
@@ -404,11 +418,12 @@ export class VariableController {
               opacity: '0.2',
             });
 
-            // 动画完成后清空容器并重置样式
+            // 动画完成后使用刷新机制更新UI，而不是直接清空DOM
             setTimeout(() => {
-              container.empty();
-              floorContainer.empty();
+              // 使用现有的刷新机制，确保UI和数据一致
+              this.refreshVariableCards();
 
+              // 恢复容器透明度
               container.css({ opacity: '1' });
               floorContainer.css({ opacity: '1' });
 

@@ -35,12 +35,17 @@ export enum ScriptRepositoryEventType {
  */
 export type EventListener = (data: any) => void;
 
+// 导入SillyTavern的事件源
+import { eventSource } from '@sillytavern/script';
+
 /**
  * 事件总线类，用于组件间通信
+ * 基于SillyTavern.eventSource实现，但增加命名空间前缀避免冲突
  */
 export class EventBus {
   private static instance: EventBus;
-  private listeners: Map<ScriptRepositoryEventType, EventListener[]> = new Map();
+  private readonly EVENT_NAMESPACE = 'script_repository:';
+  private activeListeners: Map<ScriptRepositoryEventType, Set<EventListener>> = new Map();
 
   private constructor() {}
 
@@ -55,15 +60,29 @@ export class EventBus {
   }
 
   /**
+   * 获取带命名空间的事件名称
+   * @param eventType 事件类型
+   * @returns 带命名空间的事件名称
+   */
+  private getNamespacedEvent(eventType: ScriptRepositoryEventType): string {
+    return `${this.EVENT_NAMESPACE}${eventType}`;
+  }
+
+  /**
    * 添加事件监听器
    * @param eventType 事件类型
    * @param listener 监听器函数
    */
   public on(eventType: ScriptRepositoryEventType, listener: EventListener): void {
-    if (!this.listeners.has(eventType)) {
-      this.listeners.set(eventType, []);
+    // 保存监听器引用，用于后续移除
+    if (!this.activeListeners.has(eventType)) {
+      this.activeListeners.set(eventType, new Set());
     }
-    this.listeners.get(eventType)?.push(listener);
+    this.activeListeners.get(eventType)?.add(listener);
+
+    // 使用SillyTavern的事件系统，但加上命名空间前缀
+    const namespacedEvent = this.getNamespacedEvent(eventType);
+    eventSource.on(namespacedEvent, listener);
   }
 
   /**
@@ -72,15 +91,15 @@ export class EventBus {
    * @param listener 监听器函数
    */
   public off(eventType: ScriptRepositoryEventType, listener: EventListener): void {
-    if (!this.listeners.has(eventType)) {
-      return;
-    }
+    const namespacedEvent = this.getNamespacedEvent(eventType);
+    eventSource.removeListener(namespacedEvent, listener);
 
-    const listeners = this.listeners.get(eventType);
+    // 从本地记录中移除
+    const listeners = this.activeListeners.get(eventType);
     if (listeners) {
-      const index = listeners.indexOf(listener);
-      if (index !== -1) {
-        listeners.splice(index, 1);
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.activeListeners.delete(eventType);
       }
     }
   }
@@ -91,27 +110,22 @@ export class EventBus {
    * @param data 事件数据
    */
   public emit(eventType: ScriptRepositoryEventType, data?: any): void {
-    if (!this.listeners.has(eventType)) {
-      return;
-    }
-
-    const listeners = this.listeners.get(eventType);
-    if (listeners) {
-      listeners.forEach(listener => {
-        try {
-          listener(data);
-        } catch (error) {
-          console.error(`[EventBus] Error in event listener for ${eventType}:`, error);
-        }
-      });
-    }
+    const namespacedEvent = this.getNamespacedEvent(eventType);
+    eventSource.emit(namespacedEvent, data);
   }
 
   /**
    * 清空所有事件监听器
    */
   public clear(): void {
-    this.listeners.clear();
+    // 移除所有已注册的监听器
+    this.activeListeners.forEach((listeners, eventType) => {
+      const namespacedEvent = this.getNamespacedEvent(eventType);
+      listeners.forEach(listener => {
+        eventSource.removeListener(namespacedEvent, listener);
+      });
+    });
+    this.activeListeners.clear();
   }
 
   /**

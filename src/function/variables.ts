@@ -1,7 +1,4 @@
-import {
-  getCharacterScriptVariables,
-  replaceCharacterScriptVariables,
-} from '@/component/script_repository/data';
+import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository/data';
 import { getChatMessages, setChatMessages } from '@/function/chat_message';
 
 import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
@@ -70,7 +67,11 @@ export async function replaceVariables(
       break;
   }
 
-  console.info(`将${type == 'chat' ? `聊天` : `全局`}变量表替换为:\n${JSON.stringify(variables)}`);
+  console.info(
+    `将${
+      type === 'message' ? '消息' : type === 'chat' ? '聊天' : type === 'character' ? '角色' : '全局'
+    }变量表替换为:\n${JSON.stringify(variables)}`,
+  );
 }
 
 type VariablesUpdater =
