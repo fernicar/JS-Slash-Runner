@@ -1,4 +1,71 @@
+## 3.1.2
+
+### 💻界面
+
+- 在界面中新增到[酒馆命令自查手册](https://rentry.org/sillytavern-script-book)的参考链接
+- 拆分了渲染优化和折叠代码块选项, 现在你可以单独禁用代码块的高亮从而优化渲染速度
+
+### ⏫功能
+
+- 为 `ChatMessage` 补充了 `extra` 字段, 为 `ChatMessageSwiped` 补充了 `swipes_info` 字段.
+
+### 🐛修复
+
+- 修复 `getCharLorebooks` 不能获取到附加世界书的问题
+
 ## 3.1.1
+
+### ⏫功能
+
+- 新增了 `setChatMessages` 接口, 相比原来的 `setChatMessage` 更灵活——你现在可以直接地跳转开局、隐藏消息等等.
+
+  ```typescript
+  // 修改第 10 楼被 ai 使用的消息页的正文
+  await setChatMessages([{message_id: 10, message: '新的消息'}]);
+  ```
+
+  ```typescript
+  // 补充倒数第二楼的楼层变量
+  const chat_message = getChatMessages(-2)[0];
+  _.set(chat_message.data, '神乐光好感度', 5);
+  await setChatMessages([{message_id: 0, data: chat_message.data}], {refresh: 'none'});
+  ```
+
+  ```typescript
+  // 切换为开局 3
+  await setChatMessages([{message_id: 0, swipe_id: 2}]);
+  ```
+
+  ```typescript
+  // 隐藏所有楼层
+  const last_message_id = getLastMessageId();
+  await setChatMessages(_.range(last_message_id + 1).map(message_id => ({message_id, is_hidden: true})));
+  ```
+
+- 调整了 `getChatMessage` 接口, 现在返回类型将根据是否获取 swipes 部分 (`{ include_swipes: boolean }`) 返回 `ChatMessage[]` 或 `ChatMessageSwiped[]`.
+
+  ```typescript
+  // 仅获取第 10 楼被 ai 使用的消息页
+  const chat_messages = getChatMessages(10);
+  const chat_messages = getChatMessages('10');
+  const chat_messages = getChatMessages('10', { include_swipes: false });
+  // 获取第 10 楼所有的消息页
+  const chat_messages = getChatMessages(10, { include_swipes: true });
+  ```
+
+  ```typescript
+  // 获取最新楼层被 ai 使用的消息页
+  const chat_message = getChatMessages(-1)[0];  // 或 getChatMessages('{{lastMessageId}}')[0]
+  // 获取最新楼层所有的消息页
+  const chat_message = getChatMessages(-1, { include_swipes: true })[0];  // 或 getChatMessages('{{lastMessageId}}', { include_swipes: true })[0]
+  ```
+
+  ```typescript
+  // 获取所有楼层被 ai 使用的消息页
+  const chat_messages = getChatMessages('0-{{lastMessageId}}');
+  // 获取所有楼层所有的消息页
+  const chat_messages = getChatMessages('0-{{lastMessageId}}', { include_swipes: true });
+  ```
 
 ### 🐛修复
 
@@ -6,7 +73,7 @@
 
 ## 3.1.0
 
-现在所有内置库脚本将使用 `import 'https://gcore.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/标签化/index.js'` 的形式从仓库直接获取最新代码, **因此脚本将永远保持最新**, 你不再需要为了更新脚本重新导入脚本.
+现在所有内置库脚本将使用 `import 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/标签化/index.js'` 的形式从仓库直接获取最新代码, **因此脚本将永远保持最新**, 你不再需要为了更新脚本重新导入脚本.
 
 ## 3.0.7
 

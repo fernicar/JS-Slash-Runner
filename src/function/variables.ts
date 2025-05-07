@@ -1,4 +1,7 @@
-import { getCharacterScriptVariables, replaceCharacterScriptVariables } from '@/component/script_repository/data';
+import {
+  getCharacterScriptVariables,
+  replaceCharacterScriptVariables,
+} from '@/component/script_repository/script_repository';
 import { getChatMessages, setChatMessages } from '@/function/chat_message';
 
 import { chat, chat_metadata, saveMetadata, saveSettings } from '@sillytavern/script';
@@ -53,8 +56,6 @@ export async function replaceVariables(
       }
       message_id = message_id === 'latest' ? -1 : message_id;
       await setChatMessage({ data: variables }, message_id, { refresh: 'none' });
-      // 发出变量变化事件，包含角色ID和变量数据
-      eventSource.emit('message_variables_changed', { variables });
       break;
     case 'chat':
       _.set(chat_metadata, 'variables', variables);

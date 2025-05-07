@@ -6,8 +6,10 @@ import {
 } from '@/component/macro';
 import {
   addCodeToggleButtonsToAllMessages,
+  addRenderingHideStyleSettings,
   addRenderingOptimizeSettings,
   partialRenderEvents,
+  removeRenderingHideStyleSettings,
   removeRenderingOptimizeSettings,
   renderAllIframes,
   renderMessageAfterDelete,
@@ -92,6 +94,9 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     if (userAction && getSettingValue('render.rendering_optimize')) {
       addRenderingOptimizeSettings();
     }
+    if (userAction && getSettingValue('render.render_hide_style')) {
+      addRenderingHideStyleSettings();
+    }
 
     window.addEventListener('message', handleIframe);
 
@@ -123,6 +128,9 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
 
     if (getSettingValue('render.rendering_optimize')) {
       removeRenderingOptimizeSettings();
+    }
+    if (getSettingValue('render.render_hide_style')) {
+      removeRenderingHideStyleSettings();
     }
 
     window.removeEventListener('message', handleIframe);

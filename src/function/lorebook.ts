@@ -252,12 +252,10 @@ export function getCharLorebooks({
   if (selected_group && !name) {
     throw Error(`不要在群组中调用这个功能`);
   }
-  //@ts-ignore
-  const filename = name;
   // @ts-ignore
-  const character = findChar({ name: filename });
+  const character = findChar({ name });
   if (!character) {
-    throw Error(`未找到名为 '${filename}' 的角色卡`);
+    throw Error(`未找到名为 '${name}' 的角色卡`);
   }
 
   const books: CharLorebooks = { primary: null, additional: [] };
@@ -266,8 +264,10 @@ export function getCharLorebooks({
     books.primary = character.data?.extensions?.world;
   }
 
-  // @ts-ignore
-  const extraCharLore = world_info.charLore?.find(e => e.name === filename);
+  const filename = getCharaFilename(characters.indexOf(character)) as string;
+  const extraCharLore = (world_info as { charLore: { name: string; extraBooks: string[] }[] }).charLore?.find(
+    e => e.name === filename,
+  );
   if (extraCharLore && Array.isArray(extraCharLore.extraBooks)) {
     books.additional = extraCharLore.extraBooks;
   }
