@@ -139,15 +139,6 @@ export class ScriptData {
     // @ts-ignore
     await writeExtensionField(this_chid, 'TavernHelper_scripts', array);
 
-    const charactersWithScripts = getSettingValue('script.characters_with_scripts') || [];
-    // @ts-ignore
-    const avatar = characters[this_chid]?.avatar;
-
-    if (avatar && !charactersWithScripts.includes(avatar)) {
-      charactersWithScripts.push(avatar);
-      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
-    }
-
     this.characterScripts = array;
   }
 

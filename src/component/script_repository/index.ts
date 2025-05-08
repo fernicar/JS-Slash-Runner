@@ -3,9 +3,9 @@ import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repo
 import { ScriptManager } from '@/component/script_repository/script_controller';
 import { ScriptType } from '@/component/script_repository/types';
 import { UIController } from '@/component/script_repository/ui_controller';
-import { extensionFolderPath, getSettingValue } from '@/util/extension_variables';
+import { extensionFolderPath } from '@/util/extension_variables';
 
-import { characters, event_types, eventSource, this_chid } from '@sillytavern/script';
+import { event_types, eventSource, this_chid } from '@sillytavern/script';
 import { loadFileToDocument } from '@sillytavern/scripts/utils';
 
 const load_events = [event_types.CHAT_CHANGED] as const;
@@ -67,9 +67,8 @@ export class ScriptRepositoryApp {
       );
       await this.uiManager.initialize();
       this.initialized = true;
-      console.info('[ScriptRepositoryApp] 初始化完成');
     } catch (error) {
-      console.error('[ScriptRepositoryApp] 初始化失败:', error);
+      console.error('[script_repository] 初始化失败:', error);
       this.initialized = false;
     }
   }
@@ -98,7 +97,7 @@ export class ScriptRepositoryApp {
     console.info('[script_repository] 刷新脚本库');
 
     // 刷新UI
-    scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refreshCharactScripts' });
+    scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
 
     // 等待UI刷新完成后再检查嵌入式脚本
     // 使用 setTimeout 让刷新事件的处理先完成
@@ -125,9 +124,9 @@ export class ScriptRepositoryApp {
       this.uiManager.cleanup();
 
       this.initialized = false;
-      console.info('[ScriptRepositoryApp] 清理完成');
+      console.info('[script_repository] 清理完成');
     } catch (error) {
-      console.error('[ScriptRepositoryApp] 清理失败:', error);
+      console.error('[script_repository] 清理失败:', error);
     }
   }
 }

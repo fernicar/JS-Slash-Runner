@@ -9,12 +9,6 @@ import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 import { download, getSortableDelay, uuidv4 } from '../../../../../../utils';
 
-/**
- * 脚本UI控制器
- *
- * 整合了UI管理器和UI操作的功能，负责脚本界面的渲染、事件处理和状态管理
- * 使用事件驱动架构替代回调函数，简化代码结构
- */
 export class UIController {
   // 单例模式
   private static instance: UIController;
@@ -193,7 +187,7 @@ export class UIController {
 
     // 加载默认脚本库
     $('#default-script').on('click', () => {
-      scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'loadDefaultScripts' });
+      scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'load_default_scripts' });
     });
 
     // 修复布局问题
@@ -204,44 +198,43 @@ export class UIController {
    * 注册事件监听器
    */
   private registerEventListeners(): void {
-    // 监听UI刷新事件
     scriptEvents.on(ScriptRepositoryEventType.UI_REFRESH, async data => {
       const { action } = data;
 
       switch (action) {
-        case 'scriptToggled':
+        case 'script_toggled':
           // 脚本启用状态切换
           await this.refreshScriptState(data.script, data.enable);
           break;
-        case 'typeToggled':
+        case 'type_toggled':
           // 脚本类型启用状态切换
           await this.refreshTypeState(data.type, data.enable);
           break;
-        case 'scriptImported':
+        case 'script_imported':
           // 脚本导入成功
           await this.renderScript(data.script, data.type);
           break;
-        case 'scriptImportConflict':
-          // 脚本导入冲突
-          await this.handleScriptImportConflict(data.script, data.existingScript, data.type);
-          break;
-        case 'scriptSaved':
+        case 'script_saved':
           // 脚本保存成功
           await this.renderScript(data.script, data.type);
           break;
-        case 'scriptDeleted':
+        case 'script_deleted':
           // 脚本删除成功
           this.removeScriptElement(data.scriptId);
           break;
-        case 'scriptMoved':
+        case 'script_moved':
           // 脚本移动成功
           this.handleScriptMoved(data.script, data.fromType, data.targetType);
           break;
-        case 'loadDefaultScripts':
+        case 'scripts_reordered':
+          // 脚本重新排序
+          await this.scriptManager.saveScriptsOrder(data.scripts, data.type);
+          break;
+        case 'load_default_scripts':
           // 加载默认脚本
           await this.loadDefaultScriptsRepository();
           break;
-        case 'refreshCharactScripts':
+        case 'refresh_charact_scripts':
           // 只刷新角色脚本列表
           await this.refreshCharacterScriptList();
           break;
@@ -448,7 +441,7 @@ export class UIController {
 
     // 在目标列表中渲染
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-      action: 'scriptImported',
+      action: 'script_imported',
       script,
       type: targetType,
     });
@@ -462,12 +455,6 @@ export class UIController {
   private async renderScript(script: Script, type: ScriptType): Promise<void> {
     if (!this.baseTemplate) {
       await this.initializeTemplates();
-    }
-
-    // 先检查是否已经存在具有相同ID的脚本元素，如果存在则先移除
-    const existingElement = $(`#${script.id}`);
-    if (existingElement.length > 0) {
-      existingElement.remove();
     }
 
     const scriptHtml = this.baseTemplate!.clone();
@@ -507,15 +494,11 @@ export class UIController {
 
       script.enabled = newState;
 
-      // 保存脚本
-      scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script, type });
-
-      // 启用/禁用脚本
       scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_TOGGLE, {
         script,
         type,
         enable: newState,
-        userInput: false,
+        userInput: true,
       });
     });
 
@@ -555,64 +538,20 @@ export class UIController {
     const $emptyTip =
       type === ScriptType.GLOBAL ? $('#global-script-list').find('small') : $('#character-script-list').find('small');
 
-    if (type === ScriptType.GLOBAL) {
-      $('#global-script-list').append(scriptHtml);
+    // 检查是否已经存在具有相同ID的脚本元素
+    const existingElement = $(`#${script.id}`);
+    if (existingElement.length > 0) {
+      // 如果已存在，则直接替换元素，保持原位置
+      existingElement.replaceWith(scriptHtml);
     } else {
-      $('#character-script-list').append(scriptHtml);
+      // 如果不存在，则添加到列表末尾
+      const container = type === ScriptType.GLOBAL ? $('#global-script-list') : $('#character-script-list');
+      container.append(scriptHtml);
     }
 
     if ($emptyTip.length > 0) {
       $emptyTip.remove();
     }
-  }
-
-  /**
-   * 显示脚本冲突对话框
-   * @param newName 新脚本名称
-   * @param existingName 已有脚本名称
-   * @returns 用户选择的操作
-   */
-  private async handleScriptImportConflict(script: Script, existingScript: Script, type: ScriptType): Promise<void> {
-    // 显示冲突提示并处理用户选择
-    const result = await this.showScriptConflictDialog(script.name, existingScript.name);
-
-    if (result === 'new') {
-      // 创建新的脚本
-      script.id = uuidv4(); // 生成新的ID
-      scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script, type });
-    } else if (result === 'override') {
-      // 覆盖已有脚本
-      scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_DELETE, { scriptId: existingScript.id, type });
-      scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script, type });
-    }
-    // 如果是cancel，不做任何操作
-  }
-
-  /**
-   * 显示脚本冲突对话框
-   * @param newName 新脚本名称
-   * @param existingName 已有脚本名称
-   * @returns 用户选择的操作
-   */
-  private async showScriptConflictDialog(
-    newName: string,
-    existingName: string,
-  ): Promise<'new' | 'override' | 'cancel'> {
-    const result = await callGenericPopup(
-      `要导入的脚本 '${newName}' 与脚本库中的 '${existingName}' id 相同，是否要导入？`,
-      POPUP_TYPE.TEXT,
-      '选择: new（创建为新脚本）, override（覆盖已有脚本）, cancel（取消导入）',
-    );
-
-    if (!result || result === 'cancel') {
-      return 'cancel';
-    }
-
-    if (result === 'override') {
-      return 'override';
-    }
-
-    return 'new';
   }
 
   /**
@@ -624,13 +563,14 @@ export class UIController {
 
     list.sortable({
       delay: getSortableDelay(),
+      items: '.script-item',
       stop: async (_, ui) => {
         const itemId = ui.item.attr('id');
         if (!itemId) return;
 
         // 获取新的顺序
         const newOrder: string[] = [];
-        list.children().each(function () {
+        list.children('.script-item').each(function () {
           const childId = $(this).attr('id');
           if (childId) {
             newOrder.push(childId);
@@ -643,9 +583,8 @@ export class UIController {
 
         const orderedScripts = newOrder.map(id => scripts.find(s => s.id === id)).filter(Boolean) as Script[];
 
-        // 使用事件总线保存新的顺序
         scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-          action: 'scriptsReordered',
+          action: 'scripts_reordered',
           scripts: orderedScripts,
           type,
         });
@@ -940,84 +879,6 @@ export class UIController {
   }
 
   /**
-   * 确认并导入脚本
-   * @param importScript 要导入的脚本
-   * @param importType 导入目标类型
-   */
-  public async confirmAndImport(importScript: Script, importType: ScriptType): Promise<void> {
-    const scriptToImport = new Script({ ...importScript, enabled: false });
-
-    let action: 'new' | 'override' | 'cancel' = 'new';
-
-    const existing_script = this.scriptManager.getScriptById(scriptToImport.id);
-    if (existing_script) {
-      const input = await callGenericPopup(
-        `要导入的脚本 '${scriptToImport.name}' 与脚本库中的 '${existing_script.name}' id 相同，是否要导入？`,
-        POPUP_TYPE.TEXT,
-        '',
-        {
-          okButton: '覆盖原脚本',
-          cancelButton: '取消',
-          customButtons: ['新建脚本'],
-        },
-      );
-
-      switch (input) {
-        case 0:
-          action = 'cancel';
-          break;
-        case 1:
-          action = 'override';
-          break;
-        case 2:
-          action = 'new';
-          break;
-      }
-    }
-
-    switch (action) {
-      case 'new':
-        if (existing_script) {
-          scriptToImport.id = uuidv4();
-        }
-        break;
-      case 'override':
-        {
-          if (!existing_script) {
-            return;
-          }
-
-          // 确保在DOM中移除旧元素
-          $(`#${existing_script.id}`).remove();
-
-          if (existing_script.enabled) {
-            // 停用脚本
-            scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_TOGGLE, {
-              script: existing_script,
-              type: importType,
-              enable: false,
-              userInput: false,
-            });
-
-            // 移除按钮
-            scriptEvents.emit(ScriptRepositoryEventType.BUTTON_REMOVE, { scriptId: existing_script.id });
-          }
-        }
-        break;
-      case 'cancel':
-        return;
-    }
-
-    // 保存脚本
-    scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script: scriptToImport, type: importType });
-
-    // 渲染脚本
-    await this.renderScript(scriptToImport, importType);
-
-    toastr.success(`脚本 '${scriptToImport.name}' 导入成功。`);
-  }
-
-  /**
    * 检查角色中的嵌入式脚本
    * @param characterId 角色id
    */
@@ -1028,19 +889,14 @@ export class UIController {
       return;
     }
 
-    // 获取当前角色的脚本
     const characterScripts = this.scriptManager.getCharacterScripts();
 
     // 先将所有角色脚本设置为启用状态并保存
     for (const script of characterScripts) {
-      // 只有当脚本状态为禁用时才需要更新
       if (!script.enabled) {
         script.enabled = true;
 
-        // 保存到数据层
         await this.scriptManager.saveScript(script, ScriptType.CHARACTER);
-
-        // 更新DOM显示
         await this.refreshScriptState(script, true);
       }
     }
@@ -1055,7 +911,6 @@ export class UIController {
     });
 
     if (result) {
-      // 仅更新开关状态和发送事件，不直接操作脚本项
       $('#character-script-enable-toggle').prop('checked', true);
 
       scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
@@ -1064,7 +919,6 @@ export class UIController {
         userInput: false,
       });
     } else {
-      // 仅更新开关状态和发送事件，不直接操作脚本项
       $('#character-script-enable-toggle').prop('checked', false);
 
       scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {

@@ -44,7 +44,7 @@ import { eventSource } from '@sillytavern/script';
  */
 export class EventBus {
   private static instance: EventBus;
-  private readonly EVENT_NAMESPACE = 'script_repository:';
+  private readonly EVENT_NAMESPACE = 'script_repository_';
   private activeListeners: Map<ScriptRepositoryEventType, Set<EventListener>> = new Map();
 
   private constructor() {}

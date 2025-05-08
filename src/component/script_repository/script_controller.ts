@@ -1,14 +1,13 @@
 import { destroyIframe } from '@/component/message_iframe';
 import { ScriptData } from '@/component/script_repository/data';
-import { ScriptRepositoryEventType, scriptEvents } from '@/component/script_repository/events';
+import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import { IFrameElement, Script, ScriptType } from '@/component/script_repository/types';
 import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
 import { getSettingValue } from '@/util/extension_variables';
+import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
+import { uuidv4 } from '@sillytavern/scripts/utils';
 
-/**
- * 脚本执行器 - 内部类，专注于脚本的iframe创建和管理
- */
 class ScriptExecutor {
   /**
    * 创建并运行单个脚本
@@ -49,12 +48,12 @@ class ScriptExecutor {
     } catch (error) {
       console.error(`[Script] ${typeName}脚本启用失败:["${script.name}"]`, error);
       toastr.error(`${typeName}脚本启用失败:["${script.name}"]`);
-      throw error; // 向上抛出异常以便调用方处理
+      throw error;
     }
   }
 
   /**
-   * 停止单个脚本
+   * 停止单个脚本，并销毁iframe
    * @param script 脚本
    * @param type 脚本类型
    */
@@ -161,7 +160,6 @@ export class ScriptManager {
 
   /**
    * 注册事件监听器
-   * 将回调数量降到最低，只保留必要的UI交互事件
    */
   private registerEventListeners(): void {
     // 脚本切换事件
@@ -202,7 +200,6 @@ export class ScriptManager {
 
     // UI加载完成事件 - 自动运行已启用的脚本
     scriptEvents.on(ScriptRepositoryEventType.UI_LOADED, async () => {
-      // 检查扩展是否启用
       if (!getSettingValue('enabled_extension')) {
         return;
       }
@@ -213,7 +210,6 @@ export class ScriptManager {
 
       // 检查全局脚本类型开关是否启用
       if (this.scriptData.isGlobalScriptEnabled) {
-        console.info('[Script] 全局脚本类型已启用，运行所有已启用的全局脚本');
         await this.runScriptsByType(globalScripts, ScriptType.GLOBAL);
       } else {
         console.info('[Script] 全局脚本类型未启用，跳过运行全局脚本');
@@ -221,7 +217,6 @@ export class ScriptManager {
 
       // 检查角色脚本类型开关是否启用
       if (this.scriptData.isCharacterScriptEnabled) {
-        console.info('[Script] 角色脚本类型已启用，运行所有已启用的角色脚本');
         await this.runScriptsByType(characterScripts, ScriptType.CHARACTER);
       } else {
         console.info('[Script] 角色脚本类型未启用，跳过运行角色脚本');
@@ -249,14 +244,23 @@ export class ScriptManager {
 
     try {
       if (enable) {
+        // 检查对应类型的脚本总开关是否启用
+        if (type === ScriptType.GLOBAL && !this.scriptData.isGlobalScriptEnabled) {
+          console.info(`[script_manager] 全局脚本类型未启用，跳过启用脚本["${script.name}"]`);
+          return;
+        }
+        if (type === ScriptType.CHARACTER && !this.scriptData.isCharacterScriptEnabled) {
+          console.info(`[script_manager] 角色脚本类型未启用，跳过启用脚本["${script.name}"]`);
+          return;
+        }
+
         await this.runScript(script, type);
       } else {
         await this.stopScript(script, type);
       }
 
-      // 仅触发UI更新事件，而不在内部实现UI更新逻辑
       scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-        action: 'scriptToggled',
+        action: 'script_toggled',
         script,
         type,
         enable,
@@ -288,9 +292,8 @@ export class ScriptManager {
         await this.stopScriptsByType(scripts, type);
       }
 
-      // 仅触发UI更新事件
       scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-        action: 'typeToggled',
+        action: 'type_toggled',
         type,
         enable,
       });
@@ -349,7 +352,6 @@ export class ScriptManager {
    * @param type 脚本类型
    */
   public async runScriptsByType(scripts: Script[], type: ScriptType): Promise<void> {
-    // 检查扩展是否启用
     if (!getSettingValue('enabled_extension')) {
       toastr.error('[Script] 酒馆助手未启用，无法运行脚本');
       return;
@@ -398,39 +400,81 @@ export class ScriptManager {
   /**
    * 导入脚本
    * @param file 文件
-   * @param type 脚本类型
+   * @param type 导入目标类型
    */
   public async importScript(file: File, type: ScriptType): Promise<void> {
     try {
-      const fileText = await this.readFileAsText(file);
-      const scriptData = JSON.parse(fileText);
+      const content = await this.readFileAsText(file);
+      const scriptData = JSON.parse(content);
 
-      if (!scriptData.name) {
-        throw new Error('[Script] 未提供脚本名称。');
+      if (!scriptData.name || !scriptData.content) {
+        throw new Error('无效的脚本数据');
       }
 
-      const script = new Script(scriptData);
-      const existingScript = this.scriptData.getScriptById(script.id);
+      // 新建脚本对象，默认为未启用状态
+      const scriptToImport = new Script({
+        ...scriptData,
+        enabled: false,
+      });
+
+      // 检查是否存在ID冲突
+      const existingScript = this.scriptData.getScriptById(scriptToImport.id);
 
       if (existingScript) {
-        // 处理脚本冲突 - 只发送事件，UI处理由监听者负责
-        scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-          action: 'scriptImportConflict',
-          script,
-          existingScript,
-          type,
-        });
+        // 显示冲突处理选项
+        const input = await callGenericPopup(
+          `要导入的脚本 '${scriptToImport.name}' 与脚本库中的 '${existingScript.name}' id 相同，是否要导入？`,
+          POPUP_TYPE.TEXT,
+          '',
+          {
+            okButton: '覆盖原脚本',
+            cancelButton: '取消',
+            customButtons: ['新建脚本'],
+          },
+        );
+
+        let action: 'new' | 'override' | 'cancel' = 'cancel';
+
+        switch (input) {
+          case 0:
+            action = 'cancel';
+            break;
+          case 1:
+            action = 'override';
+            break;
+          case 2:
+            action = 'new';
+            break;
+        }
+
+        switch (action) {
+          case 'new':
+            // 生成新ID
+            scriptToImport.id = uuidv4();
+            await this.saveScript(scriptToImport, type);
+            break;
+          case 'override':
+            // 先删除旧脚本
+            await this.deleteScript(existingScript.id, type);
+            // 保存新脚本
+            await this.saveScript(scriptToImport, type);
+            break;
+          case 'cancel':
+            return;
+        }
       } else {
-        // 直接保存脚本
-        await this.saveScript(script, type);
-        scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-          action: 'scriptImported',
-          script,
-          type,
-        });
+        await this.saveScript(scriptToImport, type);
       }
+
+      scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
+        action: 'script_imported',
+        script: scriptToImport,
+        type,
+      });
+
+      toastr.success(`脚本 '${scriptToImport.name}' 导入成功。`);
     } catch (error) {
-      console.error('[Script] 导入脚本失败:', error);
+      console.error('[script_repository] 导入脚本失败:', error);
       toastr.error('无效的JSON文件。');
     }
   }
@@ -457,10 +501,26 @@ export class ScriptManager {
   public async saveScript(script: Script, type: ScriptType): Promise<void> {
     await this.scriptData.saveScript(script, type);
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-      action: 'scriptSaved',
+      action: 'script_saved',
       script,
       type,
     });
+  }
+
+  /**
+   * 保存脚本顺序
+   * @param scripts 排序后的脚本数组
+   * @param type 脚本类型
+   */
+  public async saveScriptsOrder(scripts: Script[], type: ScriptType): Promise<void> {
+    if (type === ScriptType.GLOBAL) {
+      await this.scriptData.saveGlobalScripts(scripts);
+    } else {
+      await this.scriptData.saveCharacterScripts(scripts);
+    }
+
+    // 刷新本地数据
+    this.scriptData.loadScripts();
   }
 
   /**
@@ -481,7 +541,7 @@ export class ScriptManager {
     await this.scriptData.deleteScript(scriptId, type);
 
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-      action: 'scriptDeleted',
+      action: 'script_deleted',
       scriptId,
       type,
     });
@@ -502,7 +562,7 @@ export class ScriptManager {
     const targetType = fromType === ScriptType.GLOBAL ? ScriptType.CHARACTER : ScriptType.GLOBAL;
 
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
-      action: 'scriptMoved',
+      action: 'script_moved',
       script,
       fromType,
       targetType,

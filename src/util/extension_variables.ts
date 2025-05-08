@@ -2,8 +2,6 @@
 import { characters, getThumbnailUrl, saveSettingsDebounced, this_chid, user_avatar } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
-export let app_ready = false;
-
 export const extensionName = 'JS-Slash-Runner';
 export const extensionSettingName = 'TavernHelper';
 
@@ -57,5 +55,5 @@ export async function getOrSaveSettingValue<T>(path: string, default_value: T): 
   if (_.has(extension_settings[extensionSettingName], path)) {
     return getSettingValue(path);
   }
-  return await saveSettingValue(path, default_value);
+  return saveSettingValue(path, default_value);
 }
