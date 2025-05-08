@@ -23,6 +23,59 @@
 ### ⏫功能
 
 - 为 `ChatMessage` 补充了 `extra` 字段, 为 `ChatMessageSwiped` 补充了 `swipes_info` 字段.
+- 新增了 `createChatMessages` 接口来增加新的消息, 相比于 `/send` 和 `/sendas`, 它支持批量创建
+
+  ```typescript
+  // 在末尾插入一条消息
+  await createChatMessages([{role: 'user', message: '你好'}]);
+  ```
+
+  ```typescript
+  // 在第 10 楼前插入两条消息且不需要刷新显示
+  await createChatMessages([{role: 'user', message: '你好'}, {role: 'assistant', message: '我好'}], {insert_at: 10});
+  ```
+
+- 新增了 `deleteChatMessages` 接口来删除消息, 相比于 `/del`, 它支持批量删除以及零散地进行删除
+
+  ```typescript
+  // 删除第 10 楼、第 15 楼、倒数第二楼和最后一楼
+  await deleteChatMessages([10, 15, -2, getLastMessageId()]);
+  ```
+
+  ```typescript
+  // 删除所有楼层
+  await deleteChatMessages(_.range(getLastMessageId() + 1));
+  ```
+
+- 新增了 `rotateChatMessages` 接口来调整消息顺序
+
+  ```typescript
+  // 将 [4, 7) 楼放到 [2, 4) 楼之前, 即, 将 4-6 楼放到 2-3 楼之前
+  await rotateChatMessages(2, 4, 7);
+  ```
+
+  ```typescript
+  // 将最后一楼放到第 5 楼之前
+  await rotateChatMessages(5, getLastMessageId(), getLastMessageId() + 1);
+  ```
+
+  ```typescript
+  // 将最后 3 楼放到第 1 楼之前
+  await rotateChatMessages(1, getLastMessageId() - 2, getLastMessageId() + 1);
+  ```
+
+  ```typescript
+  // 将前 3 楼放到最后
+  await rotateChatMessages(0, 3, getLastMessageId() + 1);
+  ```
+
+- 新增了 `getChatLorebook` 和 `setChatLorebook` 对聊天世界书进行更直接的控制
+- 为 `getOrCreateChatLorebook` 新增一个可选参数, 从而允许自定义聊天世界书名称:
+
+  ```typescript
+  // 如果聊天世界书不存在, 则尝试创建一个名为 '你好' 的世界书作为聊天世界书
+  const lorebook = await getOrCreateChatLorebook('你好');
+  ```
 
 ### 🐛修复
 

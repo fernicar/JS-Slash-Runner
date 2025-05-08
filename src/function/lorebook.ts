@@ -1,11 +1,13 @@
 import { findChar } from '@/compatibility';
-import { triggerSlash } from '@/function/slash';
 
 import {
   characters,
+  chat_metadata,
+  getCurrentChatId,
   getOneCharacter,
   getRequestHeaders,
   saveCharacterDebounced,
+  saveMetadata,
   saveSettings,
   saveSettingsDebounced,
   this_chid,
@@ -17,6 +19,7 @@ import {
   createNewWorldInfo,
   deleteWorldInfo,
   getWorldInfoSettings,
+  METADATA_KEY,
   selected_world_info,
   setWorldInfoButtonClass,
   world_info,
@@ -370,6 +373,47 @@ export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>)
   );
 }
 
-export async function getOrCreateChatLorebook(): Promise<string> {
-  return triggerSlash('/getchatbook') as Promise<string>;
+export async function getChatLorebook(): Promise<string | null> {
+  const chat_id = getCurrentChatId();
+  if (!chat_id) {
+    throw Error(`未打开任何聊天, 不可获取聊天世界书`);
+  }
+
+  return _.get(chat_metadata, METADATA_KEY, null);
+}
+
+export async function setChatLorebook(lorebook: string | null): Promise<void> {
+  if (lorebook === null) {
+    _.unset(chat_metadata, METADATA_KEY);
+    $('.chat_lorebook_button').removeClass('world_set');
+  } else {
+    _.set(chat_metadata, METADATA_KEY, lorebook);
+    $('.chat_lorebook_button').addClass('world_set');
+  }
+  await saveMetadata();
+}
+
+export async function getOrCreateChatLorebook(lorebook?: string): Promise<string> {
+  const existing_lorebook = await getChatLorebook();
+  if (existing_lorebook !== null) {
+    return existing_lorebook;
+  }
+
+  const new_lorebook = (() => {
+    if (lorebook) {
+      if (world_names.includes(lorebook)) {
+        throw new Error('尝试创建聊天世界书, 但该名称已存在');
+      }
+      return lorebook;
+    }
+
+    return `Chat Book ${getCurrentChatId()}`
+      .replace(/[^a-z0-9]/gi, '_')
+      .replace(/_{2,}/g, '_')
+      .substring(0, 64);
+  })();
+  await createNewWorldInfo(new_lorebook);
+
+  await setChatLorebook(new_lorebook);
+  return new_lorebook;
 }
