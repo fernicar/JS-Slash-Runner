@@ -28,11 +28,9 @@ import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from 
 import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { initializeToastr } from '@/component/toastr';
-import { initScriptButton, checkQrEnabledStatus, unbindQrEnabledChangeListener } from '@/component/script_repository/button';
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
 const handleChatChanged = async () => {
-  checkQrEnabledStatus();
   await renderAllIframes();
   if (getSettingValue('render.rendering_optimize')) {
     addCodeToggleButtonsToAllMessages();
@@ -90,7 +88,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     initializeMacroOnExtension();
     initializeCharacterLevelOnExtension();
     buildScriptRepositoryOnExtension();
-    initScriptButton();
+
     // 重新注入前端卡优化的样式和设置
     if (userAction && getSettingValue('render.rendering_optimize')) {
       addRenderingOptimizeSettings();
@@ -126,7 +124,6 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     destroyMacroOnExtension();
     destroyCharacterLevelOnExtension();
     destroyScriptRepositoryOnExtension();
-    unbindQrEnabledChangeListener();
 
     if (getSettingValue('render.rendering_optimize')) {
       removeRenderingOptimizeSettings();
@@ -151,6 +148,5 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
       await reloadCurrentChat();
     }
   }
-  $('#js_slash_runner_text').text(getSettingValue('enabled_extension') ? '关闭前端渲染' : '开启前端渲染');
   saveSettingsDebounced();
 }

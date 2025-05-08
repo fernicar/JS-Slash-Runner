@@ -579,10 +579,10 @@ export class ScriptManager {
   }
 
   /**
-   * 刷新数据
+   * 刷新角色脚本数据
    */
-  public refreshData(): void {
-    this.scriptData.loadScripts();
+  public refreshCharacterScriptData(): void {
+    this.scriptData.getCharacterScripts();
   }
 
   /**
@@ -597,6 +597,13 @@ export class ScriptManager {
    */
   public getCharacterScripts(): Script[] {
     return this.scriptData.getCharacterScripts();
+  }
+
+  /**
+   * 刷新角色脚本启用状态
+   */
+  public refreshCharacterScriptEnabledState(): void {
+    this.scriptData.refreshCharacterScriptEnabledState();
   }
 
   /**

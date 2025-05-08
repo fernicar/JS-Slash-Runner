@@ -58,13 +58,7 @@ export class ButtonFactory {
 
 // 按钮管理器
 export class ButtonManager {
-  private container: JQuery<HTMLElement> | null = null;
   private buttons: Button[] = [];
-
-  // 更新容器引用
-  updateContainer(): void {
-    this.container = $('.qr--buttons');
-  }
 
   // 将按钮从旧容器迁移到新容器
   migrateButtonsToNewContainer(oldContainerId: string, newContainerId: string): void {
@@ -143,18 +137,16 @@ export class ButtonManager {
   // 添加按钮
   addButton(button: Button): void {
     if (!button.visible) return;
-    setTimeout(() => {
-      // 先移除可能存在的相同DOM ID按钮
-      $(`#${button.id}`).remove();
+    // 先移除可能存在的相同DOM ID按钮
+    $(`#${button.id}`).remove();
 
-      // 同时从buttons数组中移除相同ID的按钮
-      this.buttons = this.buttons.filter(btn => btn.id !== button.id);
+    // 同时从buttons数组中移除相同ID的按钮
+    this.buttons = this.buttons.filter(btn => btn.id !== button.id);
 
-      // 添加新按钮
-      this.buttons.push(button);
-      $('.qr--buttons')?.append(button.render());
-      button.bindEvents();
-    }, 3000);
+    // 添加新按钮
+    this.buttons.push(button);
+    $('.qr--buttons')?.append(button.render());
+    button.bindEvents();
   }
 
   // 移除按钮
@@ -174,11 +166,7 @@ export class ButtonManager {
 // 创建按钮管理器实例
 const buttonManager = new ButtonManager();
 
-// 新增：提取出来的 setButton 逻辑
 function _setButtonLogic() {
-  // 更新容器引用
-  buttonManager.updateContainer();
-  // 获取脚本管理器实例
   const scriptManager = ScriptManager.getInstance();
 
   // 获取脚本数据
@@ -220,7 +208,7 @@ export function unbindQrEnabledChangeListener() {
 /**
  * 根据qr--isEnabled状态处理容器
  */
-export function checkQrEnabledStatus() {
+function checkQrEnabledStatus() {
   const isQrEnabled = $('#qr--isEnabled').prop('checked');
   if (isQrEnabled) {
     // 如果已勾选，检查qr--bar是否已存在
@@ -237,6 +225,10 @@ export function checkQrEnabledStatus() {
     );
   }
 
+}
+
+export function checkQrEnabledStatusAndAddButton() {
+  checkQrEnabledStatus();
   _setButtonLogic();
 }
 

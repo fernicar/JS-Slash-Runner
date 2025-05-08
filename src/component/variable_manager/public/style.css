@@ -272,7 +272,7 @@
   align-items: center;
 }
 
-/* 列表项输入框 - 修改为一行可拉伸 */
+/* 列表项输入框 */
 .list-item-input {
   flex: 1;
   height: 30px;
@@ -636,7 +636,7 @@
 .variable-manager-dialog {
   width: 40dvw;
   height: 80dvh;
-  min-width: 350px;
+  min-width: 300px;
   min-height: 250px;
   background-color: var(--SmartThemeBodyBGColor, #1f1f1f);
   border-radius: 8px;
@@ -885,13 +885,10 @@
   width: 70px;
   height: 22px;
   padding: 3px 6px;
-  border-radius: 4px;
-  border: none;
-  background-color: var(--SmartThemeInputColor, #333);
-  color: var(--SmartThemeBodyColor, #fff);
-  text-align: center;
+  border-radius: 5px !important;
   margin-right: 5px;
   font-size: calc(var(--mainFontSize) * 0.8);
+  text-align: center;
 }
 
 .floor-input:focus {

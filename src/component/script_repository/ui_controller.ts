@@ -1,14 +1,13 @@
-import { ButtonFactory, ButtonManager } from '@/component/script_repository/button';
+import { ButtonFactory, ButtonManager, initScriptButton } from '@/component/script_repository/button';
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import { ScriptManager } from '@/component/script_repository/script_controller';
 import { Script, ScriptType } from '@/component/script_repository/types';
-import { extensionFolderPath, getSettingValue } from '@/util/extension_variables';
+import { extensionFolderPath, getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { renderMarkdown } from '@/util/render_markdown';
 import { characters, this_chid } from '@sillytavern/script';
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
-import { download, getSortableDelay, uuidv4 } from '../../../../../../utils';
-
+import { download, getSortableDelay, uuidv4 } from '@sillytavern/scripts/utils';
 export class UIController {
   // 单例模式
   private static instance: UIController;
@@ -77,7 +76,7 @@ export class UIController {
     await this.renderScriptLists();
 
     // 初始化按钮容器
-    this.initButtonContainer();
+    initScriptButton();
 
     // 触发UI加载完成事件
     scriptEvents.emit(ScriptRepositoryEventType.UI_LOADED);
@@ -268,18 +267,6 @@ export class UIController {
   }
 
   /**
-   * 初始化按钮容器
-   */
-  private initButtonContainer(): void {
-    this.buttonManager.createButtonsFromScripts(
-      this.scriptManager.getGlobalScripts(),
-      this.scriptManager.getCharacterScripts(),
-      this.scriptManager.isGlobalScriptEnabled,
-      this.scriptManager.isCharacterScriptEnabled,
-    );
-  }
-
-  /**
    * 添加按钮
    * @param script 脚本
    */
@@ -369,6 +356,10 @@ export class UIController {
     // 获取并渲染角色脚本
     const characterScripts = this.scriptManager.getCharacterScripts();
     await this.renderCharacterScriptList(characterScripts);
+
+    // 设置总开关状态
+    const isCharacterScriptEnabled = this.scriptManager.isCharacterScriptEnabled;
+    $('#character-script-enable-toggle').prop('checked', isCharacterScriptEnabled);
   }
 
   /**
@@ -911,6 +902,11 @@ export class UIController {
     });
 
     if (result) {
+      if (avatar && !charactersWithScripts.includes(avatar)) {
+        charactersWithScripts.push(avatar);
+        saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      }
+
       $('#character-script-enable-toggle').prop('checked', true);
 
       scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {

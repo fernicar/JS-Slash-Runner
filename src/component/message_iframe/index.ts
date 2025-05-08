@@ -1169,14 +1169,14 @@ async function handleRenderEnableToggle(enable: boolean, userInput: boolean = tr
  */
 function addRenderQuickButton() {
   const buttonHtml = $(`
-  <div id="tavern-helper-container" class="list-group-item flex-container flexGap5 interactable">
+  <div id="tavern-helper-render-container" class="list-group-item flex-container flexGap5 interactable">
       <div class="fa-solid fa-puzzle-piece extensionsMenuExtensionButton" /></div>
-      <span id="tavern-helper-text">${isRenderEnabled ? '关闭前端渲染' : '开启前端渲染'}</span>
+      <span id="tavern-helper-render-text">${isRenderEnabled ? '关闭前端渲染' : '开启前端渲染'}</span>
   </div>`);
   buttonHtml.css('display', 'flex');
   $('#extensionsMenu').append(buttonHtml);
-  $('#tavern-helper-container').on('click', async function () {
-    $('#tavern-helper-text').text(!isRenderEnabled ? '关闭前端渲染' : '开启前端渲染');
+  $('#tavern-helper-render-container').on('click', async function () {
+    $('#tavern-helper-render-text').text(!isRenderEnabled ? '关闭前端渲染' : '开启前端渲染');
     await handleRenderEnableToggle(!isRenderEnabled, true);
     $('#render-enable-toggle').prop('checked', isRenderEnabled);
   });

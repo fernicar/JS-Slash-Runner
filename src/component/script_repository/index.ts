@@ -5,9 +5,9 @@ import { ScriptType } from '@/component/script_repository/types';
 import { UIController } from '@/component/script_repository/ui_controller';
 import { extensionFolderPath } from '@/util/extension_variables';
 
+import { checkQrEnabledStatusAndAddButton, unbindQrEnabledChangeListener } from '@/component/script_repository/button';
 import { event_types, eventSource, this_chid } from '@sillytavern/script';
 import { loadFileToDocument } from '@sillytavern/scripts/utils';
-
 const load_events = [event_types.CHAT_CHANGED] as const;
 const delete_events = [event_types.CHARACTER_DELETED] as const;
 
@@ -49,6 +49,7 @@ export class ScriptRepositoryApp {
       ScriptManager.destroyInstance();
       UIController.destroyInstance();
       ScriptData.destroyInstance();
+      unbindQrEnabledChangeListener();
     }
   }
 
@@ -93,20 +94,16 @@ export class ScriptRepositoryApp {
     if (!this.initialized) {
       return;
     }
-
+    this.scriptManager.refreshCharacterScriptData();
+    this.scriptManager.refreshCharacterScriptEnabledState();
     console.info('[script_repository] 刷新脚本库');
 
     // 刷新UI
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
-
-    // 等待UI刷新完成后再检查嵌入式脚本
-    // 使用 setTimeout 让刷新事件的处理先完成
-    setTimeout(async () => {
-      // 检查嵌入式脚本
-      if (this_chid) {
-        await this.uiManager.checkEmbeddedScripts(this_chid);
-      }
-    }, 10);
+    checkQrEnabledStatusAndAddButton();
+    if (this_chid) {
+      await this.uiManager.checkEmbeddedScripts(this_chid);
+    }
   }
 
   /**
@@ -114,7 +111,6 @@ export class ScriptRepositoryApp {
    */
   public async cleanup(): Promise<void> {
     try {
-      // 注销SillyTavern事件
       load_events.forEach(eventType => {
         eventSource.removeListener(eventType, this.refreshRepository.bind(this));
       });

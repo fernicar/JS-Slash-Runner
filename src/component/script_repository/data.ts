@@ -39,6 +39,17 @@ export class ScriptData {
   }
 
   /**
+   * 检查当前角色是否启用了脚本库
+   * @returns 角色脚本库是否启用
+   */
+  public checkCharacterScriptEnabled(): boolean {
+    const charactersWithScripts = getSettingValue('script.characters_with_scripts') || [];
+    // @ts-ignore
+    const avatar = characters?.[this_chid]?.avatar;
+    return charactersWithScripts?.includes(avatar) || false;
+  }
+
+  /**
    * 加载脚本库原始数据
    */
   loadScripts() {
@@ -51,7 +62,7 @@ export class ScriptData {
 
     this._isGlobalScriptEnabled = getSettingValue('script.global_script_enabled') ?? false;
     //@ts-ignore
-    this._isCharacterScriptEnabled = isCharacterScriptEnabled();
+    this._isCharacterScriptEnabled = this.checkCharacterScriptEnabled();
   }
 
   /**
@@ -66,8 +77,8 @@ export class ScriptData {
    */
   getCharacterScripts(): Script[] {
     // @ts-ignore
-    const rawCharacterScripts = characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
-    return rawCharacterScripts.map((scriptData: any) => new Script(scriptData));
+    this.characterScripts = characters[this_chid]?.data?.extensions?.TavernHelper_scripts || [];
+    return this.characterScripts;
   }
 
   /**
@@ -252,6 +263,13 @@ export class ScriptData {
 
     throw new Error('[Script] 移动脚本失败，脚本不存在');
   }
+
+  /**
+   * 刷新角色脚本启用状态
+   */
+  refreshCharacterScriptEnabledState(): void {
+    this._isCharacterScriptEnabled = this.checkCharacterScriptEnabled();
+  }
 }
 
 /**
@@ -290,15 +308,4 @@ export async function purgeEmbeddedScripts({ character }: { character: any }): P
       saveSettingValue('script.characters_with_scripts', charactersWithScripts);
     }
   }
-}
-
-/**
- * 检查当前角色是否启用了脚本库
- * @returns 角色脚本库是否启用
- */
-export function isCharacterScriptEnabled(): boolean {
-  const charactersWithScripts = getSettingValue('script.characters_with_scripts') || [];
-  // @ts-ignore
-  const avatar = characters?.[this_chid]?.avatar;
-  return charactersWithScripts?.includes(avatar) || false;
 }
