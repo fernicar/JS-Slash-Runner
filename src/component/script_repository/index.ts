@@ -104,6 +104,7 @@ export class ScriptRepositoryApp {
     console.info('[script_repository] 刷新角色脚本库');
 
     // 获取全局脚本和角色脚本
+    const scriptData = ScriptData.getInstance();
     const globalScripts = this.scriptManager.getGlobalScripts();
     const characterScripts = this.scriptManager.getCharacterScripts();
     let noConflictScripts: import('./types').Script[] = [];
@@ -149,6 +150,7 @@ export class ScriptRepositoryApp {
               type: ScriptType.GLOBAL,
               enable: false,
             });
+            scriptData.saveGlobalScripts(globalScripts);
           }
         } else if (charScript.enabled) {
           await this.scriptManager.stopScript(charScript, ScriptType.CHARACTER);
@@ -175,7 +177,6 @@ export class ScriptRepositoryApp {
     }
     newCharacterScripts.push(...noConflictScripts);
     // 保存修改后的角色脚本
-    const scriptData = ScriptData.getInstance();
     await scriptData.saveCharacterScripts(newCharacterScripts);
 
     // 刷新UI
