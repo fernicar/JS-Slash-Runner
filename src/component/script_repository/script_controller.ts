@@ -417,35 +417,30 @@ export class ScriptManager {
         enabled: false,
       });
 
-      // 检查是否存在ID冲突
-      const existingScript = this.scriptData.getScriptById(scriptToImport.id);
+      // 分别检查全局和角色脚本中是否存在ID冲突
+      const globalScripts = this.scriptData.getGlobalScripts();
+      const characterScripts = this.scriptData.getCharacterScripts();
 
-      if (existingScript) {
-        // 显示冲突处理选项
-        const input = await callGenericPopup(
-          `要导入的脚本 '${scriptToImport.name}' 与脚本库中的 '${existingScript.name}' id 相同，是否要导入？`,
-          POPUP_TYPE.TEXT,
-          '',
-          {
-            okButton: '覆盖原脚本',
-            cancelButton: '取消',
-            customButtons: ['新建脚本'],
-          },
-        );
+      // 检查全局脚本中是否存在冲突
+      const conflictInGlobal = globalScripts.find(script => script.id === scriptToImport.id);
+      // 检查角色脚本中是否存在冲突
+      const conflictInCharacter = characterScripts.find(script => script.id === scriptToImport.id);
 
-        let action: 'new' | 'override' | 'cancel' = 'cancel';
+      // 确定是否存在冲突及冲突的类型
+      let existingScript: Script | undefined;
+      let conflictType: ScriptType | undefined;
 
-        switch (input) {
-          case 0:
-            action = 'cancel';
-            break;
-          case 1:
-            action = 'override';
-            break;
-          case 2:
-            action = 'new';
-            break;
-        }
+      if (conflictInGlobal) {
+        existingScript = conflictInGlobal;
+        conflictType = ScriptType.GLOBAL;
+      } else if (conflictInCharacter) {
+        existingScript = conflictInCharacter;
+        conflictType = ScriptType.CHARACTER;
+      }
+
+      // 如果存在冲突，处理冲突
+      if (existingScript && conflictType) {
+        const action = await this.handleScriptIdConflict(scriptToImport, existingScript, type);
 
         switch (action) {
           case 'new':
@@ -454,15 +449,16 @@ export class ScriptManager {
             await this.saveScript(scriptToImport, type);
             break;
           case 'override':
-            // 先删除旧脚本
-            await this.deleteScript(existingScript.id, type);
-            // 保存新脚本
+            // 先删除冲突的脚本（注意：使用冲突脚本的实际类型）
+            await this.deleteScript(existingScript.id, conflictType);
+            // 保存新脚本到目标类型
             await this.saveScript(scriptToImport, type);
             break;
           case 'cancel':
             return;
         }
       } else {
+        // 无冲突，直接保存
         await this.saveScript(scriptToImport, type);
       }
 
@@ -556,10 +552,34 @@ export class ScriptManager {
     // 先停止脚本
     await this.stopScript(script, fromType);
 
+    // 确定目标类型
+    const targetType = fromType === ScriptType.GLOBAL ? ScriptType.CHARACTER : ScriptType.GLOBAL;
+
+    // 检查目标类型中是否已存在相同ID的脚本
+    const existingScriptInTarget = this.scriptData.getScriptById(script.id);
+    const existingScriptType = existingScriptInTarget ? this.scriptData.getScriptType(existingScriptInTarget) : null;
+
+    // 只有在目标类型中已存在同ID脚本时才处理冲突
+    if (existingScriptInTarget && existingScriptType === targetType) {
+      const action = await this.handleScriptIdConflict(script, existingScriptInTarget, targetType);
+
+      switch (action) {
+        case 'new':
+          // 生成新ID
+          script.id = uuidv4();
+          break;
+        case 'override':
+          // 先删除目标类型中的脚本
+          await this.deleteScript(existingScriptInTarget.id, targetType);
+          break;
+        case 'cancel':
+          // 取消移动操作
+          return;
+      }
+    }
+
     // 移动脚本
     await this.scriptData.moveScriptToOtherType(script, fromType);
-
-    const targetType = fromType === ScriptType.GLOBAL ? ScriptType.CHARACTER : ScriptType.GLOBAL;
 
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, {
       action: 'script_moved',
@@ -633,5 +653,55 @@ export class ScriptManager {
    */
   public async cleanup(): Promise<void> {
     await this.executor.clearAllScriptsIframe();
+  }
+
+  /**
+   * 处理脚本ID冲突
+   * @param script 要处理的脚本
+   * @param existingScript 已存在的脚本
+   * @param targetType 目标类型
+   * @returns 处理结果：'new' - 使用新ID, 'override' - 覆盖已有脚本, 'cancel' - 取消操作
+   */
+  public async handleScriptIdConflict(
+    script: Script,
+    existingScript: Script,
+    targetType: ScriptType,
+  ): Promise<'new' | 'override' | 'cancel'> {
+    // 获取已存在脚本的类型文本
+    const existingScriptType = this.scriptData.getScriptType(existingScript);
+    const existingTypeText = existingScriptType === ScriptType.GLOBAL ? '全局脚本' : '角色脚本';
+
+    // 获取目标类型文本
+    const targetTypeText = targetType === ScriptType.GLOBAL ? '全局脚本' : '角色脚本';
+
+    // 显示冲突处理选项
+    const input = await callGenericPopup(
+      `要${targetType === existingScriptType ? '导入' : '移动'}的脚本 '${script.name}' 与${existingTypeText}库中的 '${
+        existingScript.name
+      }' id 相同，是否要继续操作？`,
+      POPUP_TYPE.TEXT,
+      '',
+      {
+        okButton: '覆盖原脚本',
+        cancelButton: '取消',
+        customButtons: ['新建脚本'],
+      },
+    );
+
+    let action: 'new' | 'override' | 'cancel' = 'cancel';
+
+    switch (input) {
+      case 0:
+        action = 'cancel';
+        break;
+      case 1:
+        action = 'override';
+        break;
+      case 2:
+        action = 'new';
+        break;
+    }
+
+    return action;
   }
 }

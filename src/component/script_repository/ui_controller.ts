@@ -445,6 +445,7 @@ export class UIController {
 
     const scriptHtml = this.baseTemplate!.clone();
 
+    // 设置脚本ID，确保不受内置库中的临时ID影响
     scriptHtml.attr('id', script.id);
 
     scriptHtml.find('.script-item-name').text(script.name);
@@ -524,14 +525,21 @@ export class UIController {
     const $emptyTip =
       type === ScriptType.GLOBAL ? $('#global-script-list').find('small') : $('#character-script-list').find('small');
 
-    // 检查是否已经存在具有相同ID的脚本元素
-    const existingElement = $(`#${script.id}`);
+    // 获取对应类型的容器
+    const container = type === ScriptType.GLOBAL ? $('#global-script-list') : $('#character-script-list');
+
+    // 检查是否已经存在具有相同ID的脚本元素（不包括内置库的临时ID），只在对应类型的容器内查找
+    const existingElement = container.find(`#${CSS.escape(script.id)}`).filter(function (this: HTMLElement) {
+      const elementId = $(this).attr('id');
+      // 只选择那些没有default_lib_前缀的元素
+      return elementId !== undefined && !elementId.startsWith('default_lib_');
+    });
+
     if (existingElement.length > 0) {
       // 如果已存在，则直接替换元素，保持原位置
       existingElement.replaceWith(scriptHtml);
     } else {
       // 如果不存在，则添加到列表末尾
-      const container = type === ScriptType.GLOBAL ? $('#global-script-list') : $('#character-script-list');
       container.append(scriptHtml);
     }
 
@@ -589,7 +597,9 @@ export class UIController {
 
     const scriptHtml = this.defaultScriptTemplate!.clone();
 
-    scriptHtml.attr('id', script.id);
+    // 为内置库中的脚本使用临时ID前缀，确保与实际脚本ID不冲突
+    const tempId = `default_lib_${script.id}`;
+    scriptHtml.attr('id', tempId);
 
     scriptHtml.find('.script-item-name').text(script.name);
     scriptHtml.find('.script-info').on('click', () => {
@@ -597,7 +607,6 @@ export class UIController {
       callGenericPopup(htmlText, POPUP_TYPE.DISPLAY, undefined, { wide: true });
     });
 
-    // 使用事件总线添加点击事件
     scriptHtml.find('.add-script').on('click', async () => {
       let target: ScriptType = ScriptType.GLOBAL;
       const template = $(await renderExtensionTemplateAsync(this.templatePath, 'script_import_target'));
@@ -612,8 +621,64 @@ export class UIController {
         return;
       }
 
-      // 使用事件总线触发保存操作
-      scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script, type: target });
+      const newScript = new Script({ ...script, enabled: false });
+
+      let action: 'new' | 'override' | 'cancel' = 'new';
+
+      const existing_script = this.scriptManager.getScriptById(script.id);
+      if (existing_script) {
+        const input = await callGenericPopup(
+          `要导入的脚本 '${script.name}' 与脚本库中的 '${existing_script.name}' id 相同，是否要导入？`,
+          POPUP_TYPE.TEXT,
+          '',
+          {
+            okButton: '覆盖原脚本',
+            cancelButton: '取消',
+            customButtons: ['新建脚本'],
+          },
+        );
+
+        switch (input) {
+          case 0:
+            action = 'cancel';
+            break;
+          case 1:
+            action = 'override';
+            break;
+          case 2:
+            action = 'new';
+            break;
+        }
+      }
+
+      switch (action) {
+        case 'new':
+          if (existing_script) {
+            // 使用新ID
+            newScript.id = uuidv4();
+          }
+          break;
+        case 'override':
+          {
+            if (!existing_script) {
+              return;
+            }
+
+            $(`#${existing_script.id}`).remove();
+
+            if (existing_script.enabled) {
+              await this.scriptManager.stopScript(existing_script, target);
+              this.buttonManager.removeButtonsByScriptId(existing_script.id);
+            }
+          }
+          break;
+        case 'cancel':
+          return;
+      }
+
+      scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script: newScript, type: target });
+
+      toastr.success(`脚本"${newScript.name}"已添加到${target === ScriptType.GLOBAL ? '全局' : '角色'}脚本库`);
     });
 
     return scriptHtml;
@@ -633,7 +698,6 @@ export class UIController {
    */
   private async loadDefaultScriptsRepository(): Promise<void> {
     const createDefaultScripts = (await import('./builtin_scripts')).createDefaultScripts;
-    // 使用创建容器的方法，避免重复渲染相同模板
     const container = this.createDefaultScriptContainer();
 
     const defaultScripts = await createDefaultScripts();
@@ -863,18 +927,6 @@ export class UIController {
     const avatar = characters[characterId]?.avatar;
     if (charactersWithScripts.includes(avatar)) {
       return;
-    }
-
-    const characterScripts = this.scriptManager.getCharacterScripts();
-
-    // 先将所有角色脚本设置为启用状态并保存
-    for (const script of characterScripts) {
-      if (!script.enabled) {
-        script.enabled = true;
-
-        await this.scriptManager.saveScript(script, ScriptType.CHARACTER);
-        await this.refreshScriptState(script, true);
-      }
     }
 
     const template = await renderExtensionTemplateAsync(
