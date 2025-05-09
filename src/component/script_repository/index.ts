@@ -96,13 +96,6 @@ export class ScriptRepositoryApp {
       return;
     }
 
-    if (this_chid) {
-      await this.uiManager.checkEmbeddedScripts(this_chid);
-    }
-
-    this.scriptManager.refreshCharacterScriptEnabledState();
-    console.info('[script_repository] 刷新角色脚本库');
-
     // 获取全局脚本和角色脚本
     const scriptData = ScriptData.getInstance();
     const globalScripts = this.scriptManager.getGlobalScripts();
@@ -110,6 +103,13 @@ export class ScriptRepositoryApp {
     let noConflictScripts: import('./types').Script[] = [];
     const newCharacterScripts: import('./types').Script[] = [];
     let result;
+
+    if (this_chid && characterScripts.length > 0) {
+      await this.uiManager.checkEmbeddedScripts(this_chid);
+    }
+
+    this.scriptManager.refreshCharacterScriptEnabledState();
+    console.info('[script_repository] 刷新角色脚本库');
 
     // 检查ID冲突
     const conflictScripts = characterScripts.filter(charScript =>
