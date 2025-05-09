@@ -1,4 +1,3 @@
-
 ## 3.1.3
 
 ### 💻界面
@@ -13,6 +12,7 @@
 
 ### 🐛修复
 
+- 修复 `setVariables` 对消息楼层变量进行操作时意外触发渲染事件的问题
 - 修复了切换角色时上一个角色的角色脚本错误地复制到当前角色的问题
 - 修复了按钮容器错误创建的问题
 
@@ -144,7 +144,7 @@
 
 ## 3.1.0
 
-现在所有内置库脚本将使用 `import 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/标签化/index.js'` 的形式从仓库直接获取最新代码, **因此脚本将永远保持最新**, 你不再需要为了更新脚本重新导入脚本.
+现在所有内置库脚本将使用 `import 'https://fastly.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/标签化/index.js'` 的形式从仓库直接获取最新代码, **因此脚本将永远保持最新**, 你不再需要为了更新脚本重新导入脚本.
 
 ## 3.0.7
 

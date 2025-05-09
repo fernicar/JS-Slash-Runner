@@ -379,7 +379,12 @@ export async function getChatLorebook(): Promise<string | null> {
     throw Error(`未打开任何聊天, 不可获取聊天世界书`);
   }
 
-  return _.get(chat_metadata, METADATA_KEY, null);
+  const existing_lorebook = _.get(chat_metadata, METADATA_KEY, '') as string;
+  if (world_names.includes(existing_lorebook)) {
+    return existing_lorebook;
+  }
+  _.unset(chat_metadata, METADATA_KEY);
+  return null;
 }
 
 export async function setChatLorebook(lorebook: string | null): Promise<void> {
@@ -387,6 +392,10 @@ export async function setChatLorebook(lorebook: string | null): Promise<void> {
     _.unset(chat_metadata, METADATA_KEY);
     $('.chat_lorebook_button').removeClass('world_set');
   } else {
+    if (!world_names.includes(lorebook)) {
+      throw new Error(`尝试为角色卡绑定聊天世界书, 当该世界书 '${lorebook}' 不存在`);
+    }
+
     _.set(chat_metadata, METADATA_KEY, lorebook);
     $('.chat_lorebook_button').addClass('world_set');
   }
@@ -402,7 +411,7 @@ export async function getOrCreateChatLorebook(lorebook?: string): Promise<string
   const new_lorebook = (() => {
     if (lorebook) {
       if (world_names.includes(lorebook)) {
-        throw new Error('尝试创建聊天世界书, 但该名称已存在');
+        throw new Error(`尝试创建聊天世界书, 但该名称 '${lorebook}' 已存在`);
       }
       return lorebook;
     }
