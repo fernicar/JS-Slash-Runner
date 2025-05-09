@@ -104,16 +104,14 @@ export class ScriptRepositoryApp {
     const scriptData = ScriptData.getInstance();
     const globalScripts = this.scriptManager.getGlobalScripts();
     const characterScripts = this.scriptManager.getCharacterScripts();
-    let noConflictScripts: import('./types').Script[] = [];
-    const newCharacterScripts: import('./types').Script[] = [];
-    let result;
+
+    this.scriptManager.refreshCharacterScriptEnabledState();
+
+    console.info('[script_repository] 刷新角色脚本库');
 
     if (this_chid && characterScripts.length > 0) {
       await this.uiManager.checkEmbeddedScripts(this_chid);
     }
-
-    this.scriptManager.refreshCharacterScriptEnabledState();
-    console.info('[script_repository] 刷新角色脚本库');
 
     // 检查ID冲突
     const conflictScripts = characterScripts.filter(charScript =>
@@ -124,12 +122,11 @@ export class ScriptRepositoryApp {
     if (conflictScripts.length > 0) {
       console.info(`[script_repository] 发现${conflictScripts.length}个脚本ID冲突`);
 
-      // 逐个处理冲突
       for (const charScript of conflictScripts) {
         const globalScript = globalScripts.find(gs => gs.id === charScript.id)!;
 
         // 创建冲突处理弹窗
-        result = await callGenericPopup(
+        const result = await callGenericPopup(
           `全局脚本中已存在 "${globalScript.name}" 脚本，是否关闭冲突脚本？`,
           POPUP_TYPE.TEXT,
           '',
@@ -157,40 +154,20 @@ export class ScriptRepositoryApp {
             scriptData.saveGlobalScripts(globalScripts);
           }
         } else if (charScript.enabled) {
-          await this.scriptManager.stopScript(charScript, ScriptType.CHARACTER);
           charScript.enabled = false;
+          await scriptData.saveCharacterScripts(characterScripts);
           console.info(`[script_repository] 关闭局部脚本: ${charScript.name}`);
-
-          noConflictScripts = characterScripts.filter(script => script !== charScript);
-          // 新脚本保存到characterScripts
-          newCharacterScripts.push(charScript);
         }
       }
-
-      if (result) {
-        noConflictScripts = characterScripts;
-      }
-    } else {
-      noConflictScripts = characterScripts;
     }
 
-    for (const script of noConflictScripts) {
-      if (!script.enabled) {
-        script.enabled = true;
-      }
-    }
-    newCharacterScripts.push(...noConflictScripts);
-    // 保存修改后的角色脚本
-    await scriptData.saveCharacterScripts(newCharacterScripts);
-
-    // 刷新UI
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
     checkQrEnabledStatusAndAddButton();
     // 在聊天切换后重新绑定事件监听器
     bindQrEnabledChangeListener();
 
     // 运行所有已启用的角色脚本
-    await this.scriptManager.runScriptsByType(newCharacterScripts, ScriptType.CHARACTER);
+    await this.scriptManager.runScriptsByType(characterScripts, ScriptType.CHARACTER);
   }
 
   /**

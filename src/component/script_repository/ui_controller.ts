@@ -921,6 +921,7 @@ export class UIController {
   /**
    * 检查角色中的嵌入式脚本
    * @param characterId 角色id
+   * @param enableableScripts 可启用的脚本列表
    */
   public async checkEmbeddedScripts(characterId: any): Promise<void> {
     const charactersWithScripts = getSettingValue('script.characters_with_scripts') || [];
