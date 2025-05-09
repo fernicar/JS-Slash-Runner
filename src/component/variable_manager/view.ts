@@ -1,5 +1,6 @@
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
 import { getSortableDelay } from '@sillytavern/scripts/utils';
+import { isMobile } from '@sillytavern/scripts/RossAscends-mods';
 
 import { VariableCardFactory } from '@/component/variable_manager/card';
 import { IDomUpdater } from '@/component/variable_manager/sync';
@@ -1000,6 +1001,8 @@ export class VariableView implements IDomUpdater {
   private initDraggableDialog(): void {
     if (!this.dialog) return;
 
+    const isMobileDevice = isMobile();
+
     (this.dialog as any).draggable({
       handle: '.dialog-header',
       containment: 'window',
@@ -1012,7 +1015,8 @@ export class VariableView implements IDomUpdater {
     });
 
     (this.dialog as any).resizable({
-      handles: 'se',
+      // 桌面设备用所有边缘，移动设备仅用右下角
+      handles: isMobileDevice ? 'se' : 'n,e,s,w,ne,se,sw,nw',
       minHeight: VariableView.MIN_DIALOG_HEIGHT,
       minWidth: VariableView.MIN_DIALOG_WIDTH,
       start: () => {
@@ -1022,6 +1026,9 @@ export class VariableView implements IDomUpdater {
         this.dialog?.removeClass('resizing');
       },
     });
+
+    // 控制调整大小控件的显示
+    this.dialog.find('.dialog-resize-handle').toggle(isMobileDevice);
   }
 
   /**

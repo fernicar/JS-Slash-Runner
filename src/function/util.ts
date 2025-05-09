@@ -1,4 +1,4 @@
-import { chat, substituteParamsExtended } from '@sillytavern/script';
+import { substituteParamsExtended } from '@sillytavern/script';
 
 export function substitudeMacros(text: string): string {
   const text_demacroed = substituteParamsExtended(text);
