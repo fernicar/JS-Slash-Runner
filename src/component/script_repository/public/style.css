@@ -115,10 +115,16 @@
   gap: 10px;
 }
 
-.default-script-repository-container{
+.default-script-repository-container {
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
   gap: 5px;
   margin: 5px 0;
 }
+
+.popup:has(#script-editor) .popup-content {
+  display: flex;
+  flex-direction: column;
+}
+

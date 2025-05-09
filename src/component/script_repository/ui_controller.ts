@@ -1,4 +1,4 @@
-import { ButtonFactory, ButtonManager, initScriptButton } from '@/component/script_repository/button';
+import { ButtonManager, initScriptButton } from '@/component/script_repository/button';
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import { ScriptManager } from '@/component/script_repository/script_controller';
 import { Script, ScriptType } from '@/component/script_repository/types';
@@ -272,12 +272,7 @@ export class UIController {
    */
   private addButton(script: Script): void {
     if (script.buttons && script.buttons.length > 0) {
-      script.buttons.forEach(buttonData => {
-        if (buttonData.visible) {
-          const button = ButtonFactory.createButton('script', buttonData.name, script.id, buttonData.visible);
-          this.buttonManager.addButton(button);
-        }
-      });
+      this.buttonManager.addButtonsForScript(script);
     }
   }
 
@@ -772,23 +767,13 @@ export class UIController {
       scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_SAVE, { script, type });
 
       if (wasEnabled) {
-        // 如果脚本原先是启用状态，先停用再启用，确保脚本正常刷新
-        scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_TOGGLE, {
-          script,
-          type,
-          enable: false,
-          userInput: false,
-        });
-
-        scriptEvents.emit(ScriptRepositoryEventType.SCRIPT_TOGGLE, {
-          script,
-          type,
-          enable: true,
-          userInput: false,
-        });
-
-        // 添加脚本按钮
-        scriptEvents.emit(ScriptRepositoryEventType.BUTTON_ADD, { script });
+        try {
+          await this.scriptManager.stopScript(script, type);
+          await this.scriptManager.runScript(script, type);
+        } catch (error) {
+          console.error(`[Script] 重启脚本失败: ${script.name}`, error);
+          toastr.error(`重启脚本失败: ${script.name}`);
+        }
       }
     }
   }

@@ -2,6 +2,8 @@ import { ScriptManager } from '@/component/script_repository/script_controller';
 import { eventSource } from '@sillytavern/script';
 import { Script } from './types';
 
+let isQrEnabled = false;
+let isCombined = false;
 export abstract class Button {
   id: string;
   name: string;
@@ -75,6 +77,11 @@ export class ButtonManager {
     }
   }
 
+  // 获取脚本容器ID
+  private getScriptContainerId(scriptId: string): string {
+    return `script_container_${scriptId}`;
+  }
+
   // 从脚本数据创建按钮
   createButtonsFromScripts(
     globalScripts: Script[],
@@ -110,12 +117,12 @@ export class ButtonManager {
     }
 
     // 处理全局脚本按钮
-    if (isGlobalEnabled) {
+    if (isGlobalEnabled && hasGlobalVisibleButtons) {
       this.addScriptButtons(globalScripts);
     }
 
     // 处理角色脚本按钮
-    if (isCharacterEnabled) {
+    if (isCharacterEnabled && hasCharacterVisibleButtons) {
       this.addScriptButtons(characterScripts);
     }
   }
@@ -124,42 +131,76 @@ export class ButtonManager {
   private addScriptButtons(scripts: Script[]): void {
     scripts.forEach(script => {
       if (script.enabled && script.buttons && script.buttons.length > 0) {
-        script.buttons.forEach(buttonData => {
-          if (buttonData.visible) {
-            const button = ButtonFactory.createButton('script', buttonData.name, script.id, buttonData.visible);
-            this.addButton(button);
-          }
-        });
+        // 筛选可见的按钮
+        const visibleButtons = script.buttons
+          .filter(buttonData => buttonData.visible)
+          .map(buttonData => ButtonFactory.createButton('script', buttonData.name, script.id, buttonData.visible));
+
+        if (visibleButtons.length > 0) {
+          // 为每个脚本创建一个容器
+          this.addButtonsGroup(visibleButtons, script.id);
+        }
       }
     });
   }
 
-  // 添加按钮
-  addButton(button: Button): void {
-    if (!button.visible) return;
-    // 先移除可能存在的相同DOM ID按钮
-    $(`#${button.id}`).remove();
+  // 添加按钮组
+  private addButtonsGroup(buttons: Button[], scriptId: string): void {
+    if (buttons.length === 0) return;
 
-    // 同时从buttons数组中移除相同ID的按钮
-    this.buttons = this.buttons.filter(btn => btn.id !== button.id);
+    const containerId = this.getScriptContainerId(scriptId);
 
-    // 添加新按钮
-    this.buttons.push(button);
-    $('.qr--buttons')?.append(button.render());
-    button.bindEvents();
+    $(`#${containerId}`).remove();
+
+    // 创建新容器
+    let containerHtml = `<div id="${containerId}" class="qr--buttons th-button">`;
+
+    buttons.forEach(button => {
+      this.buttons = this.buttons.filter(btn => btn.id !== button.id);
+      this.buttons.push(button);
+      containerHtml += button.render();
+    });
+
+    // 关闭容器标签
+    containerHtml += '</div>';
+
+    if (isCombined) {
+      $('#send_form #qr--bar .qr--buttons').first().append(containerHtml);
+    } else {
+      $('#send_form #qr--bar').append(containerHtml);
+    }
+
+    buttons.forEach(button => button.bindEvents());
+  }
+
+  // 为指定脚本添加所有按钮
+  addButtonsForScript(script: Script): void {
+    if (!script.buttons || script.buttons.length === 0) return;
+
+    // 筛选可见的按钮
+    const visibleButtons = script.buttons
+      .filter(buttonData => buttonData.visible)
+      .map(buttonData => ButtonFactory.createButton('script', buttonData.name, script.id, buttonData.visible));
+
+    if (visibleButtons.length > 0) {
+      // 为脚本创建一个容器并添加所有按钮
+      this.addButtonsGroup(visibleButtons, script.id);
+    }
   }
 
   // 移除按钮
   removeButtonsByScriptId(scriptId: string): void {
-    const buttonsToRemove = this.buttons.filter(btn => btn.scriptId === scriptId);
-    buttonsToRemove.forEach(btn => btn.remove());
-    this.buttons = this.buttons.filter(btn => btn.scriptId !== scriptId);
+    const containerId = this.getScriptContainerId(scriptId);
+    $(`#${containerId}`).remove();
   }
 
   // 移除所有按钮
   clearButtons(): void {
     this.buttons.forEach(btn => btn.remove());
     this.buttons = [];
+
+    // 移除所有脚本容器
+    $('.th-button').remove();
   }
 }
 
@@ -183,17 +224,21 @@ function _setButtonLogic() {
  * qr启用或者禁用时重新添加按钮
  */
 function bindQrEnabledChangeListener() {
-  $(`#qr--isEnabled`).on('change', function () {
-    const isChecked = $(this).prop('checked');
-    if (!isChecked) {
-      // 新建容器
-      $('#send_form').append(
-        '<div class="flex-container flexGap5" id="qr--bar"><div class="qr--buttons qr--color"></div></div>',
-      );
-    }
-
+  const updateButtons = () => {
+    checkQrEnabledStatus();
+    checkQrCombinedStatus();
     _setButtonLogic();
+    console.log($('.th-buttons:empty').length);
+    $('.th-buttons:empty').remove();
+  };
 
+  $(`#qr--isEnabled`).on('change', () => {
+    updateButtons();
+    console.log('[script_manager] 创建按钮');
+  });
+
+  $('#qr--isCombined').on('change', () => {
+    updateButtons();
     console.log('[script_manager] 创建按钮');
   });
 }
@@ -203,28 +248,33 @@ function bindQrEnabledChangeListener() {
  */
 export function unbindQrEnabledChangeListener() {
   $(`#qr--isEnabled`).off('change');
+  $(`#qr--isCombined`).off('change');
 }
 
 /**
  * 根据qr--isEnabled状态处理容器
  */
 function checkQrEnabledStatus() {
-  const isQrEnabled = $('#qr--isEnabled').prop('checked');
-  if (isQrEnabled) {
-    // 如果已勾选，检查qr--bar是否已存在
-    const $qrBar = $('#qr--bar');
-    if ($qrBar.length) {
-      // 容器已存在，检查子容器
-      if ($qrBar.find('.qr--buttons').length === 0) {
-        $qrBar.append('<div class="qr--buttons qr--color"></div>');
-      }
-    }
-  } else {
-    $('#send_form').append(
-      '<div class="flex-container flexGap5" id="qr--bar"><div class="qr--buttons qr--color"></div></div>',
-    );
+  isQrEnabled = $('#qr--isEnabled').prop('checked');
+  const qrBarLength = $('#send_form #qr--bar').length;
+  if (!isQrEnabled && qrBarLength === 0) {
+    // QR未启用，且之前没有创建容器，则创建
+    $('#send_form').append('<div class="flex-container flexGap5" id="qr--bar"></div>');
+  } else if (qrBarLength > 1) {
+    // 如果容器存在，则移除多余的容器
+    $('#send_form #qr--bar').not(':first').remove();
   }
+}
 
+/**
+ * 检查qr--isCombined状态
+ */
+function checkQrCombinedStatus() {
+  isCombined = $('#qr--isCombined').prop('checked');
+  if (isCombined && !isQrEnabled) {
+    $('#send_form #qr--bar').empty();
+    $('#send_form #qr--bar').append('<div class="qr--buttons th-buttons"></div>');
+  }
 }
 
 export function checkQrEnabledStatusAndAddButton() {
@@ -237,5 +287,6 @@ export function checkQrEnabledStatusAndAddButton() {
  */
 export function initScriptButton() {
   checkQrEnabledStatus();
+  checkQrCombinedStatus();
   bindQrEnabledChangeListener();
 }
