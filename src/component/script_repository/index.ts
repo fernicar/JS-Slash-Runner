@@ -164,24 +164,26 @@ export class ScriptRepositoryApp {
       if (result) {
         noConflictScripts = characterScripts;
       }
-
-      for (const script of noConflictScripts) {
-        if (!script.enabled) {
-          script.enabled = true;
-        }
-      }
-      newCharacterScripts.push(...noConflictScripts);
-      // 保存修改后的角色脚本
-      const scriptData = ScriptData.getInstance();
-      await scriptData.saveCharacterScripts(newCharacterScripts);
-
-      // 刷新UI
-      scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
-      checkQrEnabledStatusAndAddButton();
-
-      // 运行所有已启用的角色脚本
-      await this.scriptManager.runScriptsByType(newCharacterScripts, ScriptType.CHARACTER);
+    } else {
+      noConflictScripts = characterScripts;
     }
+
+    for (const script of noConflictScripts) {
+      if (!script.enabled) {
+        script.enabled = true;
+      }
+    }
+    newCharacterScripts.push(...noConflictScripts);
+    // 保存修改后的角色脚本
+    const scriptData = ScriptData.getInstance();
+    await scriptData.saveCharacterScripts(newCharacterScripts);
+
+    // 刷新UI
+    scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
+    checkQrEnabledStatusAndAddButton();
+
+    // 运行所有已启用的角色脚本
+    await this.scriptManager.runScriptsByType(newCharacterScripts, ScriptType.CHARACTER);
   }
 
   /**
