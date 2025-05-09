@@ -223,21 +223,22 @@ function _setButtonLogic() {
 /**
  * qr启用或者禁用时重新添加按钮
  */
-function bindQrEnabledChangeListener() {
+export function bindQrEnabledChangeListener() {
   const updateButtons = () => {
     checkQrEnabledStatus();
     checkQrCombinedStatus();
     _setButtonLogic();
-    console.log($('.th-buttons:empty').length);
     $('.th-buttons:empty').remove();
   };
 
   $(`#qr--isEnabled`).on('change', () => {
+    isQrEnabled = $('#qr--isEnabled').prop('checked');
     updateButtons();
     console.log('[script_manager] 创建按钮');
   });
 
   $('#qr--isCombined').on('change', () => {
+    isCombined = $('#qr--isCombined').prop('checked');
     updateButtons();
     console.log('[script_manager] 创建按钮');
   });
@@ -279,6 +280,7 @@ function checkQrCombinedStatus() {
 
 export function checkQrEnabledStatusAndAddButton() {
   checkQrEnabledStatus();
+  checkQrCombinedStatus();
   _setButtonLogic();
 }
 

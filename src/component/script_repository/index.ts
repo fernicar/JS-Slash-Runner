@@ -5,7 +5,11 @@ import { ScriptType } from '@/component/script_repository/types';
 import { UIController } from '@/component/script_repository/ui_controller';
 import { extensionFolderPath } from '@/util/extension_variables';
 
-import { checkQrEnabledStatusAndAddButton, unbindQrEnabledChangeListener } from '@/component/script_repository/button';
+import {
+  bindQrEnabledChangeListener,
+  checkQrEnabledStatusAndAddButton,
+  unbindQrEnabledChangeListener,
+} from '@/component/script_repository/button';
 import { event_types, eventSource, this_chid } from '@sillytavern/script';
 import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 import { loadFileToDocument, uuidv4 } from '@sillytavern/scripts/utils';
@@ -182,6 +186,8 @@ export class ScriptRepositoryApp {
     // 刷新UI
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
     checkQrEnabledStatusAndAddButton();
+    // 在聊天切换后重新绑定事件监听器
+    bindQrEnabledChangeListener();
 
     // 运行所有已启用的角色脚本
     await this.scriptManager.runScriptsByType(newCharacterScripts, ScriptType.CHARACTER);
