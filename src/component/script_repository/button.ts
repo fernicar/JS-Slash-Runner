@@ -153,7 +153,7 @@ export class ButtonManager {
     $(`#${containerId}`).remove();
 
     // 创建新容器
-    let containerHtml = `<div id="${containerId}" class="qr--buttons th-button">`;
+    let containerHtml = `<div id="${containerId}" class="qr--buttons th--button">`;
 
     buttons.forEach(button => {
       this.buttons = this.buttons.filter(btn => btn.id !== button.id);
@@ -167,7 +167,7 @@ export class ButtonManager {
     if (isCombined) {
       $('#send_form #qr--bar .qr--buttons').first().append(containerHtml);
     } else {
-      $('#send_form #qr--bar').append(containerHtml);
+      $('#send_form #qr--bar').first().append(containerHtml);
     }
 
     buttons.forEach(button => button.bindEvents());
@@ -224,22 +224,15 @@ function _setButtonLogic() {
  * qr启用或者禁用时重新添加按钮
  */
 export function bindQrEnabledChangeListener() {
-  const updateButtons = () => {
-    checkQrEnabledStatus();
-    checkQrCombinedStatus();
-    _setButtonLogic();
-    $('.th-buttons:empty').remove();
-  };
-
   $(`#qr--isEnabled`).on('change', () => {
     isQrEnabled = $('#qr--isEnabled').prop('checked');
-    updateButtons();
+    checkQrEnabledStatusAndAddButton();
     console.log('[script_manager] 创建按钮');
   });
 
   $('#qr--isCombined').on('change', () => {
     isCombined = $('#qr--isCombined').prop('checked');
-    updateButtons();
+    checkQrEnabledStatusAndAddButton();
     console.log('[script_manager] 创建按钮');
   });
 }
@@ -258,12 +251,14 @@ export function unbindQrEnabledChangeListener() {
 function checkQrEnabledStatus() {
   isQrEnabled = $('#qr--isEnabled').prop('checked');
   const qrBarLength = $('#send_form #qr--bar').length;
-  if (!isQrEnabled && qrBarLength === 0) {
-    // QR未启用，且之前没有创建容器，则创建
-    $('#send_form').append('<div class="flex-container flexGap5" id="qr--bar"></div>');
-  } else if (qrBarLength > 1) {
-    // 如果容器存在，则移除多余的容器
-    $('#send_form #qr--bar').not(':first').remove();
+  if (!isQrEnabled) {
+    if (qrBarLength === 0) {
+      // QR未启用，且之前没有创建容器，则创建
+      $('#send_form').append('<div class="flex-container flexGap5" id="qr--bar"></div>');
+    } else {
+      // 如果容器存在，则移除多余的容器
+      $('#send_form #qr--bar').not(':first').remove();
+    }
   }
 }
 
@@ -272,9 +267,10 @@ function checkQrEnabledStatus() {
  */
 function checkQrCombinedStatus() {
   isCombined = $('#qr--isCombined').prop('checked');
-  if (isCombined && !isQrEnabled) {
-    $('#send_form #qr--bar').empty();
-    $('#send_form #qr--bar').append('<div class="qr--buttons th-buttons"></div>');
+  if (!isQrEnabled) {
+    if (isCombined) {
+      $('#send_form #qr--bar').append('<div class="qr--buttons th--buttons"></div>');
+    }
   }
 }
 
