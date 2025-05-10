@@ -63,10 +63,6 @@ interface GetLorebookEntriesOption {
  * @example
  * // 获取世界书中所有条目的所有信息
  * const entries = await getLorebookEntries("eramgt少女歌剧");
- *
- * @example
- * // 按内容筛选, content 中必须出现 `'神乐光'`
- * const entries = await getLorebookEntries("eramgt少女歌剧", {filter: {content: '神乐光'}});
  */
 async function getLorebookEntries(lorebook: string): Promise<LorebookEntry[]>;
 
