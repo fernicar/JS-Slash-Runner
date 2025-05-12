@@ -84,7 +84,11 @@ export async function updateVariablesWith(
 ): Promise<Record<string, any>> {
   let variables = getVariables({ type, message_id });
   variables = await updater(variables);
-  console.info(`对${type === 'chat' ? `聊天` : `全局`}变量表进行更新`);
+  console.info(
+    `对${
+      type === 'message' ? '消息' : type === 'chat' ? '聊天' : type === 'character' ? '角色' : '全局'
+    }变量表进行更新`,
+  );
   await replaceVariables(variables, { type, message_id });
   return variables;
 }

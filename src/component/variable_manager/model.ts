@@ -228,9 +228,9 @@ export class VariableModel {
     }
 
     if (type === 'message' && message_id !== undefined) {
-      await insertOrAssignVariables({ [name]: value }, { type, message_id });
+      await updateVariablesWith(data => ({ ...data, [name]: value }), { type, message_id });
     } else {
-      await insertOrAssignVariables({ [name]: value }, { type });
+      await updateVariablesWith(data => ({ ...data, [name]: value }), { type });
     }
   }
 
