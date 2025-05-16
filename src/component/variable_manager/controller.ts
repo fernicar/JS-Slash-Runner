@@ -272,7 +272,6 @@ export class VariableController {
     this.view.showAddVariableDialog((dataType, floorId) => {
       try {
         this.model.beginInternalOperation();
-        // 传递floorId参数到createNewVariableCard
         this.view.createNewVariableCard(type, dataType, floorId);
       } finally {
         this.model.endInternalOperation();

@@ -265,26 +265,6 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
-   * 使用默认键名添加嵌套变量到对象
-   * @param objectCard 对象卡片jQuery对象
-   * @param dataType 数据类型
-   */
-  private async addNestedVariableWithDefaultKey(
-    objectCard: JQuery<HTMLElement>,
-    dataType: VariableDataType,
-  ): Promise<void> {
-    try {
-      // 生成唯一键名
-      const keyName = this.generateUniqueKey(objectCard, dataType);
-
-      // 添加键值对到对象
-      await this.addNestedVariableToObject(objectCard, keyName, dataType);
-    } catch (error) {
-      console.error('添加默认键值对失败:', error);
-    }
-  }
-
-  /**
    * 在对象卡片上添加嵌套变量
    * @param objectCard 对象卡片jQuery对象
    * @param keyName 键名
@@ -482,22 +462,18 @@ export class VariableView implements IDomUpdater {
 
     // 对于对象类型，提供类型选择对话框回调
     if (type === 'object') {
-      // 创建卡片并提供类型选择对话框回调
       card = this.cardFactory.createCard(type, name, value, callback => this.showVariableTypeDialog(callback));
 
-      // 为对象卡片添加事件处理程序
       card.on('object:addKey', (_event, selectedDataType: VariableDataType) => {
-        // 直接使用默认键名添加嵌套变量，不再显示键名输入对话框
-        this.addNestedVariableWithDefaultKey(card, selectedDataType);
+        const keyName = this.generateUniqueKey(card, selectedDataType);
+        this.addNestedVariableToObject(card, keyName, selectedDataType);
       });
     } else {
       card = this.cardFactory.createCard(type, name, value);
     }
 
-    // 设置数据属性
     this.cardFactory.setCardDataAttributes(card, name, value);
 
-    // 添加到容器
     $variableList.append(card);
 
     return card;
@@ -917,26 +893,35 @@ export class VariableView implements IDomUpdater {
    */
   public updateVariableCard(name: string, value: any): boolean {
     try {
-      let card = this.container.find(`.variable-card[data-name="${name}"]`);
+      let cardToUpdate: JQuery<HTMLElement> | undefined = undefined;
+      let isNewCardBeingFinalized = false;
 
-      if (card.length === 0) {
-        const defaultName = 'new_variable';
-        card = this.container.find(`.variable-card[data-original-name="${defaultName}"]`);
+      // 优先查找具有 data-status="new" 的卡片
+      const $newCardPlaceholder = this.container.find('.variable-card[data-status="new"]');
 
-        if (card.length > 0) {
-          this.cardFactory.setCardDataAttributes(card, name, value);
-        }
+      if ($newCardPlaceholder.length > 0) {
+        cardToUpdate = $newCardPlaceholder;
+        isNewCardBeingFinalized = true;
+      } else {
+        cardToUpdate = this.container.find(`.variable-card[data-name="${name}"]`);
       }
 
-      if (card.length === 0) {
+      if (!cardToUpdate || cardToUpdate.length === 0) {
+        // 如果卡片既不是 "new" 状态，也找不到对应名称的已存在卡片，则创建新卡片
         this.createAndAppendCard(name, value);
         return true;
       }
 
-      const currentValue = card.attr('data-value');
+      // 如果是正在最终化的新卡片，移除其 'new' 状态
+      if (isNewCardBeingFinalized) {
+        cardToUpdate.removeAttr('data-status');
+      }
+
+      const currentCardNameInDataAttr = cardToUpdate.attr('data-name'); // 例如 "new_variable" 或实际名称
+      const currentCardValue = cardToUpdate.attr('data-value');
       const newValueString = JSON.stringify(value);
 
-      if (currentValue === newValueString) {
+      if (currentCardNameInDataAttr === name && currentCardValue === newValueString && !isNewCardBeingFinalized) {
         return true;
       }
 
@@ -945,7 +930,7 @@ export class VariableView implements IDomUpdater {
         displayValue = displayValue.substring(0, 100) + '...';
       }
 
-      const cardType = card.attr('data-type') as VariableDataType;
+      const cardType = cardToUpdate.attr('data-type') as VariableDataType;
 
       let listContainer;
       let jsonString;
@@ -953,17 +938,17 @@ export class VariableView implements IDomUpdater {
 
       switch (cardType) {
         case 'string':
-          card.find('.string-input').val(value);
+          cardToUpdate.find('.string-input').val(value);
           break;
         case 'number':
-          card.find('.number-input').val(value);
+          cardToUpdate.find('.number-input').val(value);
           break;
         case 'boolean':
-          card.find('.boolean-btn').removeClass('active');
-          card.find(`.boolean-btn[data-value="${value}"]`).addClass('active');
+          cardToUpdate.find('.boolean-btn').removeClass('active');
+          cardToUpdate.find(`.boolean-btn[data-value="${value}"]`).addClass('active');
           break;
         case 'array':
-          listContainer = card.find('.list-items-container');
+          listContainer = cardToUpdate.find('.list-items-container');
           listContainer.empty();
           if (Array.isArray(value) && value.length > 0) {
             const itemsHtml = value
@@ -988,10 +973,10 @@ export class VariableView implements IDomUpdater {
           break;
         case 'object':
           jsonString = JSON.stringify(value, null, 2);
-          card.find('.json-input').val(jsonString);
+          cardToUpdate.find('.json-input').val(jsonString);
           break;
         default:
-          inputElement = card.find('.variable-content-input');
+          inputElement = cardToUpdate.find('.variable-content-input');
           if (inputElement.length > 0) {
             inputElement.val(typeof value === 'object' ? JSON.stringify(value) : value);
           } else {
@@ -999,20 +984,20 @@ export class VariableView implements IDomUpdater {
           }
       }
 
-      this.cardFactory.setCardDataAttributes(card, name, value);
+      this.cardFactory.setCardDataAttributes(cardToUpdate, name, value);
 
       if (!this._skipAnimation) {
-        card.addClass('variable-changed');
+        cardToUpdate.addClass('variable-changed');
 
-        void card[0].offsetHeight;
+        void cardToUpdate[0].offsetHeight;
 
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {});
         });
 
-        card.off('animationend.variableChanged');
+        cardToUpdate.off('animationend.variableChanged');
 
-        card.on('animationend.variableChanged', function () {
+        cardToUpdate.on('animationend.variableChanged', function () {
           $(this).removeClass('variable-changed');
           $(this).off('animationend.variableChanged');
         });
@@ -1020,6 +1005,7 @@ export class VariableView implements IDomUpdater {
       return true;
     } catch (error) {
       console.error(`[VariableManager] 更新变量卡片"${name}"失败:`, error);
+      toastr.error(`更新变量卡片"${name}"失败: ${error}`);
       return false;
     }
   }
