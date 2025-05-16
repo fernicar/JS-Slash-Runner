@@ -1,7 +1,7 @@
 import { purgeEmbeddedScripts, ScriptData } from '@/component/script_repository/data';
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import { ScriptManager } from '@/component/script_repository/script_controller';
-import { ScriptType } from '@/component/script_repository/types';
+import { Script, ScriptType } from '@/component/script_repository/types';
 import { UIController } from '@/component/script_repository/ui_controller';
 import { extensionFolderPath } from '@/util/extension_variables';
 
@@ -99,6 +99,21 @@ export class ScriptRepositoryApp {
     if (!this.initialized) {
       return;
     }
+    // 清理上一个角色脚本库的iframe
+    const previousCharacterScripts: Script[] = [];
+    $(`#character-script-list`)
+      .find('.script-item')
+      .each((_index, element) => {
+        const $element = $(element);
+        const scriptId = $element.attr('id');
+        if (scriptId) {
+          const script = this.scriptManager.getScriptById(scriptId);
+          if (script) {
+            previousCharacterScripts.push(script);
+          }
+        }
+      });
+    this.scriptManager.stopScriptsByType(previousCharacterScripts, ScriptType.CHARACTER);
 
     // 获取全局脚本和角色脚本
     const scriptData = ScriptData.getInstance();
