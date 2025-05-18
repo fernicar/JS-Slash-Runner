@@ -313,17 +313,14 @@ export class VariableView implements IDomUpdater {
 
       // 如果处于卡片视图模式，添加嵌套卡片
       if (objectCard.attr('data-view-mode') === 'card') {
-        // 获取嵌套卡片容器
         const $container = objectCard.find('.nested-cards-container');
 
-        // 创建嵌套卡片的容器
         const $nestedCardWrapper = $(`
           <div class="nested-card-wrapper" data-key="${keyName}">
             <div class="nested-card-content"></div>
           </div>
         `);
 
-        // 创建对应类型的卡片
         const nestedCard = this.cardFactory.createCard(dataType, keyName, defaultValue);
 
         // 简化嵌套卡片的外观
@@ -331,43 +328,14 @@ export class VariableView implements IDomUpdater {
         titleInput.attr('title', '点击编辑键名');
         titleInput.addClass('nested-card-key-input');
 
-        // 不再删除删除按钮，而是添加点击事件处理
-        nestedCard.find('.variable-action-btn.delete-btn').on('click', event => {
-          // 阻止事件冒泡，避免触发父元素的点击事件
-          event.stopPropagation();
+        nestedCard.find('.variable-action-btn.save-btn').removeClass('save-btn').addClass('object-save-btn');
+        nestedCard.find('.variable-action-btn.delete-btn').removeClass('delete-btn').addClass('object-delete-btn');
 
-          // 获取当前嵌套卡片的键
-          const keyToDelete = $nestedCardWrapper.attr('data-key') || '';
-
-          // 获取父对象的当前值
-          const objValue = JSON.parse(objectCard.attr('data-value') || '{}') as Record<string, any>;
-
-          // 从父对象中删除对应的键值对
-          if (objValue[keyToDelete] !== undefined) {
-            delete objValue[keyToDelete];
-
-            // 更新父对象卡片的值
-            const updatedJsonString = JSON.stringify(objValue, null, 2);
-            objectCard.find('.json-input').val(updatedJsonString);
-            objectCard.attr('data-value', JSON.stringify(objValue));
-
-            // 从DOM中移除嵌套卡片容器
-            $nestedCardWrapper.remove();
-
-            // 触发保存操作
-            if (!objectCard.data('saving')) {
-              objectCard.data('saving', true);
-              try {
-                const topCard = objectCard.closest('.variable-card');
-                topCard.find('> .variable-card-header .save-btn').trigger('click');
-              } finally {
-                setTimeout(() => {
-                  objectCard.data('saving', false);
-                }, 100);
-              }
-            }
-          }
-        });
+        // 移除直接绑定的事件，让事件可以冒泡到控制器
+        // 将以前需要的数据作为属性添加到按钮元素上，以便控制器可以读取
+        const objectDeleteBtn = nestedCard.find('.variable-action-btn.object-delete-btn');
+        objectDeleteBtn.attr('data-nested-key', $nestedCardWrapper.attr('data-key') || '');
+        objectDeleteBtn.attr('data-parent-card-id', objectCard.attr('id') || '');
 
         // 监听嵌套卡片值的变更，同步到父对象
         nestedCard.on('change', '.variable-content-input, .boolean-btn', () => {
@@ -886,12 +854,14 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
-   * 更新特定变量卡片
+   * 更新变量卡片
+   *
    * @param name 变量名称
    * @param value 变量新值
+   * @param isNewCard 可选参数，指示是否为新创建的卡片完成保存
    * @returns 是否找到并更新了卡片
    */
-  public updateVariableCard(name: string, value: any): boolean {
+  public updateVariableCard(name: string, value: any, isNewCard: boolean = false): boolean {
     try {
       let cardToUpdate: JQuery<HTMLElement> | undefined = undefined;
       let isNewCardBeingFinalized = false;
@@ -913,16 +883,10 @@ export class VariableView implements IDomUpdater {
       }
 
       // 如果是正在最终化的新卡片，移除其 'new' 状态
-      if (isNewCardBeingFinalized) {
+      if (isNewCardBeingFinalized || isNewCard) {
         cardToUpdate.removeAttr('data-status');
-      }
-
-      const currentCardNameInDataAttr = cardToUpdate.attr('data-name'); // 例如 "new_variable" 或实际名称
-      const currentCardValue = cardToUpdate.attr('data-value');
-      const newValueString = JSON.stringify(value);
-
-      if (currentCardNameInDataAttr === name && currentCardValue === newValueString && !isNewCardBeingFinalized) {
-        return true;
+        // 设置原始名称，用于后续重命名检测
+        cardToUpdate.attr('data-original-name', name);
       }
 
       let displayValue = JSON.stringify(value);
@@ -987,7 +951,9 @@ export class VariableView implements IDomUpdater {
       this.cardFactory.setCardDataAttributes(cardToUpdate, name, value);
 
       if (!this._skipAnimation) {
-        cardToUpdate.addClass('variable-changed');
+        // 根据是新卡片还是更新卡片选择不同的动画效果
+        const animationClass = isNewCard ? 'variable-added' : 'variable-changed';
+        cardToUpdate.addClass(animationClass);
 
         void cardToUpdate[0].offsetHeight;
 
@@ -998,7 +964,7 @@ export class VariableView implements IDomUpdater {
         cardToUpdate.off('animationend.variableChanged');
 
         cardToUpdate.on('animationend.variableChanged', function () {
-          $(this).removeClass('variable-changed');
+          $(this).removeClass(animationClass);
           $(this).off('animationend.variableChanged');
         });
       }
@@ -1365,28 +1331,17 @@ export class VariableView implements IDomUpdater {
             }
           }
         } else {
-          $card.addClass('variable-deleted');
+          const callback = () => {
+            $card.remove();
 
-          void $card[0].offsetHeight;
-
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {});
-          });
-
-          $card.off('animationend.variableDeleted');
-
-          $card.on('animationend.variableDeleted', function () {
-            $(this).off('animationend.variableDeleted');
-            $(this).remove();
-
-            // 动画结束后检查楼层面板
             if ($floorPanel.length > 0) {
               const $remainingCards = $floorPanel.find('.variable-card');
               if ($remainingCards.length === 0) {
                 $floorPanel.remove();
               }
             }
-          });
+          };
+          this.addDeleteAnimation($card, callback);
         }
 
         // 检查变量列表是否为空，显示空状态
@@ -1453,5 +1408,28 @@ export class VariableView implements IDomUpdater {
     }
 
     callback(keyName.trim());
+  }
+  
+  /**
+   * 添加删除动画效果
+   * @param card 要添加动画效果的卡片
+   * @param callback 动画结束后的回调
+   */
+  public addDeleteAnimation(card: JQuery<HTMLElement>, callback: () => void): void {
+    card.addClass('variable-deleted');
+
+    void card[0].offsetHeight;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {});
+    });
+
+    card.off('animationend.variableDeleted');
+
+    card.on('animationend.variableDeleted', function () {
+      $(this).off('animationend.variableDeleted');
+      $(this).removeClass('variable-deleted');
+      callback();
+    });
   }
 }

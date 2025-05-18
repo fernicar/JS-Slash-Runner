@@ -293,6 +293,15 @@ export class VariableCardFactory {
       const newMode = currentMode === 'json' ? 'card' : 'json';
       $card.attr('data-view-mode', newMode);
 
+      // 从卡片的data-value属性获取最新数据
+      let latestData;
+      try {
+        latestData = JSON.parse($card.attr('data-value') || '{}');
+      } catch (e) {
+        console.error('获取最新数据失败:', e);
+        latestData = {};
+      }
+
       // 更新按钮图标
       const $icon = $card.find('.toggle-view-btn i');
       if (newMode === 'json') {
@@ -302,6 +311,9 @@ export class VariableCardFactory {
         // 显示JSON输入框，隐藏卡片视图
         $card.find('.json-input').show();
         $card.find('.object-card-view').hide();
+
+        // 更新JSON输入框内容为最新数据
+        $card.find('.json-input').val(JSON.stringify(latestData, null, 2));
       } else {
         $icon.removeClass('fa-eye').addClass('fa-list');
         $card.find('.toggle-view-btn').attr('title', '切换到JSON视图');
@@ -311,19 +323,17 @@ export class VariableCardFactory {
         $card.find('.object-card-view').show();
 
         try {
-          // 先从JSON输入框获取最新值
-          const jsonValue = JSON.parse($card.find('.json-input').val() as string);
-
           // 渲染卡片视图
-          this.renderObjectCardView(card, jsonValue);
+          this.renderObjectCardView(card, latestData);
         } catch (e) {
-          console.error('JSON解析错误:', e);
+          console.error('渲染卡片视图错误:', e);
 
           // 解析错误时回退到JSON视图
           $card.attr('data-view-mode', 'json');
           $card.find('.json-input').show();
           $card.find('.object-card-view').hide();
           $icon.removeClass('fa-list').addClass('fa-eye');
+          $card.find('.toggle-view-btn').attr('title', '切换到卡片视图');
         }
       }
     });
@@ -388,43 +398,15 @@ export class VariableCardFactory {
         titleInput.attr('title', '点击编辑键名');
         titleInput.addClass('nested-card-key-input');
 
-        // 不再删除删除按钮，而是添加点击事件处理
-        nestedCard.find('.variable-action-btn.delete-btn').on('click', event => {
-          // 阻止事件冒泡，避免触发父元素的点击事件
-          event.stopPropagation();
+        // 把嵌套卡片中的save-btn和delete-btn分别改为object-save-btn和object-delete-btn
+        nestedCard.find('.variable-action-btn.save-btn').removeClass('save-btn').addClass('object-save-btn');
+        nestedCard.find('.variable-action-btn.delete-btn').removeClass('delete-btn').addClass('object-delete-btn');
 
-          // 获取当前嵌套卡片的键
-          const keyToDelete = $nestedCardWrapper.attr('data-key') || '';
-
-          // 获取父对象的当前值
-          const parentObjValue = JSON.parse(card.attr('data-value') || '{}') as Record<string, any>;
-
-          // 从父对象中删除对应的键值对
-          if (parentObjValue[keyToDelete] !== undefined) {
-            delete parentObjValue[keyToDelete];
-
-            // 更新父对象卡片的值
-            const updatedJsonString = JSON.stringify(parentObjValue, null, 2);
-            card.find('.json-input').val(updatedJsonString);
-            card.attr('data-value', JSON.stringify(parentObjValue));
-
-            // 从DOM中移除嵌套卡片容器
-            $nestedCardWrapper.remove();
-
-            // 触发保存操作
-            if (!card.data('saving')) {
-              card.data('saving', true);
-              try {
-                const topCard = card.closest('.variable-card');
-                topCard.find('> .variable-card-header .save-btn').trigger('click');
-              } finally {
-                setTimeout(() => {
-                  card.data('saving', false);
-                }, 100);
-              }
-            }
-          }
-        });
+        // 移除直接绑定的事件，让事件可以冒泡到控制器
+        // 将以前需要的数据作为属性添加到按钮元素上，以便控制器可以读取
+        const objectDeleteBtn = nestedCard.find('.variable-action-btn.object-delete-btn');
+        objectDeleteBtn.attr('data-nested-key', $nestedCardWrapper.attr('data-key') || '');
+        objectDeleteBtn.attr('data-parent-card-id', card.attr('id') || '');
 
         // 将卡片添加到容器中
         $nestedCardWrapper.find('.nested-card-content').append(nestedCard);
@@ -455,10 +437,7 @@ export class VariableCardFactory {
         });
 
         // 添加保存按钮点击事件 - 使用一个特殊的事件名称避免级联触发
-        nestedCard.find('.variable-action-btn.save-btn').on('click', event => {
-          // 阻止事件冒泡，避免触发父元素的点击事件
-          event.stopPropagation();
-
+        nestedCard.find('.variable-action-btn.object-save-btn').on('click', () => {
           // 获取当前嵌套卡片的键和值
           const currentKey = $nestedCardWrapper.attr('data-key') || '';
 
@@ -529,7 +508,7 @@ export class VariableCardFactory {
             card.data('saving', true);
             try {
               const topCard = card.closest('.variable-card');
-              topCard.find('> .variable-card-header .save-btn').trigger('click');
+              topCard.find('> .variable-card-header .object-save-btn').trigger('click');
             } finally {
               setTimeout(() => {
                 card.data('saving', false);
