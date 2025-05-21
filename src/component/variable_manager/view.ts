@@ -331,8 +331,6 @@ export class VariableView implements IDomUpdater {
         nestedCard.find('.variable-action-btn.save-btn').removeClass('save-btn').addClass('object-save-btn');
         nestedCard.find('.variable-action-btn.delete-btn').removeClass('delete-btn').addClass('object-delete-btn');
 
-        // 移除直接绑定的事件，让事件可以冒泡到控制器
-        // 将以前需要的数据作为属性添加到按钮元素上，以便控制器可以读取
         const objectDeleteBtn = nestedCard.find('.variable-action-btn.object-delete-btn');
         objectDeleteBtn.attr('data-nested-key', $nestedCardWrapper.attr('data-key') || '');
         objectDeleteBtn.attr('data-parent-card-id', objectCard.attr('id') || '');
@@ -380,11 +378,7 @@ export class VariableView implements IDomUpdater {
 
         // 添加动画效果
         if (!this._skipAnimation) {
-          $nestedCardWrapper.addClass('variable-added');
-
-          setTimeout(() => {
-            $nestedCardWrapper.removeClass('variable-added');
-          }, 1500);
+          this.addAnimation($nestedCardWrapper, 'variable-added', () => {});
         }
       }
 
@@ -953,20 +947,7 @@ export class VariableView implements IDomUpdater {
       if (!this._skipAnimation) {
         // 根据是新卡片还是更新卡片选择不同的动画效果
         const animationClass = isNewCard ? 'variable-added' : 'variable-changed';
-        cardToUpdate.addClass(animationClass);
-
-        void cardToUpdate[0].offsetHeight;
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {});
-        });
-
-        cardToUpdate.off('animationend.variableChanged');
-
-        cardToUpdate.on('animationend.variableChanged', function () {
-          $(this).removeClass(animationClass);
-          $(this).off('animationend.variableChanged');
-        });
+        this.addAnimation(cardToUpdate, animationClass, () => {});
       }
       return true;
     } catch (error) {
@@ -1292,20 +1273,7 @@ export class VariableView implements IDomUpdater {
       const newCard = this.createAndAppendCard(name, value);
 
       if (!this._skipAnimation) {
-        newCard.addClass('variable-added');
-
-        void newCard[0].offsetHeight;
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {});
-        });
-
-        newCard.off('animationend.variableAdded');
-
-        newCard.on('animationend.variableAdded', function () {
-          $(this).removeClass('variable-added');
-          $(this).off('animationend.variableAdded');
-        });
+        this.addAnimation(newCard, 'variable-added', () => {});
       }
     } catch (error) {
       console.error(`[VariableManager] 添加卡片"${name}"失败:`, error);
@@ -1341,7 +1309,7 @@ export class VariableView implements IDomUpdater {
               }
             }
           };
-          this.addDeleteAnimation($card, callback);
+          this.addAnimation($card, 'variable-deleted', callback);
         }
 
         // 检查变量列表是否为空，显示空状态
@@ -1409,26 +1377,38 @@ export class VariableView implements IDomUpdater {
 
     callback(keyName.trim());
   }
-  
+
   /**
-   * 添加删除动画效果
-   * @param card 要添加动画效果的卡片
+   * 添加动画效果
+   * @param element 要添加动画效果的元素
+   * @param animationClass CSS动画类名
    * @param callback 动画结束后的回调
    */
-  public addDeleteAnimation(card: JQuery<HTMLElement>, callback: () => void): void {
-    card.addClass('variable-deleted');
+  public addAnimation(element: JQuery<HTMLElement>, animationClass: string, callback: () => void): void {
+    // 生成唯一的事件命名空间
+    const namespace = `animation.${animationClass}`;
 
-    void card[0].offsetHeight;
+    // 添加动画类
+    element.addClass(animationClass);
 
+    // 强制回流以确保动画立即应用
+    void element[0].offsetHeight;
+
+    // 使用requestAnimationFrame确保动画平滑
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {});
     });
 
-    card.off('animationend.variableDeleted');
+    // 移除先前可能存在的相同事件监听器
+    element.off(`animationend.${namespace}`);
 
-    card.on('animationend.variableDeleted', function () {
-      $(this).off('animationend.variableDeleted');
-      $(this).removeClass('variable-deleted');
+    // 添加新的动画结束监听器
+    element.on(`animationend.${namespace}`, function () {
+      // 清理事件监听器
+      $(this).off(`animationend.${namespace}`);
+      // 移除动画类
+      $(this).removeClass(animationClass);
+      // 执行回调
       callback();
     });
   }

@@ -1039,7 +1039,6 @@
 
 .nested-card-key-input:hover {
   color: var(--SmartThemeQuoteColor, #777) !important;
-  text-decoration: underline !important;
 }
 
 /* 嵌套卡片标题样式 */

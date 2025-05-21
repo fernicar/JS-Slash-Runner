@@ -290,12 +290,14 @@ export class VariableController {
                 const objectCard = this.view.getContainer().find(`.variable-card[data-name="${objectName}"]`);
                 objectCard.attr('data-value', JSON.stringify(objectValue));
 
-                const nestedWrapperToRemove = this.view.getContainer().find(`.nested-card-wrapper[data-key="${keyToDelete}"]`);
+                const nestedWrapperToRemove = this.view
+                  .getContainer()
+                  .find(`.nested-card-wrapper[data-key="${keyToDelete}"]`);
                 if (nestedWrapperToRemove.length > 0) {
                   const callback = () => {
                     nestedWrapperToRemove.remove();
-                  }
-                  this.view.addDeleteAnimation(nestedWrapperToRemove, callback);
+                  };
+                  this.view.addAnimation(nestedWrapperToRemove,"variable-deleted", callback);
                 }
               }
             }
@@ -335,11 +337,6 @@ export class VariableController {
    * @param event 点击事件
    */
   private async handleSaveVariableCard(event: JQuery.ClickEvent): Promise<void> {
-    console.log('事件实际触发元素:', event.target);
-    console.log('事件绑定元素:', event.currentTarget);
-
-    // 检查点击的实际是哪个元素
-    console.log($(event.target).closest('.variable-card'));
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
     const oldName = card.attr('data-original-name') || '';
@@ -347,6 +344,60 @@ export class VariableController {
     const type = this.model.getActiveVariableType();
     const value = this.view.getVariableCardValue(card);
     const isNewCard = card.attr('data-status') === 'new';
+
+    // 检查是否是对象属性的保存按钮
+    if (button.hasClass('object-save-btn')) {
+      const nestedWrapper = button.closest('.nested-card-wrapper');
+      const topLevelCard = nestedWrapper.closest('.variable-card');
+
+      // 获取父对象名称
+      const parentObjectName = this.view.getVariableCardName(topLevelCard);
+
+      // 获取当前正在编辑的属性的键名
+      const propertyKey = nestedWrapper.attr('data-key');
+
+      if (!propertyKey) {
+        console.error('[VariableManager] 无法获取对象属性的键名');
+        toastr.error('保存对象属性失败：无法识别属性名');
+        return;
+      }
+
+      try {
+        this.model.beginInternalOperation();
+
+        let parentObjectValue = this.model.getVariableValue(parentObjectName);
+
+        if (!parentObjectValue || typeof parentObjectValue !== 'object') {
+          parentObjectValue = {};
+        }
+
+        const propertyInput = nestedWrapper.find('.nested-value-input');
+        let newPropertyValue;
+        if (propertyInput.is('textarea, input[type="text"]')) {
+          newPropertyValue = propertyInput.val();
+        } else if (propertyInput.is('input[type="checkbox"]')) {
+          newPropertyValue = propertyInput.prop('checked');
+        } else if (propertyInput.is('select')) {
+          newPropertyValue = propertyInput.val();
+        } else {
+          newPropertyValue = propertyInput.text() || propertyInput.val();
+        }
+
+        _.set(parentObjectValue, propertyKey, newPropertyValue);
+
+        await this.model.saveVariableData(type, parentObjectName, parentObjectValue);
+
+        // 更新父对象卡片的data-value属性
+        topLevelCard.attr('data-value', JSON.stringify(parentObjectValue));
+      } catch (error: any) {
+        console.error(`[VariableManager] 保存对象属性失败:`, error);
+        toastr.error(`保存对象属性时出错: ${error.message || '未知错误'}`);
+      } finally {
+        this.model.endInternalOperation();
+      }
+      return;
+    }
+
 
     // 获取楼层ID (用于message类型)
     const floorId = type === 'message' ? parseInt(card.attr('data-floor') || '-1', 10) : undefined;
