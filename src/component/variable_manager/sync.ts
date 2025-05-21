@@ -284,10 +284,6 @@ export class VariableSyncService {
   private async _handleVariableUpdate(type: VariableType, data?: any): Promise<void> {
     // 如果当前类型不匹配或正在切换类型，或者是内部操作触发的更新，则忽略
     if (!this.currentType || this.currentType !== type || this._isTypeChanging || this.model.isInternalOperation()) {
-      // 添加更详细的日志，特别是针对聊天变量轮询情况
-      if (type === 'chat' && this.model.isInternalOperation()) {
-        console.debug(`[VariableSyncService] 忽略聊天变量轮询更新：当前为内部操作`);
-      }
       return;
     }
 
@@ -303,7 +299,6 @@ export class VariableSyncService {
       if ((type === 'character' || type === 'message') && data && data.variables) {
         currentVariables = data.variables;
       } else {
-        // 其他类型需要通过getVariables获取
         currentVariables = getVariables({ type });
       }
 

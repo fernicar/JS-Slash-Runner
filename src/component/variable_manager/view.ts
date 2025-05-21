@@ -1,6 +1,6 @@
 import { POPUP_TYPE, callGenericPopup } from '@sillytavern/scripts/popup';
-import { getSortableDelay } from '@sillytavern/scripts/utils';
 import { isMobile } from '@sillytavern/scripts/RossAscends-mods';
+import { getSortableDelay } from '@sillytavern/scripts/utils';
 
 import { VariableCardFactory } from '@/component/variable_manager/card';
 import { IDomUpdater } from '@/component/variable_manager/sync';
@@ -213,13 +213,195 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
-   * 创建卡片并添加到变量列表
+   * 生成唯一的键名
+   * @param objectCard 对象卡片jQuery对象
+   * @param dataType 数据类型
+   * @returns 生成的唯一键名
+   */
+  private generateUniqueKey(objectCard: JQuery<HTMLElement>, dataType: VariableDataType): string {
+    // 获取当前对象值
+    const objectValue = this.getVariableCardValue(objectCard);
+
+    // 基于数据类型生成基础键名前缀
+    let keyPrefix = '';
+    switch (dataType) {
+      case 'array':
+        keyPrefix = 'array';
+        break;
+      case 'boolean':
+        keyPrefix = 'flag';
+        break;
+      case 'number':
+        keyPrefix = 'num';
+        break;
+      case 'object':
+        keyPrefix = 'obj';
+        break;
+      case 'string':
+        keyPrefix = 'str';
+        break;
+      default:
+        keyPrefix = 'item';
+    }
+
+    // 查找同类型已有键的最大索引
+    let maxIndex = 0;
+    const pattern = new RegExp(`^${keyPrefix}(\\d+)$`);
+
+    for (const key in objectValue) {
+      if (Object.prototype.hasOwnProperty.call(objectValue, key)) {
+        const match = key.match(pattern);
+        if (match) {
+          const index = parseInt(match[1], 10);
+          if (!isNaN(index) && index > maxIndex) {
+            maxIndex = index;
+          }
+        }
+      }
+    }
+
+    // 返回新键名
+    return `${keyPrefix}${maxIndex + 1}`;
+  }
+
+  /**
+   * 在对象卡片上添加嵌套变量
+   * @param objectCard 对象卡片jQuery对象
+   * @param keyName 键名
+   * @param dataType 数据类型
+   */
+  private async addNestedVariableToObject(
+    objectCard: JQuery<HTMLElement>,
+    keyName: string,
+    dataType: VariableDataType,
+  ): Promise<void> {
+    try {
+      // 获取当前对象值
+      const objectValue = this.getVariableCardValue(objectCard);
+      if (typeof objectValue !== 'object' || objectValue === null) {
+        console.error('无效的对象值');
+        return;
+      }
+
+      // 根据类型创建默认值
+      let defaultValue: any;
+      switch (dataType) {
+        case 'array':
+          defaultValue = [];
+          break;
+        case 'boolean':
+          defaultValue = false;
+          break;
+        case 'number':
+          defaultValue = 0;
+          break;
+        case 'object':
+          defaultValue = {};
+          break;
+        case 'string':
+          defaultValue = '';
+          break;
+      }
+
+      // 添加新键值对
+      objectValue[keyName] = defaultValue;
+
+      // 更新对象卡片的值
+      const jsonString = JSON.stringify(objectValue, null, 2);
+      objectCard.find('.json-input').val(jsonString);
+      objectCard.attr('data-value', JSON.stringify(objectValue));
+
+      // 如果处于卡片视图模式，添加嵌套卡片
+      if (objectCard.attr('data-view-mode') === 'card') {
+        const $container = objectCard.find('.nested-cards-container');
+
+        const $nestedCardWrapper = $(`
+          <div class="nested-card-wrapper" data-key="${keyName}">
+            <div class="nested-card-content"></div>
+          </div>
+        `);
+
+        const nestedCard = this.cardFactory.createCard(dataType, keyName, defaultValue);
+
+        // 简化嵌套卡片的外观
+        const titleInput = nestedCard.find('.variable-title-container input');
+        titleInput.attr('title', '点击编辑键名');
+        titleInput.addClass('nested-card-key-input');
+
+        nestedCard.find('.variable-action-btn.save-btn').removeClass('save-btn').addClass('object-save-btn');
+        nestedCard.find('.variable-action-btn.delete-btn').removeClass('delete-btn').addClass('object-delete-btn');
+
+        // 移除直接绑定的事件，让事件可以冒泡到控制器
+        // 将以前需要的数据作为属性添加到按钮元素上，以便控制器可以读取
+        const objectDeleteBtn = nestedCard.find('.variable-action-btn.object-delete-btn');
+        objectDeleteBtn.attr('data-nested-key', $nestedCardWrapper.attr('data-key') || '');
+        objectDeleteBtn.attr('data-parent-card-id', objectCard.attr('id') || '');
+
+        // 监听嵌套卡片值的变更，同步到父对象
+        nestedCard.on('change', '.variable-content-input, .boolean-btn', () => {
+          const newValue = this.getVariableCardValue(nestedCard);
+
+          // 更新对象中对应键的值
+          objectValue[keyName] = newValue;
+
+          // 更新JSON字符串
+          const updatedJsonString = JSON.stringify(objectValue, null, 2);
+          objectCard.find('.json-input').val(updatedJsonString);
+          objectCard.attr('data-value', JSON.stringify(objectValue));
+        });
+
+        // 添加键名点击编辑功能
+        titleInput.on('input', function () {
+          const $input = $(this);
+          const oldKey = $nestedCardWrapper.attr('data-key') || '';
+          const newKey = $input.val() as string;
+
+          if (newKey && newKey !== oldKey && oldKey) {
+            // 更新键名
+            $nestedCardWrapper.attr('data-key', newKey);
+
+            // 获取对象值并更新键名
+            const objValue = JSON.parse(objectCard.attr('data-value') || '{}') as Record<string, any>;
+            if (objValue[oldKey] !== undefined) {
+              objValue[newKey] = objValue[oldKey];
+              delete objValue[oldKey];
+
+              // 更新对象卡片的值
+              const updatedJsonStr = JSON.stringify(objValue, null, 2);
+              objectCard.find('.json-input').val(updatedJsonStr);
+              objectCard.attr('data-value', JSON.stringify(objValue));
+            }
+          }
+        });
+
+        // 将卡片添加到容器中
+        $nestedCardWrapper.find('.nested-card-content').append(nestedCard);
+        $container.append($nestedCardWrapper);
+
+        // 添加动画效果
+        if (!this._skipAnimation) {
+          $nestedCardWrapper.addClass('variable-added');
+
+          setTimeout(() => {
+            $nestedCardWrapper.removeClass('variable-added');
+          }, 1500);
+        }
+      }
+
+      console.log(`已添加键 "${keyName}" 到对象`);
+    } catch (error) {
+      console.error('添加键值对失败:', error);
+    }
+  }
+
+  /**
+   * 创建并添加变量卡片
    * @param name 变量名称
    * @param value 变量值
-   * @param dataType 变量数据类型（如果未提供，将自动推断）
-   * @param targetType 目标变量类型（如果未提供，将使用当前活动类型）
-   * @param targetContent 目标内容容器（如果未提供，将基于targetType查找）
-   * @returns 创建的卡片jQuery对象
+   * @param dataType 数据类型（可选，如果不提供则自动推断）
+   * @param targetType 目标变量类型（可选，如果不提供则使用当前活动标签页）
+   * @param targetContent 目标容器（可选，如果不提供则根据targetType自动获取）
+   * @returns 创建的变量卡片jQuery对象
    */
   private createAndAppendCard(
     name: string,
@@ -228,29 +410,41 @@ export class VariableView implements IDomUpdater {
     targetType?: VariableType,
     targetContent?: JQuery<HTMLElement>,
   ): JQuery<HTMLElement> {
-    if (!dataType) {
-      dataType = this.cardFactory.inferDataType(value);
-    }
+    // 确定数据类型
+    const type = dataType || this.cardFactory.inferDataType(value);
 
-    if (!targetType) {
-      targetType = this.getActiveVariableType();
-    }
-
+    // 确定目标类型和容器
+    const varType = targetType || this.getActiveVariableType();
     const $variableList = targetContent
       ? this.getOrCreateVariableList(targetContent)
-      : this.getOrCreateVariableList(targetType);
+      : this.getOrCreateVariableList(varType);
 
+    // 移除空状态提示（如果存在）
     const $emptyState = $variableList.find('.empty-state');
     if ($emptyState.length > 0) {
       $emptyState.remove();
     }
 
-    const newCard = this.cardFactory.createCard(dataType, name, value);
-    this.cardFactory.setCardDataAttributes(newCard, name, value);
+    // 创建变量卡片
+    let card: JQuery<HTMLElement>;
 
-    $variableList.append(newCard);
+    // 对于对象类型，提供类型选择对话框回调
+    if (type === 'object') {
+      card = this.cardFactory.createCard(type, name, value, callback => this.showVariableTypeDialog(callback));
 
-    return newCard;
+      card.on('object:addKey', (_event, selectedDataType: VariableDataType) => {
+        const keyName = this.generateUniqueKey(card, selectedDataType);
+        this.addNestedVariableToObject(card, keyName, selectedDataType);
+      });
+    } else {
+      card = this.cardFactory.createCard(type, name, value);
+    }
+
+    this.cardFactory.setCardDataAttributes(card, name, value);
+
+    $variableList.append(card);
+
+    return card;
   }
 
   /**
@@ -660,34 +854,39 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
-   * 更新特定变量卡片
+   * 更新变量卡片
+   *
    * @param name 变量名称
    * @param value 变量新值
+   * @param isNewCard 可选参数，指示是否为新创建的卡片完成保存
    * @returns 是否找到并更新了卡片
    */
-  public updateVariableCard(name: string, value: any): boolean {
+  public updateVariableCard(name: string, value: any, isNewCard: boolean = false): boolean {
     try {
-      let card = this.container.find(`.variable-card[data-name="${name}"]`);
+      let cardToUpdate: JQuery<HTMLElement> | undefined = undefined;
+      let isNewCardBeingFinalized = false;
 
-      if (card.length === 0) {
-        const defaultName = 'new_variable';
-        card = this.container.find(`.variable-card[data-original-name="${defaultName}"]`);
+      // 优先查找具有 data-status="new" 的卡片
+      const $newCardPlaceholder = this.container.find('.variable-card[data-status="new"]');
 
-        if (card.length > 0) {
-          this.cardFactory.setCardDataAttributes(card, name, value);
-        }
+      if ($newCardPlaceholder.length > 0) {
+        cardToUpdate = $newCardPlaceholder;
+        isNewCardBeingFinalized = true;
+      } else {
+        cardToUpdate = this.container.find(`.variable-card[data-name="${name}"]`);
       }
 
-      if (card.length === 0) {
+      if (!cardToUpdate || cardToUpdate.length === 0) {
+        // 如果卡片既不是 "new" 状态，也找不到对应名称的已存在卡片，则创建新卡片
         this.createAndAppendCard(name, value);
         return true;
       }
 
-      const currentValue = card.attr('data-value');
-      const newValueString = JSON.stringify(value);
-
-      if (currentValue === newValueString) {
-        return true;
+      // 如果是正在最终化的新卡片，移除其 'new' 状态
+      if (isNewCardBeingFinalized || isNewCard) {
+        cardToUpdate.removeAttr('data-status');
+        // 设置原始名称，用于后续重命名检测
+        cardToUpdate.attr('data-original-name', name);
       }
 
       let displayValue = JSON.stringify(value);
@@ -695,7 +894,7 @@ export class VariableView implements IDomUpdater {
         displayValue = displayValue.substring(0, 100) + '...';
       }
 
-      const cardType = card.attr('data-type') as VariableDataType;
+      const cardType = cardToUpdate.attr('data-type') as VariableDataType;
 
       let listContainer;
       let jsonString;
@@ -703,39 +902,45 @@ export class VariableView implements IDomUpdater {
 
       switch (cardType) {
         case 'string':
-          card.find('.string-input').val(value);
+          cardToUpdate.find('.string-input').val(value);
           break;
         case 'number':
-          card.find('.number-input').val(value);
+          cardToUpdate.find('.number-input').val(value);
           break;
         case 'boolean':
-          card.find('.boolean-btn').removeClass('active');
-          card.find(`.boolean-btn[data-value="${value}"]`).addClass('active');
+          cardToUpdate.find('.boolean-btn').removeClass('active');
+          cardToUpdate.find(`.boolean-btn[data-value="${value}"]`).addClass('active');
           break;
         case 'array':
-          listContainer = card.find('.list-items-container');
+          listContainer = cardToUpdate.find('.list-items-container');
           listContainer.empty();
           if (Array.isArray(value) && value.length > 0) {
             const itemsHtml = value
-              .map(
-                item => `
+              .map(item => {
+                // 处理对象类型元素，转换为JSON字符串显示
+                let arrayDisplayValue = item;
+                if (item !== null && typeof item === 'object') {
+                  arrayDisplayValue = JSON.stringify(item, null, 2);
+                }
+
+                return `
                 <div class="list-item">
                   <span class="drag-handle">☰</span>
-                  <textarea class="variable-content-input">${String(item)}</textarea>
-                  <button class="list-item-delete"><i class="fa-solid fa-times"></i></button>
+                  <textarea class="variable-content-input">${String(arrayDisplayValue)}</textarea>
+                  <button class="list-item-delete"><i class="fa-regular fa-times"></i></button>
                 </div>
-              `,
-              )
+              `;
+              })
               .join('');
             listContainer.html(itemsHtml);
           }
           break;
         case 'object':
           jsonString = JSON.stringify(value, null, 2);
-          card.find('.json-input').val(jsonString);
+          cardToUpdate.find('.json-input').val(jsonString);
           break;
         default:
-          inputElement = card.find('.variable-content-input');
+          inputElement = cardToUpdate.find('.variable-content-input');
           if (inputElement.length > 0) {
             inputElement.val(typeof value === 'object' ? JSON.stringify(value) : value);
           } else {
@@ -743,27 +948,30 @@ export class VariableView implements IDomUpdater {
           }
       }
 
-      this.cardFactory.setCardDataAttributes(card, name, value);
+      this.cardFactory.setCardDataAttributes(cardToUpdate, name, value);
 
       if (!this._skipAnimation) {
-        card.addClass('variable-changed');
+        // 根据是新卡片还是更新卡片选择不同的动画效果
+        const animationClass = isNewCard ? 'variable-added' : 'variable-changed';
+        cardToUpdate.addClass(animationClass);
 
-        void card[0].offsetHeight;
+        void cardToUpdate[0].offsetHeight;
 
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {});
         });
 
-        card.off('animationend.variableChanged');
+        cardToUpdate.off('animationend.variableChanged');
 
-        card.on('animationend.variableChanged', function () {
-          $(this).removeClass('variable-changed');
+        cardToUpdate.on('animationend.variableChanged', function () {
+          $(this).removeClass(animationClass);
           $(this).off('animationend.variableChanged');
         });
       }
       return true;
     } catch (error) {
       console.error(`[VariableManager] 更新变量卡片"${name}"失败:`, error);
+      toastr.error(`更新变量卡片"${name}"失败: ${error}`);
       return false;
     }
   }
@@ -778,9 +986,26 @@ export class VariableView implements IDomUpdater {
 
     switch (dataType) {
       case 'array': {
-        const items: string[] = [];
+        const items: any[] = [];
         card.find('.list-item textarea').each(function () {
-          items.push($(this).val() as string);
+          let value = $(this).val() as string;
+
+          // 尝试将JSON字符串解析为对象或数组
+          if (typeof value === 'string') {
+            value = value.trim();
+            // 检查是否为JSON对象或数组格式
+            if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
+              try {
+                // 尝试解析JSON字符串
+                value = JSON.parse(value);
+              } catch (error) {
+                // 解析失败时保持原始字符串
+                console.log('JSON字符串解析失败，保留原始字符串:', value);
+              }
+            }
+          }
+
+          items.push(value);
         });
         return items;
       }
@@ -896,11 +1121,11 @@ export class VariableView implements IDomUpdater {
       <div>
         <h3>选择变量类型</h3>
         <div class="variable-type-options">
-          <div data-type="string"><i class="fa-solid fa-font"></i> 字符串</div>
-          <div data-type="number"><i class="fa-solid fa-hashtag"></i> 数字</div>
-          <div data-type="boolean"><i class="fa-solid fa-toggle-on"></i> 布尔值</div>
-          <div data-type="array"><i class="fa-solid fa-list"></i> 数组</div>
-          <div data-type="object"><i class="fa-solid fa-code"></i> 对象</div>
+          <div data-type="string"><i class="fa-regular fa-font"></i> 字符串</div>
+          <div data-type="number"><i class="fa-regular fa-hashtag"></i> 数字</div>
+          <div data-type="boolean"><i class="fa-regular fa-toggle-on"></i> 布尔值</div>
+          <div data-type="array"><i class="fa-regular fa-list"></i> 数组</div>
+          <div data-type="object"><i class="fa-regular fa-code"></i> 对象</div>
         </div>
       </div>
     `);
@@ -1106,28 +1331,17 @@ export class VariableView implements IDomUpdater {
             }
           }
         } else {
-          $card.addClass('variable-deleted');
+          const callback = () => {
+            $card.remove();
 
-          void $card[0].offsetHeight;
-
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {});
-          });
-
-          $card.off('animationend.variableDeleted');
-
-          $card.on('animationend.variableDeleted', function () {
-            $(this).off('animationend.variableDeleted');
-            $(this).remove();
-
-            // 动画结束后检查楼层面板
             if ($floorPanel.length > 0) {
               const $remainingCards = $floorPanel.find('.variable-card');
               if ($remainingCards.length === 0) {
                 $floorPanel.remove();
               }
             }
-          });
+          };
+          this.addDeleteAnimation($card, callback);
         }
 
         // 检查变量列表是否为空，显示空状态
@@ -1156,5 +1370,66 @@ export class VariableView implements IDomUpdater {
         $card.remove();
       }
     }
+  }
+
+  /**
+   * 显示键名输入对话框
+   * @param callback 输入完成后的回调函数
+   */
+  public async showKeyNameInputDialog(callback: (keyName: string | null) => void): Promise<void> {
+    const content = $(`
+      <div>
+        <h3>输入键名</h3>
+        <div class="key-input-dialog">
+          <input type="text" id="key-input" placeholder="请输入键名" />
+          <div id="key-input-error" class="input-error" style="display: none">请输入有效的键名</div>
+        </div>
+      </div>
+    `);
+
+    const $inputField = content.find('#key-input');
+    const $errorMsg = content.find('#key-input-error');
+
+    const result = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', {
+      okButton: '确认',
+      cancelButton: '取消',
+    });
+
+    if (!result) {
+      callback(null);
+      return;
+    }
+
+    const keyName = $inputField.val() as string;
+    if (!keyName || keyName.trim() === '') {
+      $errorMsg.show();
+      setTimeout(() => this.showKeyNameInputDialog(callback), 10);
+      return;
+    }
+
+    callback(keyName.trim());
+  }
+  
+  /**
+   * 添加删除动画效果
+   * @param card 要添加动画效果的卡片
+   * @param callback 动画结束后的回调
+   */
+  public addDeleteAnimation(card: JQuery<HTMLElement>, callback: () => void): void {
+    card.addClass('variable-deleted');
+
+    void card[0].offsetHeight;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {});
+    });
+
+    card.off('animationend.variableDeleted');
+
+    card.on('animationend.variableDeleted', function () {
+      $(this).off('animationend.variableDeleted');
+      $(this).removeClass('variable-deleted');
+      callback();
+    });
   }
 }

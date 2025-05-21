@@ -6,7 +6,22 @@
   padding-top: 10px;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止内容溢出 */
+  overflow: hidden;
+}
+
+#variable-manager-container *:not(i) {
+  color: #f1f1f1;
+}
+
+#variable-manager-container .menu_button,
+#variable-manager-container input:not(.variable-title) {
+  background-color: #333 !important;
+  border: none !important;
+}
+
+#variable-manager-container textarea {
+  background-color: #373737 !important;
+  border: none !important;
 }
 
 /* 导航栏容器样式 */
@@ -198,6 +213,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
 .variable-card-header i,
@@ -211,18 +228,22 @@
   border: none !important;
   color: var(--SmartThemeBodyColor, #fff);
   font-weight: bold;
-  width: 150px;
+  width: 100%;
+  min-width: 50px;
+  flex-grow: 1;
 }
 
 .variable-title:focus {
-  outline: 1px solid var(--SmartThemeQuoteColor);
+  border: 1px solid var(--SmartThemeQuoteColor) !important;
   border-radius: 3px;
+  background-color: #2b2b2b !important;
 }
 
 /* 变量操作按钮容器 */
 .variable-actions {
   display: flex;
   gap: 5px;
+  flex-shrink: 0;
 }
 
 /* 变量操作按钮 */
@@ -409,9 +430,6 @@
   width: 100%;
   height: 30px;
   padding: 5px 10px;
-  background-color: var(--SmartThemeInputColor, #333);
-  color: var(--SmartThemeBodyColor, #fff);
-  border: 1px solid var(--SmartThemeBorderColor, #666);
   border-radius: 5px;
   font-size: calc(var(--mainFontSize) * 0.8);
 }
@@ -488,8 +506,8 @@
 
 .boolean-btn {
   padding: 3px 10px;
-  border: 1px solid var(--SmartThemeBorderColor, #666);
-  background-color: var(--SmartThemeInputColor, #333);
+  border: none;
+  background-color: #333;
   color: var(--SmartThemeBodyColor, #fff);
   cursor: pointer;
   border-radius: 5px;
@@ -962,4 +980,142 @@
 
 .floor-panel-icon.expanded {
   transform: rotate(180deg);
+}
+
+/* 键名输入对话框 */
+.key-input-dialog {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.key-input-dialog input {
+  padding: 8px;
+  background-color: var(--SmartThemeInputColor, #333);
+  color: var(--SmartThemeBodyColor, #fff);
+  border: 1px solid var(--SmartThemeBorderColor, #666);
+  border-radius: 5px;
+  font-size: calc(var(--mainFontSize) * 0.9);
+}
+
+.input-error {
+  color: #ff3939;
+  font-size: calc(var(--mainFontSize) * 0.8);
+  margin-top: 5px;
+  text-align: center;
+}
+
+/* 对象卡片卡片视图样式 */
+.object-card-view {
+  width: 100%;
+  padding: 5px 0;
+}
+
+/* 嵌套卡片容器 */
+.nested-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* 嵌套卡片包装器 */
+.nested-card-wrapper {
+  border-left: 3px solid var(--SmartThemeQuoteColor) !important;
+  padding-left: 8px;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* 嵌套卡片键名输入框 */
+.nested-card-key-input {
+  font-weight: bold !important;
+  font-size: calc(var(--mainFontSize) * 0.85) !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.nested-card-key-input:hover {
+  color: var(--SmartThemeQuoteColor, #777) !important;
+  text-decoration: underline !important;
+}
+
+/* 嵌套卡片标题样式 */
+.nested-card-wrapper .variable-title {
+  font-size: calc(var(--mainFontSize) * 0.85);
+  padding: 0 3px;
+  color: var(--SmartThemeBodyColor, #fff);
+  margin: 0;
+  font-weight: bold;
+  width: 150px;
+  border-radius: 3px;
+}
+
+/* 嵌套卡片内容 */
+.nested-card-content {
+  margin-left: 0;
+}
+
+/* 嵌套卡片内部的变量卡片样式调整 */
+.nested-card-content .variable-card {
+  box-shadow: none;
+  padding: 3px 0 3px 5px;
+  margin-bottom: 0;
+  background-color: transparent;
+}
+
+/* 嵌套卡片内部的变量卡片头部样式调整 */
+.nested-card-content .variable-card-header {
+  padding: 0;
+  margin-bottom: 3px;
+}
+
+/* 嵌套卡片内部的变量卡片标题容器样式调整 */
+.nested-card-content .variable-title-container {
+  width: 100%;
+}
+
+/* 嵌套卡片内部的变量卡片输入框样式调整 */
+.nested-card-content .variable-content-input {
+  font-size: calc(var(--mainFontSize) * 0.8);
+  padding: 3px 6px;
+  height: 25px;
+}
+
+/* 嵌套卡片内部JSON输入框样式调整 */
+.nested-card-content .json-input {
+  height: 60px;
+}
+
+/* 嵌套卡片内部的数组卡片样式调整 */
+.nested-card-content .list-items-container {
+  margin-bottom: 5px;
+}
+
+/* 嵌套卡片内部的列表项样式调整 */
+.nested-card-content .list-item {
+  margin-bottom: 3px;
+}
+
+/* 不同类型嵌套卡片的左边框颜色 */
+.nested-card-wrapper[data-key*='string'] {
+  border-left-color: #e91e63;
+}
+
+.nested-card-wrapper[data-key*='number'] {
+  border-left-color: #ff9800;
+}
+
+.nested-card-wrapper[data-key*='boolean'] {
+  border-left-color: #2196f3;
+}
+
+.nested-card-wrapper[data-key*='array'] {
+  border-left-color: #8bc34a;
+}
+
+.nested-card-wrapper[data-key*='object'] {
+  border-left-color: #9c27b0;
 }

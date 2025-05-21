@@ -58,8 +58,8 @@ export class VariableController {
     container.find('.tab-item').on('click', this.handleTabChange.bind(this));
     container.on('click', '.add-list-item', this.handleAddListItem.bind(this));
     container.on('click', '.list-item-delete', this.handleDeleteListItem.bind(this));
-    container.on('click', '.delete-btn', this.handleDeleteVariableCard.bind(this));
-    container.on('click', '.save-btn', this.handleSaveVariableCard.bind(this));
+    container.on('click', '.delete-btn, .object-delete-btn', this.handleDeleteVariableCard.bind(this));
+    container.on('click', '.save-btn, .object-save-btn', this.handleSaveVariableCard.bind(this));
     container.on('click', '#add-variable', this.handleAddVariable.bind(this));
     container.on('click', '#clear-all', this.handleClearAll.bind(this));
     container.on('click', '#filter-icon', this.handleFilterIconClick.bind(this));
@@ -229,6 +229,14 @@ export class VariableController {
    * @param event 点击事件
    */
   private handleDeleteVariableCard(event: JQuery.ClickEvent): void {
+    // 添加调试日志，记录事件信息
+    console.log('[VariableManager] 删除变量卡片 - 事件对象:', {
+      target: event.target,
+      currentTarget: event.currentTarget,
+      targetClass: event.target.className,
+      currentTargetClass: event.currentTarget.className,
+    });
+
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
     const name = this.view.getVariableCardName(card);
@@ -250,10 +258,52 @@ export class VariableController {
       if (confirmed) {
         try {
           this.model.beginInternalOperation();
-          await this.model.deleteVariableData(type, name, floorId);
+          if (event.currentTarget.className.includes('object-delete-btn')) {
+            console.log('[VariableManager] 处理对象属性删除 - 按钮:', event.currentTarget);
+            // 处理对象子元素删除
+            const nestedWrapper = $(event.currentTarget).closest('.nested-card-wrapper');
+            const topLevelCard = nestedWrapper.closest('.variable-card');
+            const objectName = this.view.getVariableCardName(topLevelCard);
+            const objectValue = this.model.getVariableValue(objectName);
+            if (objectValue && typeof objectValue === 'object') {
+              // 获取要删除的子元素键名
+              const deleteButton = $(event.currentTarget);
+              let keyToDelete = deleteButton.attr('data-nested-key');
 
-          // 不再直接处理DOM操作，而是通过removeVariableCard方法
-          this.view.removeVariableCard(name);
+              // 如果按钮上没有找到键名，则尝试从包装器元素获取
+              if (!keyToDelete) {
+                let nestedCard = deleteButton.closest('.nested-card-wrapper');
+                // 如果使用currentTarget没找到，尝试使用target（向下兼容）
+                if (nestedCard.length === 0) {
+                  nestedCard = $(event.target).closest('.nested-card-wrapper');
+                }
+                keyToDelete = nestedCard.attr('data-key');
+              }
+
+              if (keyToDelete && objectValue[keyToDelete] !== undefined) {
+                // 使用lodash从对象中删除子元素
+                _.unset(objectValue, keyToDelete);
+
+                // 保存更新后的对象
+                await this.model.saveVariableData(type, objectName, objectValue);
+                // 更新data-value
+                const objectCard = this.view.getContainer().find(`.variable-card[data-name="${objectName}"]`);
+                objectCard.attr('data-value', JSON.stringify(objectValue));
+
+                const nestedWrapperToRemove = this.view.getContainer().find(`.nested-card-wrapper[data-key="${keyToDelete}"]`);
+                if (nestedWrapperToRemove.length > 0) {
+                  const callback = () => {
+                    nestedWrapperToRemove.remove();
+                  }
+                  this.view.addDeleteAnimation(nestedWrapperToRemove, callback);
+                }
+              }
+            }
+          } else {
+            // 删除整个变量
+            await this.model.deleteVariableData(type, name, floorId);
+            this.view.removeVariableCard(name);
+          }
         } catch (error) {
           console.error(`[VariableManager] 删除变量失败:`, error);
         } finally {
@@ -272,7 +322,6 @@ export class VariableController {
     this.view.showAddVariableDialog((dataType, floorId) => {
       try {
         this.model.beginInternalOperation();
-        // 传递floorId参数到createNewVariableCard
         this.view.createNewVariableCard(type, dataType, floorId);
       } finally {
         this.model.endInternalOperation();
@@ -282,9 +331,15 @@ export class VariableController {
 
   /**
    * 处理保存变量卡片
+   *
    * @param event 点击事件
    */
   private async handleSaveVariableCard(event: JQuery.ClickEvent): Promise<void> {
+    console.log('事件实际触发元素:', event.target);
+    console.log('事件绑定元素:', event.currentTarget);
+
+    // 检查点击的实际是哪个元素
+    console.log($(event.target).closest('.variable-card'));
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
     const oldName = card.attr('data-original-name') || '';
@@ -318,16 +373,8 @@ export class VariableController {
           await this.model.saveVariableData(type, newName, value);
         }
 
-        // 更新卡片状态
-        card.removeAttr('data-status');
-        card.attr('data-original-name', newName);
-        card.attr('data-name', newName);
-
-        // 使用动画效果替代吐司通知
-        card.addClass('variable-added');
-        setTimeout(() => {
-          card.removeClass('variable-added');
-        }, 1500);
+        // 使用updateVariableCard来更新UI，同时标记这是一个新卡片完成保存
+        this.view.updateVariableCard(newName, value, true);
 
         // 对于聊天变量，将其添加到最近处理记录中，防止轮询重复处理
         if (type === 'chat') {
@@ -343,15 +390,8 @@ export class VariableController {
         // 重命名变量
         await this.model.renameVariable(type, oldName, newName, value);
 
-        // 更新卡片属性
-        card.attr('data-original-name', newName);
-        card.attr('data-name', newName);
-
-        // 使用动画效果替代吐司通知
-        card.addClass('variable-changed');
-        setTimeout(() => {
-          card.removeClass('variable-changed');
-        }, 1500);
+        // 使用updateVariableCard处理UI更新
+        this.view.updateVariableCard(newName, value);
 
         // 对于聊天变量，将其添加到最近处理记录中
         if (type === 'chat') {
@@ -362,11 +402,8 @@ export class VariableController {
         // 仅更新值
         await this.model.saveVariableData(type, newName, value);
 
-        // 使用动画效果替代吐司通知
-        card.addClass('variable-changed');
-        setTimeout(() => {
-          card.removeClass('variable-changed');
-        }, 1500);
+        // 使用updateVariableCard处理UI更新
+        this.view.updateVariableCard(newName, value);
 
         // 对于聊天变量，将其添加到最近处理记录中
         if (type === 'chat') {
