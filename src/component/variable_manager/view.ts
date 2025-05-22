@@ -983,31 +983,12 @@ export class VariableView implements IDomUpdater {
    */
   public getVariableCardValue(card: JQuery<HTMLElement>): any {
     const dataType = card.attr('data-type') as VariableDataType;
+    const cardFactory = new VariableCardFactory();
 
     switch (dataType) {
       case 'array': {
-        const items: any[] = [];
-        card.find('.list-item textarea').each(function () {
-          let value = $(this).val() as string;
-
-          // 尝试将JSON字符串解析为对象或数组
-          if (typeof value === 'string') {
-            value = value.trim();
-            // 检查是否为JSON对象或数组格式
-            if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
-              try {
-                // 尝试解析JSON字符串
-                value = JSON.parse(value);
-              } catch (error) {
-                // 解析失败时保持原始字符串
-                console.log('JSON字符串解析失败，保留原始字符串:', value);
-              }
-            }
-          }
-
-          items.push(value);
-        });
-        return items;
+        // 使用提取方法获取数组值
+        return cardFactory.extractArrayValue(card);
       }
       case 'boolean': {
         const activeBtn = card.find('.boolean-btn.active');

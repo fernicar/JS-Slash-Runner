@@ -786,20 +786,15 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 15px;
+  color: var(--SmartThemeBodyColor);
 }
 
 .variable-type-options div {
   padding: 10px;
-  background-color: #444;
+  background-color: var(--SmartThemeBorderColor);
   border-radius: 5px;
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.variable-type-options div:hover {
-  background-color: var(--SmartThemeBodyColor);
-  color: #fff;
-  box-shadow: 0 0 5px rgba(0, 144, 224, 0.5);
 }
 
 /* 确认对话框 */
@@ -1005,12 +1000,6 @@
   text-align: center;
 }
 
-/* 对象卡片卡片视图样式 */
-.object-card-view {
-  width: 100%;
-  padding: 5px 0;
-}
-
 /* 嵌套卡片容器 */
 .nested-cards-container {
   display: flex;
@@ -1118,4 +1107,117 @@
 
 .nested-card-wrapper[data-key*='object'] {
   border-left-color: #9c27b0;
+}
+
+/* 数组嵌套项目样式 */
+.list-item.list-item-object {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.nested-object-container {
+  flex: 1;
+  width: 100%;
+  min-width: 200px;
+  padding: 0;
+}
+
+/* 调整列表项对象容器 */
+.list-items-container {
+  width: 100%;
+}
+
+.list-item-object {
+  gap: 0;
+}
+/* 拖动手柄在对象卡片中的调整 */
+.list-item-object .drag-handle {
+  padding: 5px 5px 0 0;
+  align-self: flex-start;
+}
+
+/* 调整对象卡片内嵌套数组的样式 */
+.array-nested-card .list-items-container {
+  margin-bottom: 5px;
+}
+
+/* 调整对象卡片内部输入框 */
+.array-nested-card .variable-content-input {
+  margin: 2px 0;
+}
+
+/* 调整嵌套卡片中类型标识的图标 */
+.array-nested-card .variable-title-container i {
+  font-size: calc(var(--mainFontSize) * 0.8);
+  width: 15px;
+  text-align: center;
+}
+
+/* 数组项目类型选择按钮组 */
+.array-item-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px;
+  background-color: rgba(51, 51, 51, 0.8);
+  border-radius: 5px;
+  border: 1px solid var(--SmartThemeBorderColor, #666);
+}
+
+.add-type-btn {
+  flex: 1 0 calc(33% - 8px);
+  padding: 5px 8px;
+  border: 1px solid var(--SmartThemeBorderColor, #666);
+  background-color: var(--SmartThemeInputColor, #333);
+  color: var(--SmartThemeBodyColor, #fff);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: calc(var(--mainFontSize) * 0.8);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.add-type-btn:hover {
+  background-color: var(--SmartThemeQuoteColor, #777);
+}
+
+.add-type-btn i {
+  width: 14px;
+  text-align: center;
+}
+
+.add-text-item i {
+  color: #e91e63;
+}
+
+.add-number-item i {
+  color: #ff9800;
+}
+
+.add-boolean-item i {
+  color: #2196f3;
+}
+
+.add-object-item i {
+  color: #9c27b0;
+}
+
+.add-array-item i {
+  color: #8bc34a;
+}
+
+.cancel-add-item {
+  width: 100%;
+  background-color: rgba(200, 0, 0, 0.2) !important;
+}
+
+.cancel-add-item:hover {
+  background-color: rgba(200, 0, 0, 0.4) !important;
 }
