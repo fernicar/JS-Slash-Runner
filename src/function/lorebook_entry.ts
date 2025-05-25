@@ -378,7 +378,12 @@ export async function setLorebookEntries(
   entries: Array<Pick<LorebookEntry, 'uid'> & Partial<LorebookEntry>>,
 ): Promise<LorebookEntry[]> {
   return await updateLorebookEntriesWith(lorebook, data => {
-    entries.filter(entry => data[entry.uid] !== undefined).forEach(entry => _.merge(data[entry.uid], entry));
+    for (const entry_to_set of entries) {
+      const data_entry = data.find(entry => entry.uid === entry_to_set.uid);
+      if (data_entry) {
+        _.merge(data_entry, entry_to_set);
+      }
+    }
     return data;
   });
 }
