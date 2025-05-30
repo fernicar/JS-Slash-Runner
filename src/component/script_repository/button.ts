@@ -275,7 +275,8 @@ function checkQrCombinedStatus() {
   if (!isQrEnabled) {
     if (isCombined) {
       const $qrBar = $('#send_form #qr--bar');
-      if ($qrBar.children().length === 0) {
+      const isThButtonExist = $qrBar.find('.th--buttons').length > 0;
+      if (!isThButtonExist) {
         $qrBar.append('<div class="qr--buttons th--buttons"></div>');
       }
     }
