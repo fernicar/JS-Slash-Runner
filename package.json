@@ -5,8 +5,8 @@
   "scripts": {
     "build:dev": "webpack --mode development",
     "build": "webpack --mode production",
-    "watch:production": "webpack --mode production --watch",
-    "watch": "webpack --mode development --watch",
+    "watch:production": "webpack --mode production --watch --progress",
+    "watch": "webpack --mode development --watch --progress",
     "lint": "eslint"
   },
   "browserslist": {
