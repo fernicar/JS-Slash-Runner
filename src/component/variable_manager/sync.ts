@@ -20,8 +20,6 @@ const CHAT_POLLING_INTERVAL = 2000;
 export interface IDomUpdater {
   addVariableCard(name: string, value: any): void;
   removeVariableCard(name: string): void;
-  updateVariableCard(name: string, value: any): void;
-  updateWithoutAnimation(isSkipAnimation: boolean): void;
 }
 
 interface ListenerStatus {
@@ -41,14 +39,6 @@ export class VariableSyncService {
   };
   // 用于聊天变量轮询的定时器ID
   private _chatPollingInterval: number | null = null;
-  // 标记监听器是否处于激活状态
-  private _listenersActive: boolean = false;
-  // 标记是否正在进行类型切换
-  private _isTypeChanging: boolean = false;
-  // 记录最近处理的变量映射：键为变量名，值为处理时间戳
-  private _recentlyProcessedVariables: Map<string, number> = new Map();
-  // 上次清理记录时间
-  private _lastCleanupTimestamp: number = 0;
 
   /**
    * 构造函数
@@ -60,56 +50,12 @@ export class VariableSyncService {
     this.model = model;
   }
 
-  // 获取当前是否正在进行类型切换
-  public get isTypeChanging(): boolean {
-    return this._isTypeChanging;
-  }
-
-  /**
-   * 将变量标记为最近处理过
-   * @param name 变量名
-   */
-  public markVariableAsProcessed(name: string): void {
-    this._recentlyProcessedVariables.set(name, Date.now());
-  }
-
-  /**
-   * 检查变量是否最近被处理过
-   * @param name 变量名
-   * @param maxAgeMs 最长有效期(毫秒)，默认3000ms
-   * @returns 变量是否最近被处理过
-   */
-  public wasRecentlyProcessed(name: string, maxAgeMs: number = 3000): boolean {
-    const timestamp = this._recentlyProcessedVariables.get(name);
-    if (!timestamp) return false;
-    return Date.now() - timestamp < maxAgeMs;
-  }
-
-  /**
-   * 清理过期的处理记录
-   * @param maxAgeMs 记录最长有效期(毫秒)，默认5000ms
-   * @private
-   */
-  private _cleanupProcessedRecords(maxAgeMs: number = 5000): void {
-    const now = Date.now();
-    // 每30秒最多进行一次清理操作
-    if (now - this._lastCleanupTimestamp < 30000) return;
-
-    this._lastCleanupTimestamp = now;
-    this._recentlyProcessedVariables.forEach((timestamp, name) => {
-      if (now - timestamp > maxAgeMs) {
-        this._recentlyProcessedVariables.delete(name);
-      }
-    });
-  }
-
   public async cleanup(): Promise<void> {
     this._unbindAllEventListeners();
     this._stopChatPolling();
 
     try {
       variableCache = {};
-      this._recentlyProcessedVariables.clear();
     } catch (error) {
       console.error(`[VariableManager]：清空缓存时出错:`, error);
     }
@@ -125,9 +71,6 @@ export class VariableSyncService {
     let loadedVariables = {};
 
     if (this.currentType !== type) {
-      this._isTypeChanging = true;
-      this.domUpdater.updateWithoutAnimation(true);
-
       this.currentType = type;
 
       loadedVariables = await this.initializeCacheForType(type);
@@ -152,7 +95,6 @@ export class VariableSyncService {
    * 应在标签页激活时调用
    */
   public activateListeners(): void {
-    this._listenersActive = true;
     if (this.currentType) {
       if (this.currentType === 'chat') {
         this._startChatPolling();
@@ -167,7 +109,6 @@ export class VariableSyncService {
    * 应在标签页停用时调用，以节省性能
    */
   public deactivateListeners(): void {
-    this._listenersActive = false;
     this._unbindAllEventListeners();
     this._stopChatPolling();
   }
@@ -182,16 +123,6 @@ export class VariableSyncService {
     } catch (error) {
       console.error(`[VariableManager]：初始化类型 ${type} 的缓存时出错:`, error);
       return {};
-    }
-  }
-
-  /**
-   * 手动触发变量更新处理，用于测试服务功能或在事件系统不可用时使用
-   * @returns Promise<void>
-   */
-  public async manualUpdate(): Promise<void> {
-    if (this.currentType) {
-      await this._handleVariableUpdate(this.currentType);
     }
   }
 
@@ -246,7 +177,7 @@ export class VariableSyncService {
   private _startChatPolling(): void {
     this._stopChatPolling();
 
-    if (this.currentType === 'chat' && this._listenersActive) {
+    if (this.currentType === 'chat') {
       try {
         // 设置定时器定期检查聊天变量
         this._chatPollingInterval = window.setInterval(async () => {
@@ -283,16 +214,11 @@ export class VariableSyncService {
    */
   private async _handleVariableUpdate(type: VariableType, data?: any): Promise<void> {
     // 如果当前类型不匹配或正在切换类型，或者是内部操作触发的更新，则忽略
-    if (!this.currentType || this.currentType !== type || this._isTypeChanging || this.model.isInternalOperation()) {
+    if (!this.currentType || this.currentType !== type) {
       return;
     }
 
     try {
-      // 如果是聊天变量轮询，触发清理过期记录
-      if (type === 'chat') {
-        this._cleanupProcessedRecords();
-      }
-
       // 获取最新变量
       // 角色变量和消息变量事件会直接提供变量数据
       let currentVariables: Record<string, any>;
