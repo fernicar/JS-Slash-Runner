@@ -2,7 +2,7 @@ import { script_url } from '@/script_url';
 import third_party from '@/third_party.html';
 import { getCharAvatarPath, getSettingValue, getUserAvatarPath, saveSettingValue } from '@/util/extension_variables';
 
-import { eventSource, event_types, reloadCurrentChat, updateMessageBlock } from '@sillytavern/script';
+import { eventSource, event_types, reloadCurrentChat, updateMessageBlock, this_chid } from '@sillytavern/script';
 import { getContext } from '@sillytavern/scripts/extensions';
 
 let isExtensionEnabled: boolean;
@@ -58,8 +58,10 @@ export async function handleRenderToggle(userInput: boolean = true, enable: bool
  */
 export async function clearAndRenderAllIframes() {
   await clearAllIframes();
-  await reloadCurrentChat();
-  await renderAllIframes();
+  if (this_chid !== undefined) {
+    await reloadCurrentChat();
+    await renderAllIframes();
+  }
 }
 
 /**

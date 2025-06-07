@@ -235,14 +235,19 @@ export function bindQrEnabledChangeListener() {
     checkQrEnabledStatusAndAddButton();
     console.log('[script_manager] 创建按钮');
   });
+
+  $('#qr--global-setListAdd, #qr--chat-setListAdd, .qr--del').on('click', () => {
+    checkQrEnabledStatusAndAddButton();
+    console.log('[script_manager] 创建按钮');
+  });
 }
 
 /**
  * 解绑 qr--isEnabled 元素的 change 事件监听器
  */
 export function unbindQrEnabledChangeListener() {
-  $(`#qr--isEnabled`).off('change');
-  $(`#qr--isCombined`).off('change');
+  $(`#qr--isEnabled, #qr--isCombined`).off('change');
+  $(`#qr--global-setListAdd, #qr--chat-setListAdd, .qr--del`).off('click');
 }
 
 /**
@@ -269,7 +274,11 @@ function checkQrCombinedStatus() {
   isCombined = $('#qr--isCombined').prop('checked');
   if (!isQrEnabled) {
     if (isCombined) {
-      $('#send_form #qr--bar').append('<div class="qr--buttons th--buttons"></div>');
+      const $qrBar = $('#send_form #qr--bar');
+      const isThButtonExist = $qrBar.find('.th--buttons').length > 0;
+      if (!isThButtonExist) {
+        $qrBar.append('<div class="qr--buttons th--buttons"></div>');
+      }
     }
   }
 }

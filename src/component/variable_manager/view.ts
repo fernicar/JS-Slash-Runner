@@ -802,20 +802,7 @@ export class VariableView implements IDomUpdater {
       $variableList.append(newCard);
 
       if (!this._skipAnimation) {
-        newCard.addClass('variable-added');
-
-        void newCard[0].offsetHeight;
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {});
-        });
-
-        newCard.off('animationend.variableAdded');
-
-        newCard.on('animationend.variableAdded', function () {
-          $(this).removeClass('variable-added');
-          $(this).off('animationend.variableAdded');
-        });
+        this.addAnimation(newCard, 'variable-added', () => {});
       }
     } catch (error) {
       console.error(`[VariableManager] 添加卡片"${name}"失败:`, error);
@@ -881,8 +868,9 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
-   * 添加删除动画效果
-   * @param card 要添加动画效果的卡片
+   * 添加动画效果
+   * @param element 要添加动画效果的元素
+   * @param animationClass CSS动画类名
    * @param callback 动画结束后的回调
    */
   public addAnimation(element: JQuery<HTMLElement>, animationClass: string, callback: () => void): void {
@@ -892,6 +880,10 @@ export class VariableView implements IDomUpdater {
 
     void element[0].offsetHeight;
 
+    // 强制回流以确保动画立即应用
+    void element[0].offsetHeight;
+
+    // 使用requestAnimationFrame确保动画平滑
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {});
     });

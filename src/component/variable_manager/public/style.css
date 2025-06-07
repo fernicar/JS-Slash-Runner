@@ -1042,9 +1042,34 @@
 /* 嵌套卡片样式 */
 .nested-card {
   border-left: 3px solid var(--SmartThemeQuoteColor) !important;
-  padding-right: 0 !important;
-  margin-right: 0 !important;
-  margin-bottom: 0 !important;
+  padding-left: 8px;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* 嵌套卡片键名输入框 */
+.nested-card-key-input {
+  font-weight: bold !important;
+  font-size: calc(var(--mainFontSize) * 0.85) !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.nested-card-key-input:hover {
+  color: var(--SmartThemeQuoteColor, #777) !important;
+}
+
+/* 嵌套卡片标题样式 */
+.nested-card-wrapper .variable-title {
+  font-size: calc(var(--mainFontSize) * 0.85);
+  padding: 0 3px;
+  color: var(--SmartThemeBodyColor, #fff);
+  margin: 0;
+  font-weight: bold;
+  width: 150px;
+  border-radius: 3px;
 }
 
 /* 嵌套卡片内容 */

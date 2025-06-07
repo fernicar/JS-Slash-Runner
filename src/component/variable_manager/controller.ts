@@ -208,11 +208,6 @@ export class VariableController {
    * @param event 点击事件
    */
   private async handleSaveVariableCard(event: JQuery.ClickEvent): Promise<void> {
-    console.log('事件实际触发元素:', event.target);
-    console.log('事件绑定元素:', event.currentTarget);
-
-    // 检查点击的实际是哪个元素
-    console.log($(event.target).closest('.variable-card'));
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
     const type = this.model.getActiveVariableType();
