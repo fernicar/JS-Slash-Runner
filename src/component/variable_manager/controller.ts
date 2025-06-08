@@ -1,3 +1,4 @@
+import { VariableCardFactory } from '@/component/variable_manager/card';
 import { VariableModel } from '@/component/variable_manager/model';
 import { VariableSyncService } from '@/component/variable_manager/sync';
 import { VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
@@ -21,15 +22,22 @@ export class VariableController {
   private syncService: VariableSyncService;
 
   /**
+   * 变量卡片工厂
+   */
+  private cardFactory: VariableCardFactory;
+
+  /**
    * 构造函数
    * @param model 数据模型
    * @param view 视图
    * @param syncService 同步服务
+   * @param cardFactory 卡片工厂
    */
-  constructor(model: VariableModel, view: VariableView, syncService: VariableSyncService) {
+  constructor(model: VariableModel, view: VariableView, syncService: VariableSyncService, cardFactory: VariableCardFactory) {
     this.model = model;
     this.view = view;
     this.syncService = syncService;
+    this.cardFactory = cardFactory;
   }
 
   /**
@@ -39,6 +47,7 @@ export class VariableController {
   public async init(container: JQuery<HTMLElement>): Promise<void> {
     this.view.initUI();
     this.bindEvents(container);
+    await this.syncService.initCurrentType();
     this.syncService.activateListeners();
     await this.loadVariables('global');
   }
@@ -74,7 +83,6 @@ export class VariableController {
       return;
     }
 
-    // 更新UI相关配置
     if (type === 'message') {
       this.view.container.find('#floor-filter-container').show();
       const [minFloor, maxFloor] = this.model.getFloorRange();
@@ -83,7 +91,6 @@ export class VariableController {
       this.view.container.find('#floor-filter-container').hide();
     }
 
-    // 刷新变量卡片显示
     this.view.refreshVariableCards(type, variables);
   }
 
@@ -102,16 +109,12 @@ export class VariableController {
 
     if (type === currentType) return;
 
-    // 先更新UI标签状态
     this.view.setActiveTab(type);
 
-    // 停用当前监听器
     this.syncService.deactivateListeners();
 
-    // 加载新类型的变量
     await this.loadVariables(type);
 
-    // 激活新类型的监听器
     this.syncService.activateListeners();
   }
 
@@ -143,20 +146,17 @@ export class VariableController {
     const button = $(event.currentTarget);
     const listItem = button.closest('.list-item');
 
-    // 添加删除动画效果
     listItem.css({
       'background-color': 'rgba(255, 0, 0, 0.2)',
       transition: 'all 0.3s ease',
     });
 
-    // 应用转换效果
     setTimeout(() => {
       listItem.css({
         transform: 'scale(0.9)',
         opacity: '0.7',
       });
 
-      // 淡出效果完成后移除元素
       setTimeout(() => {
         listItem.remove();
       }, 200);
@@ -211,7 +211,7 @@ export class VariableController {
     const button = $(event.currentTarget);
     const card = button.closest('.variable-card');
     const type = this.model.getActiveVariableType();
-    const dataType = VariableManagerUtil.inferDataType(this.view.getVariableCardValue(card));
+    const dataType = VariableManagerUtil.inferDataType(this.cardFactory.getVariableFromCard(card));
 
     if (dataType == 'object') {
       this.syncObjectCardData(card);
@@ -227,7 +227,7 @@ export class VariableController {
 
     let newVariable: VariableItem = {
       name: this.view.getVariableCardName(card),
-      value: this.view.getVariableCardValue(card),
+      value: this.cardFactory.getVariableFromCard(card),
       dataType: dataType,
       id: card.attr('data-variable-id') || '',
       ...(message_id !== undefined && { message_id }),
@@ -235,6 +235,13 @@ export class VariableController {
 
     if (newVariable.name == undefined || newVariable.name.trim() === '') {
       toastr.error('变量名不能为空');
+      return;
+    }
+
+    const sameNameVariables = this.model.getVariablesByName(newVariable.name);
+    const otherSameNameVariables = sameNameVariables.filter(v => v.id !== newVariable.id);
+    if (otherSameNameVariables.length > 0) {
+      toastr.error('变量名重复');
       return;
     }
 
@@ -381,7 +388,7 @@ export class VariableController {
     const currentMode = card.attr('data-view-mode') || 'card';
 
     if (currentMode === 'card') {
-      const objectValue = this.view.buildObjectFromNestedCards(card);
+      const objectValue = this.cardFactory.getVariableFromCard(card);
       card.find('.json-input').val(JSON.stringify(objectValue, null, 2));
     }
   }

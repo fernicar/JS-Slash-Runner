@@ -1,5 +1,4 @@
 import { TavernVariables, VariableDataType, VariableItem, VariableType } from '@/component/variable_manager/types';
-import { getLastMessageId } from '@/function/util';
 import { getVariables, replaceVariables } from '@/function/variables';
 import { uuidv4 } from '../../../../../../utils';
 import { VariableManagerUtil } from './util';
@@ -435,5 +434,78 @@ export class VariableModel {
   public getVariablesWithoutMessageId(): VariableItem[] {
     if (!this.currentVariables) return [];
     return this.currentVariables.filter(variable => variable.message_id === undefined);
+  }
+
+  /**
+   * 根据变量名获取所有同名变量
+   * @param name 变量名称
+   * @returns 同名变量列表
+   */
+  public getVariablesByName(name: string): VariableItem[] {
+    if (!this.currentVariables) return [];
+    return this.currentVariables.filter(variable => variable.name === name);
+  }
+
+  /**
+   * 通过变量名查找变量
+   * @param name 变量名称
+   * @param message_id 消息ID（可选，用于精确匹配message类型变量）
+   * @returns 找到的变量，如果不存在则返回undefined
+   */
+  public findVariableByName(name: string, message_id?: number): VariableItem | undefined {
+    if (!this.currentVariables) return undefined;
+
+    for (const variable of this.currentVariables) {
+      if (variable.name === name) {
+        if (message_id !== undefined) {
+          if (variable.message_id === message_id) {
+            return variable;
+          }
+        } else {
+          return variable;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * 同步当前变量列表，根据外部变化进行增量更新
+   * @param added 新增的变量
+   * @param removedIds 要删除的变量ID列表
+   * @param updated 要更新的变量
+   */
+  public syncCurrentVariables(
+    added: VariableItem[],
+    removedIds: string[],
+    updated: VariableItem[]
+  ): void {
+    if (!this.currentVariables) {
+      this.currentVariables = [];
+    }
+
+    // 处理删除
+    removedIds.forEach(id => {
+      const index = this.currentVariables!.findIndex(v => v.id === id);
+      if (index >= 0) {
+        this.currentVariables!.splice(index, 1);
+        this.variableIdMap.delete(id);
+      }
+    });
+
+    // 处理新增
+    added.forEach(variable => {
+      this.currentVariables!.push(variable);
+      this.variableIdMap.set(variable.id, variable);
+    });
+
+    // 处理更新
+    updated.forEach(updatedVariable => {
+      const index = this.currentVariables!.findIndex(v => v.id === updatedVariable.id);
+      if (index >= 0) {
+        this.currentVariables![index] = updatedVariable;
+        this.variableIdMap.set(updatedVariable.id, updatedVariable);
+      }
+    });
   }
 }

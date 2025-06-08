@@ -31,7 +31,7 @@ export class VariableView implements IDomUpdater {
   /**
    * 变量卡片
    */
-  private cardFactory: VariableCardFactory;
+  public cardFactory: VariableCardFactory;
 
   /**
    * 浮窗元素
@@ -42,11 +42,6 @@ export class VariableView implements IDomUpdater {
    * 控制器引用
    */
   private controller: IController | null = null;
-
-  /**
-   * 是否跳过动画效果的标记
-   */
-  private _skipAnimation: boolean = false;
 
   /**
    * @param container 变量管理器容器
@@ -344,192 +339,94 @@ export class VariableView implements IDomUpdater {
     const $content = this.container.find(`#${type}-content`).find('.variable-list');
     $content.find('.empty-state').remove();
 
-    let defaultValue: VariableItem = {
+    const defaultVariable: VariableItem = {
       name: 'new_variable',
-      value: '',
+      value: VariableManagerUtil.getDefaultValueForType(dataType),
       dataType: dataType,
       id: uuidv4(),
     };
 
-    switch (dataType) {
-      case 'array':
-        defaultValue.value = [];
-        break;
-      case 'boolean':
-        defaultValue.value = false;
-        break;
-      case 'number':
-        defaultValue.value = 0;
-        break;
-      case 'object':
-        defaultValue.value = {};
-        break;
-      case 'string':
-        defaultValue.value = '';
-        break;
-      default:
-        defaultValue.value = '';
-    }
+    const newCard = this.cardFactory.createCard(defaultVariable);
+    newCard.attr('data-type', dataType);
 
     if (type === 'message' && floorId !== undefined) {
-      const $floorPanel = $content.find(`.floor-panel[data-floor="${floorId}"]`);
-
-      if ($floorPanel.length === 0) {
-        this.createFloorPanel(floorId, true).then($panel => {
-          // 根据楼层号找到正确的插入位置，楼层号越大越靠前
-          let inserted = false;
-          $content.find('.floor-panel').each(function () {
-            const existingFloor = parseInt($(this).attr('data-floor') || '0');
-            if (floorId > existingFloor) {
-              $(this).before($panel);
-              inserted = true;
-              return false;
-            }
-            return undefined;
-          });
-
-          if (!inserted) {
-            $content.prepend($panel);
-          }
-
-          const $panelBody = $panel.find('.floor-panel-body');
-          const newCard = this.cardFactory.createCard(defaultValue);
-
-          newCard.attr('data-floor-id', floorId.toString());
-          newCard.attr('data-type', dataType);
-
-          $panelBody.append(newCard);
-        });
-      } else {
-        const $panelBody = $floorPanel.find('.floor-panel-body');
-
-        if (!$panelBody.hasClass('expanded')) {
-          $floorPanel.find('.floor-panel-icon').addClass('expanded');
-          $panelBody.addClass('expanded');
-        }
-
-        const newCard = this.cardFactory.createCard(defaultValue);
-
-        newCard.attr('data-floor-id', floorId.toString());
-        newCard.attr('data-type', dataType);
-
-        $panelBody.append(newCard);
-      }
+      this.addCardToFloorPanel($content, newCard, floorId);
     } else {
-      const newCard = this.cardFactory.createCard(defaultValue);
-      newCard.attr('data-type', dataType);
-      $content.append(newCard);
+      $content.prepend(newCard);
+      this.addAnimation(newCard, 'variable-added', () => {});
     }
   }
 
   /**
-   * 获取变量卡片值
+   * 将卡片添加到指定楼层面板
+   * @param content 内容容器
    * @param card 卡片元素
-   * @returns 卡片中的变量值
+   * @param floorId 楼层ID
+   * @param dataType 数据类型
    */
-  public getVariableCardValue(card: JQuery<HTMLElement>): any {
-    const dataType = card.attr('data-type') as VariableDataType;
-    const cardFactory = new VariableCardFactory();
+  private addCardToFloorPanel(
+    content: JQuery<HTMLElement>,
+    card: JQuery<HTMLElement>,
+    floorId: number  ): void {
+    const $floorPanel = content.find(`.floor-panel[data-floor="${floorId}"]`);
 
-    switch (dataType) {
-      case 'array': {
-        const items: any[] = [];
-        card.find('.list-item textarea').each(function () {
-          let value = $(this).val() as string;
+    if ($floorPanel.length === 0) {
+      this.createFloorPanel(floorId, true).then($panel => {
+        this.insertFloorPanelInOrder(content, $panel, floorId);
 
-          if (typeof value === 'string') {
-            value = value.trim();
-            if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
-              try {
-                value = JSON.parse(value);
-              } catch (error) {
-                console.log('JSON字符串解析失败，保留原始字符串:', value);
-              }
-            }
-          }
+        const $panelBody = $panel.find('.floor-panel-body');
+        card.attr('data-floor-id', floorId.toString());
+        $panelBody.prepend(card);
+        this.addAnimation(card, 'variable-added', () => {});
+      });
+    } else {
+      const $panelBody = $floorPanel.find('.floor-panel-body');
 
-          items.push(value);
-        });
-        return items;
+      if (!$panelBody.hasClass('expanded')) {
+        $floorPanel.find('.floor-panel-icon').addClass('expanded');
+        $panelBody.addClass('expanded');
       }
-      case 'boolean': {
-        const activeBtn = card.find('.boolean-btn.active');
-        return activeBtn.attr('data-value') === 'true';
-      }
-      case 'number': {
-        return Number(card.find('.number-input').val());
-      }
-      case 'object': {
-        const jsonValue = card.find('.json-input').val() as string;
-        if (jsonValue && jsonValue.trim()) {
-          try {
-            return JSON.parse(jsonValue);
-          } catch (error) {
-            console.error(`[VariableManager] JSON解析错误:`, error);
-            return {};
-          }
-        } else {
-          return this.buildObjectFromNestedCards(card);
-        }
-      }
-      case 'string': {
-        return card.find('.string-input, .variable-content-input').val();
-      }
-      default:
-        return null;
+
+      card.attr('data-floor-id', floorId.toString());
+      $panelBody.prepend(card);
+      this.addAnimation(card, 'variable-added', () => {});
     }
   }
 
   /**
-   * 从嵌套卡片构建对象值
-   * @param card 对象卡片
-   * @returns 构建的对象值
+   * 按楼层号顺序插入楼层面板
+   * @param content 内容容器
+   * @param panel 要插入的面板
+   * @param floorId 楼层ID
    */
-  public buildObjectFromNestedCards(card: JQuery<HTMLElement>): Record<string, any> {
-    const result: Record<string, any> = {};
-
-    card.find('.nested-cards-container .nested-card').each((_index, element) => {
-      const $nestedCard = $(element);
-      const key = $nestedCard.find('.nested-card-key-input').val() as string;
-      const nestedDataType = $nestedCard.attr('data-type') as VariableDataType;
-
-      let nestedValue: any;
-      switch (nestedDataType) {
-        case 'string':
-          nestedValue = $nestedCard.find('.string-input').val();
-          break;
-        case 'number':
-          nestedValue = parseFloat($nestedCard.find('.number-input').val() as string);
-          break;
-        case 'boolean':
-          nestedValue = $nestedCard.find('.boolean-btn.active').attr('data-value') === 'true';
-          break;
-        case 'array': {
-          const arrayItems: any[] = [];
-          $nestedCard.find('.list-item .variable-content-input').each((_, elem) => {
-            const itemValue = $(elem).val() as string;
-            try {
-              arrayItems.push(JSON.parse(itemValue));
-            } catch {
-              arrayItems.push(itemValue);
-            }
-          });
-          nestedValue = arrayItems;
-          break;
-        }
-        case 'object':
-          nestedValue = this.buildObjectFromNestedCards($nestedCard);
-          break;
-        default:
-          nestedValue = $nestedCard.find('.variable-content-input').val();
+  private insertFloorPanelInOrder(
+    content: JQuery<HTMLElement>,
+    panel: JQuery<HTMLElement>,
+    floorId: number,
+  ): void {
+    let inserted = false;
+    content.find('.floor-panel').each(function () {
+      const existingFloor = parseInt($(this).attr('data-floor') || '0');
+      if (floorId > existingFloor) {
+        $(this).before(panel);
+        inserted = true;
+        return false;
       }
-
-      if (key) {
-        result[key] = nestedValue;
-      }
+      return undefined;
     });
 
-    return result;
+    if (!inserted) {
+      content.prepend(panel);
+    }
+  }
+
+  /**
+   * 获取变量卡片信息
+   * @param card 卡片元素
+   * @returns 卡片中的变量信息
+   */
+  public getVariableFromCard(card: JQuery<HTMLElement>): VariableItem | null {
+    return this.cardFactory.getVariableFromCard(card);
   }
 
   /**
@@ -538,7 +435,8 @@ export class VariableView implements IDomUpdater {
    * @returns 卡片中的变量名称
    */
   public getVariableCardName(card: JQuery<HTMLElement>): string {
-    return card.find('.variable-title').val() as string;
+    const variable = this.getVariableFromCard(card);
+    return variable?.name || '';
   }
 
   /**
@@ -748,7 +646,6 @@ export class VariableView implements IDomUpdater {
       },
     });
 
-    // 控制调整大小控件的显示
     this.dialog.find('.dialog-resize-handle').toggle(isMobileDevice);
   }
 
@@ -774,38 +671,23 @@ export class VariableView implements IDomUpdater {
     });
   }
 
-  /**
-   * 设置是否跳过动画效果
-   * 实现 IDomUpdater 接口的方法
-   * @param isSkipAnimation 是否跳过动画
-   */
-  public updateWithoutAnimation(isSkipAnimation: boolean): void {
-    this._skipAnimation = isSkipAnimation;
-  }
-
-  public addVariableCard(name: string, value: any): void {
+  public addVariableCard(variable: VariableItem): void {
     try {
-      // 创建变量项
-      const variable: VariableItem = {
-        name,
-        value,
-        dataType: VariableManagerUtil.inferDataType(value),
-        id: '', // 这里可能需要生成ID，具体取决于使用场景
-      };
-
-      // 使用cardFactory创建卡片
       const newCard = this.cardFactory.createCard(variable);
+      newCard.attr('data-type', variable.dataType);
 
-      // 添加到当前活动的变量列表
       const activeType = this.getActiveVariableType();
       const $variableList = this.container.find(`#${activeType}-content .variable-list`);
-      $variableList.append(newCard);
-
-      if (!this._skipAnimation) {
+      
+      if (activeType === 'message' && variable.message_id !== undefined) {
+        this.addCardToFloorPanel($variableList, newCard, variable.message_id);
+      } else {
+        $variableList.find('.empty-state').remove();
+        $variableList.append(newCard);
         this.addAnimation(newCard, 'variable-added', () => {});
       }
     } catch (error) {
-      console.error(`[VariableManager] 添加卡片"${name}"失败:`, error);
+      console.error(`[VariableManager] 添加卡片"${variable.name}"失败:`, error);
     }
   }
 
@@ -815,17 +697,64 @@ export class VariableView implements IDomUpdater {
    */
   public removeVariableCard(variable_id: string): void {
     try {
-      let $card: JQuery<HTMLElement>;
-
-      // 优先使用变量 ID 查找卡片
-      if (variable_id) {
-        $card = this.container.find(`.variable-card[data-variable-id="${variable_id}"]`);
-        this.addAnimation($card, 'variable-deleted', () => {
-          $card.remove();
-        });
+      if (!variable_id) {
+        console.warn(`[VariableManager] 变量ID为空，无法移除卡片`);
+        return;
       }
+
+      const $card = this.container.find(`.variable-card[data-variable-id="${variable_id}"]`);
+      
+      if ($card.length === 0) {
+        console.warn(`[VariableManager] 未找到ID为"${variable_id}"的卡片`);
+        return;
+      }
+
+      this.addAnimation($card, 'variable-deleted', () => {
+        $card.remove();
+        this.checkAndShowEmptyState();
+      });
     } catch (error) {
       console.error(`[VariableManager] 移除卡片失败:`, error);
+    }
+  }
+
+  /**
+   * 检查并显示空状态提示
+   */
+  private checkAndShowEmptyState(): void {
+    const activeType = this.getActiveVariableType();
+    const $variableList = this.container.find(`#${activeType}-content .variable-list`);
+    
+    if ($variableList.find('.variable-card').length === 0) {
+      $variableList.html('<div class="empty-state"><p>暂无变量</p></div>');
+    }
+  }
+
+  /**
+   * 更新变量卡片
+   * @param variable 变量
+   */
+  public updateVariableCard(variable: VariableItem): void {
+    try {
+      const $card = this.container.find(`.variable-card[data-variable-id="${variable.id}"]`);
+      
+      if ($card.length === 0) {
+        console.warn(`[VariableManager] 未找到ID为"${variable.id}"的卡片`);
+        return;
+      }
+
+      // 创建新卡片替换旧卡片，保持一致性
+      const newCard = this.cardFactory.createCard(variable);
+      newCard.attr('data-type', variable.dataType);
+      
+      if (variable.message_id !== undefined) {
+        newCard.attr('data-floor-id', variable.message_id.toString());
+      }
+
+      $card.replaceWith(newCard);
+      this.addAnimation(newCard, 'variable-changed', () => {});
+    } catch (error) {
+      console.error(`[VariableManager] 更新卡片失败:`, error);
     }
   }
 
@@ -879,14 +808,6 @@ export class VariableView implements IDomUpdater {
     element.addClass(animationClass);
 
     void element[0].offsetHeight;
-
-    // 强制回流以确保动画立即应用
-    void element[0].offsetHeight;
-
-    // 使用requestAnimationFrame确保动画平滑
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {});
-    });
 
     element.off(`animationend.${namespace}`);
 

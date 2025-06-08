@@ -27,7 +27,7 @@ export async function openVariableManager() {
 
   syncService = new VariableSyncService(variableView, variableModel);
 
-  variableController = new VariableController(variableModel, variableView, syncService);
+  variableController = new VariableController(variableModel, variableView, syncService, variableView.cardFactory);
 
   variableView.setController(variableController);
 
