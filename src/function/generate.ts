@@ -26,10 +26,12 @@ import {
   stopGeneration,
   substituteParams,
   this_chid,
+  getExtensionPromptByName,
 } from '@sillytavern/script';
 import { NOTE_MODULE_NAME, metadata_keys, shouldWIAddPrompt } from '@sillytavern/scripts/authors-note';
 import { extension_settings, getContext } from '@sillytavern/scripts/extensions';
 import { getRegexedString, regex_placement } from '@sillytavern/scripts/extensions/regex/engine';
+import { t } from '@sillytavern/scripts/i18n';
 import {
   ChatCompletion,
   Message,
@@ -50,7 +52,6 @@ import {
 import { Prompt, PromptCollection } from '@sillytavern/scripts/PromptManager';
 import { Stopwatch, getBase64Async } from '@sillytavern/scripts/utils';
 import { getWorldInfoPrompt, wi_anchor_position, world_info_include_names } from '@sillytavern/scripts/world-info';
-import { t } from '@sillytavern/scripts/i18n';
 
 interface GenerateConfig {
   user_input?: string;
@@ -130,6 +131,29 @@ type BuiltinPrompt =
   | 'dialogue_examples'
   | 'chat_history'
   | 'user_input';
+
+interface BaseData {
+  characterInfo: {
+    description: string;
+    personality: string;
+    persona: string;
+    scenario: string;
+    system: string;
+    jailbreak: string;
+  };
+  chatContext: {
+    oaiMessages: RolePrompt[];
+    oaiMessageExamples: string[];
+    promptBias: string[];
+  };
+  worldInfo: {
+    worldInfoAfter: Array<string>;
+    worldInfoBefore: Array<string>;
+    worldInfoDepth: Array<{ entries: string; depth: number; role: number }>;
+    worldInfoExamples: Array<string>;
+    worldInfoString: Array<string>;
+  };
+}
 
 let abortController = new AbortController();
 
@@ -453,6 +477,8 @@ async function prepareAndOverrideData(
     mesExamples: rawMesExamples,
     system,
     jailbreak,
+    charDepthPrompt,
+    creatorNotes,
   } = getCharacterCardFields();
 
   // 判断是否被过滤,如果被过滤返回空字符串,否则返回override的值或原始值
@@ -500,7 +526,14 @@ async function prepareAndOverrideData(
   // 添加临时消息用于激活世界书
   addTemporaryUserMessage(processedUserInput);
   // 8. 处理世界信息
-  const worldInfo = await processWorldInfo(oaiMessages as RolePrompt[], config);
+  const worldInfo = await processWorldInfo(oaiMessages as RolePrompt[], config, {
+    description: rawDescription,
+    personality: rawPersonality,
+    persona: rawPersona,
+    scenario: rawScenario,
+    charDepthPrompt,
+    creatorNotes,
+  });
 
   // 移除临时消息
   removeTemporaryUserMessage();
@@ -674,6 +707,14 @@ async function processChatHistory(chatHistory: any[]) {
 async function processWorldInfo(
   oaiMessages: RolePrompt[],
   config: Omit<detail.GenerateParams, 'user_input' | 'use_preset'>,
+  characterInfo: {
+    description: string;
+    personality: string;
+    persona: string;
+    scenario: string;
+    charDepthPrompt: string;
+    creatorNotes: string;
+  },
 ) {
   const chatForWI = oaiMessages
     .filter(x => x.role !== 'system')
@@ -684,8 +725,16 @@ async function processWorldInfo(
     .reverse();
 
   const this_max_context = getMaxContextSize();
+  const globalScanData = {
+    personaDescription: config.overrides?.persona_description ?? characterInfo.persona,
+    characterDescription: config.overrides?.char_description ?? characterInfo.description,
+    characterPersonality: config.overrides?.char_personality ?? characterInfo.personality,
+    characterDepthPrompt: characterInfo.charDepthPrompt,
+    scenario: config.overrides?.scenario ?? characterInfo.scenario,
+    creatorNotes: characterInfo.creatorNotes,
+  };
   const { worldInfoString, worldInfoBefore, worldInfoAfter, worldInfoExamples, worldInfoDepth } =
-    await getWorldInfoPrompt(chatForWI, this_max_context, dryRun);
+    await getWorldInfoPrompt(chatForWI, this_max_context, dryRun, globalScanData);
 
   await clearInjectionPrompts(['customDepthWI']);
 
@@ -1032,7 +1081,6 @@ async function handleCustomPath(
   // 处理所有类型的提示词
   for (const [index, item] of orderArray.entries()) {
     if (typeof item === 'string') {
-      // 使用 isPromptFiltered 替代 promptFilter 判断
       if (!isPromptFiltered(item, config)) {
         await addToChatCompletionInOrder(item, index);
       }
@@ -1130,7 +1178,9 @@ async function processChatHistoryAndInject(
   }
 
   // 处理注入和添加消息
-  const messages = (await populationInjectionPrompts(baseData.chatContext.oaiMessages, promptConfig.inject)).reverse();
+  const messages = (
+    await populationInjectionPrompts(baseData, baseData.chatContext.oaiMessages, promptConfig.inject, promptConfig)
+  ).reverse();
   const imageInlining = isImageInliningSupported();
   // 添加聊天记录
   const chatPool = [...messages];
@@ -1173,11 +1223,17 @@ async function processChatHistoryAndInject(
     chatCompletion.add(chatCollection, chatHistoryIndex);
   }
 }
-async function populationInjectionPrompts(messages: RolePrompt[], customInjects: InjectionPrompt[] = []) {
+async function populationInjectionPrompts(
+  baseData: BaseData,
+  messages: RolePrompt[],
+  customInjects: InjectionPrompt[] = [],
+  config: Omit<detail.GenerateParams, 'user_input' | 'use_preset'>,
+) {
   const processedMessages = [...messages];
   let totalInsertedMessages = 0;
   const injectionPrompts = [];
   // @ts-ignore
+
   const authorsNote = getContext().extensionPrompts[NOTE_MODULE_NAME];
   if (authorsNote && authorsNote.value) {
     injectionPrompts.push({
@@ -1200,6 +1256,22 @@ async function populationInjectionPrompts(messages: RolePrompt[], customInjects:
       injection_depth: power_user.persona_description_depth,
       injected: true,
     });
+  }
+
+  if (!isPromptFiltered('char_depth_prompt', config)) {
+    const wiDepthPrompt = baseData.worldInfo.worldInfoDepth;
+    if (wiDepthPrompt) {
+      for (const entry of wiDepthPrompt) {
+        const content = await getExtensionPromptByName(`customDepthWI-${entry.depth}-${entry.role}`);
+        injectionPrompts.push({
+          role: getPromptRole(entry.role),
+          content: content,
+          injection_depth: entry.depth,
+          injected: true,
+        });
+        console.log('injectionPrompts', injectionPrompts);
+      }
+    }
   }
 
   // 处理自定义注入
