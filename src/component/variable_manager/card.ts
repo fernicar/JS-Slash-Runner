@@ -93,7 +93,7 @@ export class VariableCardFactory {
             .find('.delete-btn')
             .removeClass('delete-btn')
             .addClass('object-delete-btn');
-        } 
+        }
 
         this.setupObjectCard(card, variable, isNested, showTypeDialogCallback);
         break;
@@ -181,7 +181,7 @@ export class VariableCardFactory {
         const arrayItems: any[] = [];
         card.find('.list-item').each((_, elem) => {
           const $listItem = $(elem);
-          
+
           if ($listItem.hasClass('list-item-object')) {
             const nestedCard = $listItem.find('.nested-card');
             if (nestedCard.length > 0) {
@@ -287,8 +287,6 @@ export class VariableCardFactory {
   /**
    * 触发嵌套卡片保存事件
    * @param parentCard 父级卡片
-   * @param nestedCard 嵌套卡片
-   * @param propertyKey 属性键名
    */
   private saveNestedCardValue(parentCard: JQuery<HTMLElement>): void {
     this.syncCardViewToJsonInput(parentCard);
@@ -398,6 +396,10 @@ export class VariableCardFactory {
       };
 
       const newNestedCard = this.createCard(newVariable, true, showTypeDialogCallback);
+
+      // 确保新嵌套卡片的data-type属性正确设置
+      newNestedCard.attr('data-type', newDataType);
+
       const $container = card.find('.nested-cards-container');
       $container.prepend(newNestedCard);
 
@@ -597,7 +599,7 @@ export class VariableCardFactory {
     const listContainer = card.find('.list-items-container');
     listContainer.empty();
 
-    items.forEach((item) => {
+    items.forEach(item => {
       const displayValue = typeof item === 'object' ? JSON.stringify(item) : String(item);
       const listItem = $(`
         <div class="list-item">

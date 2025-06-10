@@ -159,10 +159,6 @@ export class VariableModel {
    * @returns 加载的变量数据
    */
   public async loadFromTavern(type: VariableType): Promise<VariableItem[]> {
-    // 如果类型没变，则不重新加载
-    if (this.activeVariableType === type && this.currentVariables && this.currentVariables.length > 0) {
-      return this.currentVariables;
-    }
     this.clearVariableIdMap();
 
     try {
@@ -174,9 +170,13 @@ export class VariableModel {
         // 获取当前楼层范围
         const [minFloor, maxFloor] = this.getFloorRange();
 
-        if (minFloor !== null && maxFloor !== null) {
+        // 确保至少有一个有效的楼层范围
+        if (minFloor !== null || maxFloor !== null) {
+          const effectiveMinFloor = minFloor ?? 0;
+          const effectiveMaxFloor = maxFloor ?? minFloor ?? 0;
+
           // 遍历每个楼层，加载各自的变量
-          for (let floor = minFloor; floor <= maxFloor; floor++) {
+          for (let floor = effectiveMinFloor; floor <= effectiveMaxFloor; floor++) {
             try {
               const floorVars = this.getFloorVariables(floor);
               // 为每个楼层的变量添加message_id标识
@@ -363,11 +363,26 @@ export class VariableModel {
    * @param max 最大楼层
    */
   public updateFloorRange(min: number | null, max: number | null): void {
+    // 验证楼层不能小于0
     if (min !== null) {
       min = Math.max(0, min);
     }
+    if (max !== null) {
+      max = Math.max(0, max);
+    }
+
+    // 如果设置了范围但是最小值大于最大值，则交换它们
+    if (min !== null && max !== null && min > max) {
+      [min, max] = [max, min];
+    }
+
     this.floorMinRange = min;
     this.floorMaxRange = max;
+
+    // 清除缓存，强制重新加载
+    if (this.activeVariableType === 'message') {
+      this.currentVariables = null;
+    }
   }
 
   /**
@@ -475,11 +490,7 @@ export class VariableModel {
    * @param removedIds 要删除的变量ID列表
    * @param updated 要更新的变量
    */
-  public syncCurrentVariables(
-    added: VariableItem[],
-    removedIds: string[],
-    updated: VariableItem[]
-  ): void {
+  public syncCurrentVariables(added: VariableItem[], removedIds: string[], updated: VariableItem[]): void {
     if (!this.currentVariables) {
       this.currentVariables = [];
     }

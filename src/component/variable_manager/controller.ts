@@ -33,7 +33,12 @@ export class VariableController {
    * @param syncService 同步服务
    * @param cardFactory 卡片工厂
    */
-  constructor(model: VariableModel, view: VariableView, syncService: VariableSyncService, cardFactory: VariableCardFactory) {
+  constructor(
+    model: VariableModel,
+    view: VariableView,
+    syncService: VariableSyncService,
+    cardFactory: VariableCardFactory,
+  ) {
     this.model = model;
     this.view = view;
     this.syncService = syncService;
@@ -48,7 +53,7 @@ export class VariableController {
     this.view.initUI();
     this.bindEvents(container);
     await this.syncService.initCurrentType();
-    this.syncService.activateListeners();
+    await this.syncService.setCurrentType('global');
     await this.loadVariables('global');
   }
 
@@ -92,6 +97,8 @@ export class VariableController {
     }
 
     this.view.refreshVariableCards(type, variables);
+
+    this.applyFilters();
   }
 
   /**
@@ -111,11 +118,8 @@ export class VariableController {
 
     this.view.setActiveTab(type);
 
-    this.syncService.deactivateListeners();
-
+    await this.syncService.setCurrentType(type);
     await this.loadVariables(type);
-
-    this.syncService.activateListeners();
   }
 
   /**
@@ -200,6 +204,7 @@ export class VariableController {
     const type = this.model.getActiveVariableType();
     this.view.showAddVariableDialog((dataType, floorId) => {
       this.view.addNewVariableCard(type, dataType, floorId);
+      this.applyFilters();
     });
   }
 
@@ -313,6 +318,7 @@ export class VariableController {
     const isChecked = $checkbox.is(':checked');
 
     this.model.updateFilterState(type, isChecked);
+    this.applyFilters();
   }
 
   /**
@@ -322,6 +328,17 @@ export class VariableController {
   private handleVariableSearch(event: JQuery.TriggeredEvent): void {
     const keyword = $(event.currentTarget).val() as string;
     this.model.updateSearchKeyword(keyword);
+    this.applyFilters();
+  }
+
+  /**
+   * 应用筛选
+   */
+  private applyFilters(): void {
+    const filterState = this.model.getFilterState();
+    const searchKeyword = this.model.getSearchKeyword();
+
+    this.view.applyClientSideFilters(filterState, searchKeyword);
   }
 
   /**
@@ -334,11 +351,21 @@ export class VariableController {
     const minVal = $minInput.val() as string;
     const maxVal = $maxInput.val() as string;
 
-    const min = minVal ? parseInt(minVal) : null;
-    const max = maxVal ? parseInt(maxVal) : null;
+    const min = minVal.trim() ? parseInt(minVal, 10) : null;
+    const max = maxVal.trim() ? parseInt(maxVal, 10) : null;
 
-    if ((min !== null && isNaN(min)) || (max !== null && isNaN(max))) {
+    if ((minVal.trim() && isNaN(min!)) || (maxVal.trim() && isNaN(max!))) {
       this.view.showFloorFilterError('请输入有效的数字');
+      return;
+    }
+
+    if (min !== null && min < 0) {
+      this.view.showFloorFilterError('最小楼层不能小于0');
+      return;
+    }
+
+    if (max !== null && max < 0) {
+      this.view.showFloorFilterError('最大楼层不能小于0');
       return;
     }
 
@@ -347,11 +374,17 @@ export class VariableController {
       return;
     }
 
+    if (min === null && max === null) {
+      this.view.showFloorFilterError('请至少设置最小楼层或最大楼层');
+      return;
+    }
+
     this.view.hideFloorFilterError();
 
-    if (min !== null || max !== null) {
-      this.applyFloorRangeAndReload(min || 0, max === null ? Infinity : max);
-    }
+    const effectiveMin = min ?? 0;
+    const effectiveMax = max ?? 9999;
+
+    this.applyFloorRangeAndReload(effectiveMin, effectiveMax);
   }
 
   /**

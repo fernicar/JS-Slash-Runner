@@ -2,6 +2,7 @@ import { Script, ScriptType } from '@/component/script_repository/types';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { characters, this_chid } from '@sillytavern/script';
 import { writeExtensionField } from '@sillytavern/scripts/extensions';
+import { accountStorage } from '@sillytavern/scripts/util/AccountStorage';
 
 /**
  * 脚本数据管理类
@@ -300,12 +301,14 @@ export async function replaceCharacterScriptVariables(variables: Record<string, 
 export async function purgeEmbeddedScripts({ character }: { character: any }): Promise<void> {
   const avatar = character?.character?.avatar;
   const charactersWithScripts = getSettingValue('script.characters_with_scripts') || [];
-
-  if (avatar && charactersWithScripts?.includes(avatar)) {
-    const index = charactersWithScripts.indexOf(avatar);
-    if (index !== -1) {
-      charactersWithScripts.splice(index, 1);
-      saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+  if (avatar) {
+    accountStorage.removeItem(`AlertScript_${avatar}`);
+    if (charactersWithScripts?.includes(avatar)) {
+      const index = charactersWithScripts.indexOf(avatar);
+      if (index !== -1) {
+        charactersWithScripts.splice(index, 1);
+        saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+      }
     }
   }
 }

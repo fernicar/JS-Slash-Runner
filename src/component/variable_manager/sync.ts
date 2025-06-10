@@ -63,24 +63,35 @@ export class VariableSyncService {
   /**
    * 设置当前变量类型，并相应地初始化监听器或轮询
    * @param type 变量类型
-   * @returns 获取到的变量数据
    */
   public async setCurrentType(type: VariableType): Promise<void> {
     if (this.currentType !== type) {
+      this._deactivateCurrentListeners();
       this.currentType = type;
-      if (type === 'chat') {
-        this._startChatPolling();
-      } else {
-        this._bindVariableListener(type);
-      }
+      this._activateCurrentListeners();
     }
   }
 
   /**
-   * 激活当前类型的事件监听器或轮询
-   * 应在标签页激活时调用
+   * 重新激活当前类型的监听器（用于标签页重新激活等场景）
    */
-  public activateListeners(): void {
+  public reactivateListeners(): void {
+    this._deactivateCurrentListeners();
+    this._activateCurrentListeners();
+  }
+
+  /**
+   * 停用当前的事件监听器或轮询
+   */
+  public deactivateListeners(): void {
+    this._deactivateCurrentListeners();
+  }
+
+  /**
+   * 激活当前类型的监听器或轮询
+   * @private
+   */
+  private _activateCurrentListeners(): void {
     if (this.currentType) {
       if (this.currentType === 'chat') {
         this._startChatPolling();
@@ -91,9 +102,10 @@ export class VariableSyncService {
   }
 
   /**
-   * 停用当前的事件监听器或轮询
+   * 停用当前的监听器或轮询
+   * @private
    */
-  public deactivateListeners(): void {
+  private _deactivateCurrentListeners(): void {
     this._unbindAllEventListeners();
     this._stopChatPolling();
   }
@@ -203,19 +215,13 @@ export class VariableSyncService {
 
       const oldVariables = this.model.getCurrentMapVariables();
 
-      const { added, removed, updated } = this._compareTavernVariables(
-        oldVariables,
-        newTavernVariables,
-        messageId
-      );
+      const { added, removed, updated } = this._compareTavernVariables(oldVariables, newTavernVariables, messageId);
 
       this._processDiff(added, removed, updated, newTavernVariables, messageId);
     } catch (error) {
       console.error(`[VariableManager]：处理${type}变量更新时出错:`, error);
     }
   }
-
-
 
   /**
    * 比较当前变量与新的 TavernVariables 对象
@@ -228,10 +234,10 @@ export class VariableSyncService {
   private _compareTavernVariables(
     oldVariables: VariableItem[],
     newVars: Record<string, any>,
-    messageId?: number
-  ): { added: string[], removed: string[], updated: string[] } {
+    messageId?: number,
+  ): { added: string[]; removed: string[]; updated: string[] } {
     const oldVarsMap = new Map<string, any>();
-    
+
     oldVariables.forEach(variable => {
       if (messageId !== undefined) {
         if (variable.message_id === messageId) {
@@ -249,9 +255,7 @@ export class VariableSyncService {
 
     const added = [...newKeys].filter(key => !oldKeys.has(key));
     const removed = [...oldKeys].filter(key => !newKeys.has(key));
-    const updated = [...newKeys].filter(key =>
-      oldKeys.has(key) && !_.isEqual(oldVarsMap.get(key), newVars[key])
-    );
+    const updated = [...newKeys].filter(key => oldKeys.has(key) && !_.isEqual(oldVarsMap.get(key), newVars[key]));
 
     return { added, removed, updated };
   }
@@ -270,7 +274,7 @@ export class VariableSyncService {
     removed: string[],
     updated: string[],
     newTavernVariables: Record<string, any>,
-    messageId?: number
+    messageId?: number,
   ): void {
     const addedVariables: VariableItem[] = [];
     const removedIds: string[] = [];

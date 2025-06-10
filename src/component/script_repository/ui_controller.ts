@@ -8,6 +8,7 @@ import { characters, this_chid } from '@sillytavern/script';
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 import { download, getSortableDelay, uuidv4 } from '@sillytavern/scripts/utils';
+import { accountStorage } from '@sillytavern/scripts/util/AccountStorage';
 export class UIController {
   // 单例模式
   private static instance: UIController;
@@ -929,37 +930,40 @@ export class UIController {
     if (charactersWithScripts.includes(avatar)) {
       return;
     }
+    const checkKey = `AlertScript_${avatar}`;
+    if (!accountStorage.getItem(checkKey)) {
+      accountStorage.setItem(checkKey, 'true');
+      const template = await renderExtensionTemplateAsync(
+        `${extensionFolderPath}/src/component/script_repository/public`,
+        'script_allow_popup',
+      );
+      const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
+        okButton: '确认',
+        cancelButton: '取消',
+      });
 
-    const template = await renderExtensionTemplateAsync(
-      `${extensionFolderPath}/src/component/script_repository/public`,
-      'script_allow_popup',
-    );
-    const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', {
-      okButton: '确认',
-      cancelButton: '取消',
-    });
+      if (result) {
+        if (avatar && !charactersWithScripts.includes(avatar)) {
+          charactersWithScripts.push(avatar);
+          saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+        }
 
-    if (result) {
-      if (avatar && !charactersWithScripts.includes(avatar)) {
-        charactersWithScripts.push(avatar);
-        saveSettingValue('script.characters_with_scripts', charactersWithScripts);
+        $('#character-script-enable-toggle').prop('checked', true);
+
+        scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
+          type: ScriptType.CHARACTER,
+          enable: true,
+          userInput: false,
+        });
+      } else {
+        $('#character-script-enable-toggle').prop('checked', false);
+
+        scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
+          type: ScriptType.CHARACTER,
+          enable: false,
+          userInput: false,
+        });
       }
-
-      $('#character-script-enable-toggle').prop('checked', true);
-
-      scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
-        type: ScriptType.CHARACTER,
-        enable: true,
-        userInput: false,
-      });
-    } else {
-      $('#character-script-enable-toggle').prop('checked', false);
-
-      scriptEvents.emit(ScriptRepositoryEventType.TYPE_TOGGLE, {
-        type: ScriptType.CHARACTER,
-        enable: false,
-        userInput: false,
-      });
     }
   }
 }

@@ -114,16 +114,39 @@ export class VariableView implements IDomUpdater {
    */
   private initFloorFilter(): void {
     this.container.find('#floor-filter-btn').on('click', () => {
-      const minVal = parseInt(this.container.find('#floor-min').val() as string, 10);
-      const maxVal = parseInt(this.container.find('#floor-max').val() as string, 10);
+      const minInput = this.container.find('#floor-min').val() as string;
+      const maxInput = this.container.find('#floor-max').val() as string;
 
-      if (isNaN(minVal) || isNaN(maxVal)) {
+      // 允许空值，但如果有值就必须是有效数字
+      const minVal = minInput.trim() ? parseInt(minInput, 10) : null;
+      const maxVal = maxInput.trim() ? parseInt(maxInput, 10) : null;
+
+      // 验证数字有效性
+      if ((minInput.trim() && isNaN(minVal!)) || (maxInput.trim() && isNaN(maxVal!))) {
         this.showFloorFilterError('请输入有效的楼层数值');
         return;
       }
 
-      if (maxVal < minVal) {
+      // 验证楼层不能小于0
+      if (minVal !== null && minVal < 0) {
+        this.showFloorFilterError('最小楼层不能小于0');
+        return;
+      }
+
+      if (maxVal !== null && maxVal < 0) {
+        this.showFloorFilterError('最大楼层不能小于0');
+        return;
+      }
+
+      // 验证范围逻辑：只有当两个值都存在时才比较大小
+      if (minVal !== null && maxVal !== null && maxVal < minVal) {
         this.showFloorFilterError('最大楼层不能小于最小楼层');
+        return;
+      }
+
+      // 至少需要设置一个值
+      if (minVal === null && maxVal === null) {
+        this.showFloorFilterError('请至少设置最小楼层或最大楼层');
         return;
       }
 
@@ -131,10 +154,25 @@ export class VariableView implements IDomUpdater {
     });
 
     this.container.find('#floor-min, #floor-max').on('input', () => {
-      const minVal = parseInt(this.container.find('#floor-min').val() as string, 10);
-      const maxVal = parseInt(this.container.find('#floor-max').val() as string, 10);
+      const minInput = this.container.find('#floor-min').val() as string;
+      const maxInput = this.container.find('#floor-max').val() as string;
 
-      if (!isNaN(minVal) && !isNaN(maxVal) && maxVal < minVal) {
+      const minVal = minInput.trim() ? parseInt(minInput, 10) : null;
+      const maxVal = maxInput.trim() ? parseInt(maxInput, 10) : null;
+
+      // 实时验证楼层不能小于0
+      if (minVal !== null && minVal < 0) {
+        this.showFloorFilterError('最小楼层不能小于0');
+        return;
+      }
+
+      if (maxVal !== null && maxVal < 0) {
+        this.showFloorFilterError('最大楼层不能小于0');
+        return;
+      }
+
+      // 实时验证范围逻辑
+      if (minVal !== null && maxVal !== null && !isNaN(minVal) && !isNaN(maxVal) && maxVal < minVal) {
         this.showFloorFilterError('最大楼层不能小于最小楼层');
       } else {
         this.hideFloorFilterError();
@@ -210,8 +248,16 @@ export class VariableView implements IDomUpdater {
     const minVal = this.container.find('#floor-min').val() as string;
     const maxVal = this.container.find('#floor-max').val() as string;
 
-    const minFloor = minVal && minVal.trim() ? parseInt(minVal, 10) : null;
-    const maxFloor = maxVal && maxVal.trim() ? parseInt(maxVal, 10) : null;
+    let minFloor = minVal && minVal.trim() ? parseInt(minVal, 10) : null;
+    let maxFloor = maxVal && maxVal.trim() ? parseInt(maxVal, 10) : null;
+
+    // 确保楼层不小于0
+    if (minFloor !== null) {
+      minFloor = Math.max(0, minFloor);
+    }
+    if (maxFloor !== null) {
+      maxFloor = Math.max(0, maxFloor);
+    }
 
     return [
       minFloor !== null && !isNaN(minFloor) ? minFloor : null,
@@ -243,9 +289,8 @@ export class VariableView implements IDomUpdater {
 
     // 根据变量类型选择不同的渲染方式
     if (type === 'message') {
-      this.renderMessageVariablesByFloor($variableList, variables).then(() => {
-        $variableList.scrollTop(scrollTop);
-      });
+      this.renderMessageVariablesByFloor($variableList, variables);
+      $variableList.scrollTop(scrollTop);
     } else {
       for (const variable of variables) {
         const card = this.cardFactory.createCard(variable);
@@ -256,14 +301,63 @@ export class VariableView implements IDomUpdater {
   }
 
   /**
+   * 应用筛选
+   * @param filterState 筛选状态
+   * @param searchKeyword 搜索关键字
+   */
+  public applyClientSideFilters(filterState: Record<VariableDataType, boolean>, searchKeyword: string): void {
+    const activeType = this.getActiveVariableType();
+    const $variableCards = this.container.find(`#${activeType}-content .variable-card`);
+    let visibleCount = 0;
+
+    $variableCards.each((_, card) => {
+      const $card = $(card);
+      const cardType = $card.attr('data-type') as VariableDataType;
+      const cardName = ($card.find('.variable-title').val() as string) || '';
+
+      const typeVisible = filterState[cardType];
+      const keywordVisible = !searchKeyword || cardName.toLowerCase().includes(searchKeyword.toLowerCase());
+
+      if (typeVisible && keywordVisible) {
+        $card.show();
+        visibleCount++;
+      } else {
+        $card.hide();
+      }
+    });
+
+    // 更新空状态显示
+    this.updateFilterEmptyState(activeType, visibleCount);
+  }
+
+  /**
+   * 更新筛选后的空状态显示
+   * @param type 变量类型
+   * @param visibleCount 可见卡片数量
+   */
+  private updateFilterEmptyState(type: VariableType, visibleCount: number): void {
+    const $variableList = this.container.find(`#${type}-content .variable-list`);
+    const $existingEmptyState = $variableList.find('.filter-empty-state');
+
+    if (visibleCount === 0) {
+      // 检查是否有变量卡片（即使被隐藏）
+      const totalCards = $variableList.find('.variable-card').length;
+      if (totalCards > 0) {
+        if ($existingEmptyState.length === 0) {
+          $variableList.append('<div class="filter-empty-state"><p>没有符合筛选条件的变量</p></div>');
+        }
+      }
+    } else {
+      $existingEmptyState.remove();
+    }
+  }
+
+  /**
    * 按楼层渲染message类型的变量
    * @param container 容器元素
    * @param variables 变量列表
    */
-  private async renderMessageVariablesByFloor(
-    container: JQuery<HTMLElement>,
-    variables: VariableItem[],
-  ): Promise<void> {
+  private renderMessageVariablesByFloor(container: JQuery<HTMLElement>, variables: VariableItem[]): void {
     // 按楼层分组变量
     const floorGroups: Map<number, VariableItem[]> = new Map();
 
@@ -283,7 +377,7 @@ export class VariableView implements IDomUpdater {
       const floorVariables = floorGroups.get(floor)!;
       const isExpanded = i === 0; // 只展开最新一层楼
 
-      const $panel = await this.createFloorPanel(floor, isExpanded);
+      const $panel = this.createFloorPanel(floor, isExpanded);
       const $panelBody = $panel.find('.floor-panel-body');
 
       for (const variable of floorVariables) {
@@ -302,7 +396,7 @@ export class VariableView implements IDomUpdater {
    * @param isExpanded 是否默认展开
    * @returns 折叠面板jQuery对象
    */
-  private async createFloorPanel(floor: number, isExpanded: boolean): Promise<JQuery<HTMLElement>> {
+  private createFloorPanel(floor: number, isExpanded: boolean): JQuery<HTMLElement> {
     const titleContent = `# ${floor} 楼`;
 
     const $panel = $(`
@@ -362,35 +456,26 @@ export class VariableView implements IDomUpdater {
    * @param content 内容容器
    * @param card 卡片元素
    * @param floorId 楼层ID
-   * @param dataType 数据类型
    */
-  private addCardToFloorPanel(
-    content: JQuery<HTMLElement>,
-    card: JQuery<HTMLElement>,
-    floorId: number  ): void {
-    const $floorPanel = content.find(`.floor-panel[data-floor="${floorId}"]`);
+  private addCardToFloorPanel(content: JQuery<HTMLElement>, card: JQuery<HTMLElement>, floorId: number): void {
+    let $floorPanel = content.find(`.floor-panel[data-floor="${floorId}"]`);
 
     if ($floorPanel.length === 0) {
-      this.createFloorPanel(floorId, true).then($panel => {
-        this.insertFloorPanelInOrder(content, $panel, floorId);
-
-        const $panelBody = $panel.find('.floor-panel-body');
-        card.attr('data-floor-id', floorId.toString());
-        $panelBody.prepend(card);
-        this.addAnimation(card, 'variable-added', () => {});
-      });
-    } else {
-      const $panelBody = $floorPanel.find('.floor-panel-body');
-
-      if (!$panelBody.hasClass('expanded')) {
-        $floorPanel.find('.floor-panel-icon').addClass('expanded');
-        $panelBody.addClass('expanded');
-      }
-
-      card.attr('data-floor-id', floorId.toString());
-      $panelBody.prepend(card);
-      this.addAnimation(card, 'variable-added', () => {});
+      const $panel = this.createFloorPanel(floorId, true);
+      this.insertFloorPanelInOrder(content, $panel, floorId);
+      $floorPanel = $panel;
     }
+
+    const $panelBody = $floorPanel.find('.floor-panel-body');
+
+    if (!$panelBody.hasClass('expanded')) {
+      $floorPanel.find('.floor-panel-icon').addClass('expanded');
+      $panelBody.addClass('expanded');
+    }
+
+    card.attr('data-floor-id', floorId.toString());
+    $panelBody.prepend(card);
+    this.addAnimation(card, 'variable-added', () => {});
   }
 
   /**
@@ -399,11 +484,7 @@ export class VariableView implements IDomUpdater {
    * @param panel 要插入的面板
    * @param floorId 楼层ID
    */
-  private insertFloorPanelInOrder(
-    content: JQuery<HTMLElement>,
-    panel: JQuery<HTMLElement>,
-    floorId: number,
-  ): void {
+  private insertFloorPanelInOrder(content: JQuery<HTMLElement>, panel: JQuery<HTMLElement>, floorId: number): void {
     let inserted = false;
     content.find('.floor-panel').each(function () {
       const existingFloor = parseInt($(this).attr('data-floor') || '0');
@@ -485,6 +566,16 @@ export class VariableView implements IDomUpdater {
       $inputField.val(lastMessageId);
     }
 
+    // 添加输入验证
+    $inputField.on('input', function () {
+      const value = parseInt($(this).val() as string, 10);
+      if ($(this).val() && (isNaN(value) || value < 0)) {
+        $errorMsg.text('楼层号码不能小于0').show();
+      } else {
+        $errorMsg.hide();
+      }
+    });
+
     const result = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', {
       okButton: '确认',
       cancelButton: '取消',
@@ -495,10 +586,18 @@ export class VariableView implements IDomUpdater {
       return;
     }
 
-    const floorId = parseInt($inputField.val() as string, 10);
-    if (isNaN(floorId) || floorId < 0) {
-      $errorMsg.show();
-      setTimeout(() => this.showFloorInputDialog(callback), 10);
+    const inputValue = $inputField.val() as string;
+    const floorId = parseInt(inputValue, 10);
+
+    if (!inputValue.trim() || isNaN(floorId)) {
+      $errorMsg.text('请输入有效的楼层号码').show();
+      setTimeout(() => this.showFloorInputDialog(callback), 100);
+      return;
+    }
+
+    if (floorId < 0) {
+      $errorMsg.text('楼层号码不能小于0').show();
+      setTimeout(() => this.showFloorInputDialog(callback), 100);
       return;
     }
 
@@ -678,7 +777,7 @@ export class VariableView implements IDomUpdater {
 
       const activeType = this.getActiveVariableType();
       const $variableList = this.container.find(`#${activeType}-content .variable-list`);
-      
+
       if (activeType === 'message' && variable.message_id !== undefined) {
         this.addCardToFloorPanel($variableList, newCard, variable.message_id);
       } else {
@@ -703,7 +802,7 @@ export class VariableView implements IDomUpdater {
       }
 
       const $card = this.container.find(`.variable-card[data-variable-id="${variable_id}"]`);
-      
+
       if ($card.length === 0) {
         console.warn(`[VariableManager] 未找到ID为"${variable_id}"的卡片`);
         return;
@@ -724,7 +823,7 @@ export class VariableView implements IDomUpdater {
   private checkAndShowEmptyState(): void {
     const activeType = this.getActiveVariableType();
     const $variableList = this.container.find(`#${activeType}-content .variable-list`);
-    
+
     if ($variableList.find('.variable-card').length === 0) {
       $variableList.html('<div class="empty-state"><p>暂无变量</p></div>');
     }
@@ -737,7 +836,7 @@ export class VariableView implements IDomUpdater {
   public updateVariableCard(variable: VariableItem): void {
     try {
       const $card = this.container.find(`.variable-card[data-variable-id="${variable.id}"]`);
-      
+
       if ($card.length === 0) {
         console.warn(`[VariableManager] 未找到ID为"${variable.id}"的卡片`);
         return;
@@ -746,7 +845,7 @@ export class VariableView implements IDomUpdater {
       // 创建新卡片替换旧卡片，保持一致性
       const newCard = this.cardFactory.createCard(variable);
       newCard.attr('data-type', variable.dataType);
-      
+
       if (variable.message_id !== undefined) {
         newCard.attr('data-floor-id', variable.message_id.toString());
       }
