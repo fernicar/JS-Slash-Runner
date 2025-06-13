@@ -4,7 +4,7 @@
 
 完善了助手宏功能,
 
-- 相比于以前 `{{get_message_variable}}` 只能用在世界书中发送给 ai, 现在楼层中的 `{{get_message_variable::stat_data}}` 等助手宏将会显示为对应的值, 因此你可以用__酒馆正则__直接制作__带变量__的文字状态栏:
+- 现在楼层中的 `{{get_message_variable::stat_data}}` 等助手宏将会显示为对应的值, 因此你可以用酒馆正则直接制作带变量的文字状态栏:
 
   ```typescript
   熟络度: {{get_message_variable::stat_data.络络.熟络度[0]}}
