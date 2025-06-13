@@ -1146,6 +1146,7 @@ async function handleRenderEnableToggle(enable: boolean, userInput: boolean = tr
       addRenderingHideStyleSettings();
     }
     await renderAllIframes();
+    await reloadCurrentChat();
   } else {
     $('#render-settings-content .extension-content-item').not(':first').css('opacity', 0.5);
     if (isRenderingOptimizeEnabled) {

@@ -27,8 +27,8 @@ import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
 const handleChatChanged = async () => {
+  renderAllMacros();
   await renderAllIframes();
-  await renderAllMacros();
   if (getSettingValue('render.rendering_optimize')) {
     addCodeToggleButtonsToAllMessages();
   }

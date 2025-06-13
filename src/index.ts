@@ -22,6 +22,7 @@ import { initVariableManager } from '@/component/variable_manager';
 
 import { event_types, eventSource, saveSettings } from '@sillytavern/script';
 import { extension_settings, renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
+import { renderAllMacros } from './component/macrolike';
 
 const defaultSettings = {
   enabled_extension: true,
@@ -155,6 +156,7 @@ jQuery(async () => {
     initAudioSlashCommands();
     initSlashEventEmit();
     await buildScriptRepository();
+    renderAllMacros();
     await initIframePanel();
     await initReference();
     await initListener();
