@@ -29,9 +29,11 @@ const macros: MacroLike[] = [
   {
     regex: /\{\{get_message_variable::(.*?)\}\}/gi,
     replace: (context: Context, _substring: string, path: string) => {
-      const variables = chat
-        .map(message => _.get(message.variables, message.swipe_id ?? 0, {}))
-        .at(context.message_id ?? -1);
+      const variables =
+        (context.message_id ? chat.slice(0, context.message_id + 1) : chat)
+          .filter(message => message.variables?.[message.swipe_id ?? 0] !== undefined)
+          .map(message => message.variables[message.swipe_id ?? 0])
+          .at(-1) ?? {};
       return JSON.stringify(_.get(variables, path, null));
     },
   },
