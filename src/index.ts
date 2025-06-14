@@ -156,8 +156,8 @@ jQuery(async () => {
     initAudioSlashCommands();
     initSlashEventEmit();
     await buildScriptRepository();
-    renderAllMacros();
     await initIframePanel();
+    renderAllMacros();
     await initReference();
     await initListener();
     initVariableManager();
