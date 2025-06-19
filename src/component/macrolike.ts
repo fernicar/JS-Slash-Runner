@@ -30,7 +30,7 @@ const macros: MacroLike[] = [
     regex: /\{\{get_message_variable::(.*?)\}\}/gi,
     replace: (context: Context, _substring: string, path: string) => {
       const variables =
-        (context.message_id ? chat.slice(0, context.message_id + 1) : chat)
+        (context.message_id !== undefined ? chat.slice(0, context.message_id + 1) : chat)
           .filter(message => message.variables?.[message.swipe_id ?? 0] !== undefined)
           .map(message => message.variables[message.swipe_id ?? 0])
           .at(-1) ?? {};
