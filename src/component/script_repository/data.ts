@@ -1,6 +1,6 @@
 import { Script, ScriptType } from '@/component/script_repository/types';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
-import { characters, this_chid } from '@sillytavern/script';
+import { characters, eventSource, this_chid } from '@sillytavern/script';
 import { writeExtensionField } from '@sillytavern/scripts/extensions';
 
 /**
@@ -291,6 +291,7 @@ export async function replaceCharacterScriptVariables(variables: Record<string, 
   }
   // @ts-ignore
   await writeExtensionField(this_chid, 'TavernHelper_characterScriptVariables', variables);
+  eventSource.emit('character_variables_changed', { variables });
 }
 
 /**

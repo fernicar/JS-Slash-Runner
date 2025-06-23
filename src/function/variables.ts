@@ -53,7 +53,6 @@ export async function replaceVariables(
       }
       message_id = message_id === 'latest' ? chat.length - 1 : (message_id < 0 ? chat.length + message_id : message_id);
       await setChatMessages([{ message_id, data: variables }], { refresh: 'none' });
-      eventSource.emit('message_variables_changed', { message_id, variables });
       break;
     case 'chat':
       _.set(chat_metadata, 'variables', variables);
@@ -61,7 +60,6 @@ export async function replaceVariables(
       break;
     case 'character':
       await replaceCharacterScriptVariables(variables);
-      eventSource.emit('character_variables_changed', { variables });
       break;
     case 'global':
       _.set(extension_settings.variables, 'global', variables);
