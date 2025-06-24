@@ -302,6 +302,13 @@ export class VariableCardFactory {
       const key = $nestedCard.find('.variable-title').val() as string;
       const nestedDataType = $nestedCard.attr('data-type') as VariableDataType;
 
+      console.log('[VariableManager] 处理嵌套卡片:', {
+        index: _index,
+        key: key,
+        dataType: nestedDataType,
+        cardHtml: $nestedCard[0].outerHTML.substring(0, 200) + '...'
+      });
+
       if (key) {
         const nestedValue = this.extractValueFromCard($nestedCard, nestedDataType);
         result[key] = nestedValue;
@@ -310,6 +317,7 @@ export class VariableCardFactory {
       }
     });
 
+    console.log('[VariableManager] 最终提取结果:', result);
     return result;
   }
 
