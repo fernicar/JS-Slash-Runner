@@ -1233,6 +1233,11 @@ interface VariableOption {
    * 当 `type` 为 `'message'` 时, 该参数指定要获取变量的消息楼层号, 如果为负数则为深度索引, 例如 `-1` 表示获取最新的消息楼层; 默认为 `'latest'`
    */
   message_id?: number | 'latest';
+
+  /**
+   * 当 `type` 为 `'script'` 时, 该参数指定要获取变量的脚本 ID; 如果在脚本内调用, 则你可以用 `getScriptId()` 获取该脚本 ID
+   */
+  script_id?: string;
 }
 
 /**
@@ -1260,6 +1265,10 @@ interface VariableOption {
  * @example
  * // 获取倒数第二楼层的聊天变量
  * const variables = getVariables({type: 'message', message_id: -2});
+ *
+ * @example
+ * // 在脚本内获取该脚本绑定的变量
+ * const variables = getVariables({type: 'script', script_id: getScriptId()});
  */
 function getVariables({ type, message_id }?: VariableOption): Record<string, any>;
 
@@ -1284,6 +1293,10 @@ function getVariables({ type, message_id }?: VariableOption): Record<string, any
  * let variables = getVariables();
  * _.unset(variables, "神乐光.好感度");
  * await replaceVariables(variables);
+ *
+ * @example
+ * // 在脚本内替换该脚本绑定的变量
+ * await replaceVariables({神乐光: {好感度: 5, 认知度: 0}}, {type: 'script', script_id: getScriptId()});
  */
 async function replaceVariables(variables: Record<string, any>, { type, message_id }?: VariableOption): Promise<void>;
 
