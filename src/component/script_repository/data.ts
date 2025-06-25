@@ -676,7 +676,7 @@ export class ScriptData {
         throw new Error('[ScriptManager] 文件夹中已存在同名脚本');
       }
 
-      folderScripts.unshift(script);
+      folderScripts.push(script);
     }
 
     if (type === ScriptType.GLOBAL) {
