@@ -139,7 +139,7 @@ export async function updateVariablesWith(
   updater: VariablesUpdater,
   { type = 'chat', message_id = 'latest', script_id }: VariableOption = {},
 ): Promise<Record<string, any>> {
-  let variables = getVariables({ type, message_id });
+  let variables = getVariables({ type, message_id, script_id });
   variables = await updater(variables);
   console.info(
     `对${
