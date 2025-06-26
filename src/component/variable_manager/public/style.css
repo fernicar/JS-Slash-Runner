@@ -249,7 +249,7 @@
 .variable-card-header i,
 .variable-card-header input,
 .add-list-item {
-  font-size: var(--vm-font-small);
+  font-size: var(--vm-font-small) !important;
 }
 
 input.variable-title,
@@ -731,12 +731,12 @@ input.variable-title,
   display: none;
 }
 
-.variable-card[data-type='object'] > .variable-card-content {
+.variable-card[data-type='object']:not(.nested-cards-container .variable-card) > .variable-card-content {
   display: none;
 }
 
 .floor-panel-body.expanded,
-.variable-card[data-type='object'] .variable-card-content.expanded {
+.variable-card[data-type='object']:not(.nested-cards-container .variable-card) .variable-card-content.expanded {
   display: block;
 }
 
