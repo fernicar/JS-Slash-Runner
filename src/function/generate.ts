@@ -1342,10 +1342,10 @@ function extractMessageFromData(data: any) {
 }
 
 async function convertFileToBase64(image: File | string): Promise<string> {
-  if (image instanceof File) {
-    return await getBase64Async(image);
+  if (typeof image === 'string') {
+    return image;
   }
-  return image;
+  return await getBase64Async(image);
 }
 
 function addTemporaryUserMessage(userContent: string) {
