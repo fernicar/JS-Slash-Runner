@@ -39,6 +39,7 @@ import {
   setLorebookEntries,
   updateLorebookEntriesWith,
 } from '@/function/lorebook_entry';
+import { getScriptButtons, replaceScriptButtons } from '@/function/script_repository';
 import { triggerSlash } from '@/function/slash';
 import {
   getTavernRegexes,
@@ -55,7 +56,6 @@ import {
   replaceVariables,
   updateVariablesWith,
 } from '@/function/variables';
-import { getScriptButton, setScriptButton } from '@/function/script_repository';
 import { getTavernHelperVersion, updateTavernHelper } from '@/function/version';
 import { audioEnable, audioImport, audioMode, audioPlay, audioSelect } from '@/slash_command/audio';
 import { builtin } from './builtin';
@@ -146,8 +146,8 @@ function getTavernHelper() {
     insertVariables,
 
     // script_repository
-    getScriptButton,
-    setScriptButton,
+    getScriptButtons,
+    replaceScriptButtons,
 
     // version
     getTavernHelperVersion,

@@ -1,13 +1,17 @@
-import { ScriptManager } from '@/component/script_repository/script_controller';
-import { Script } from '@/component/script_repository/types';
 import { ScriptData } from '@/component/script_repository/data';
+import { ScriptManager } from '@/component/script_repository/script_controller';
+
+interface ScriptButton {
+  name: string;
+  visible: boolean;
+}
 
 /**
  * 获取指定脚本的按钮数组
  * @param script_id 脚本ID
  * @returns 按钮数组
  */
-export function getScriptButton(script_id: string): Script['buttons'] {
+export function getScriptButtons(script_id: string): ScriptButton[] {
   if (!script_id) {
     throw new Error('脚本ID不能为空');
   }
@@ -19,7 +23,7 @@ export function getScriptButton(script_id: string): Script['buttons'] {
  * @param script_id 脚本ID
  * @param buttons 脚本数组
  */
-export function setScriptButton(script_id: string, buttons: Script['buttons']): void {
+export function replaceScriptButtons(script_id: string, buttons: ScriptButton[]): void {
   if (!script_id) {
     throw new Error(`脚本ID不能为空`);
   }
