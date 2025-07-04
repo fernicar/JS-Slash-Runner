@@ -2168,7 +2168,7 @@ const TavernHelper: typeof window.TavernHelper;
 function getIframeName(): string;
 
 /**
- * 获取脚本库的 id, **只能对脚本库使用**
+ * 获取使用此函数的脚本在脚本库中的 id, **只能对脚本库使用**
  *
  * @returns 脚本库的 id
  */
