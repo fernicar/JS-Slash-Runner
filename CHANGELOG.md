@@ -3,6 +3,7 @@
 ### ⏫功能
 
 - 新增 `eventEmitAndWait` 用于在非异步函数中监听并等待事件.
+- 新增 `getScriptButton` 和 `setScriptButton` 用于获取和设置脚本按钮
 
 ## 3.2.4
 

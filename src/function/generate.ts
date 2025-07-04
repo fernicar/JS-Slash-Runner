@@ -312,7 +312,8 @@ class StreamingProcessor {
     // 计算增量文本
     const newText = text.slice(this.messageBuffer.length);
     this.messageBuffer = text;
-
+    // 兼容旧版本
+    // @ts-ignore
     let processedText = cleanUpMessage(newText, false, false, !isFinal, this.stoppingStrings);
 
     const charsToBalance = ['*', '"', '```'];
@@ -327,6 +328,8 @@ class StreamingProcessor {
     eventSource.emit('js_stream_token_received_incrementally', processedText);
 
     if (isFinal) {
+      // 兼容旧版本
+      // @ts-ignore
       const fullText = cleanUpMessage(text, false, false, false, this.stoppingStrings);
       eventSource.emit('js_generation_ended', fullText);
     }

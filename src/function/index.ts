@@ -55,6 +55,7 @@ import {
   replaceVariables,
   updateVariablesWith,
 } from '@/function/variables';
+import { getScriptButton, setScriptButton } from '@/function/script_repository';
 import { getTavernHelperVersion, updateTavernHelper } from '@/function/version';
 import { audioEnable, audioImport, audioMode, audioPlay, audioSelect } from '@/slash_command/audio';
 import { builtin } from './builtin';
@@ -143,6 +144,10 @@ function getTavernHelper() {
     insertOrAssignVariables,
     deleteVariable,
     insertVariables,
+
+    // script_repository
+    getScriptButton,
+    setScriptButton,
 
     // version
     getTavernHelperVersion,

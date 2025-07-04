@@ -404,7 +404,7 @@ export class ScriptData {
    * @param script 脚本对象
    * @returns 脚本类型
    */
-  getScriptType(script: Script): ScriptType {
+  public getScriptType(script: Script): ScriptType {
     return this.globalScripts.some(s => s.id === script.id) ? ScriptType.GLOBAL : ScriptType.CHARACTER;
   }
 
