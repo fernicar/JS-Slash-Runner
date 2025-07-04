@@ -5,9 +5,12 @@
 - 新增 `getScriptButtons` 和 `replaceScriptButtons` 用于获取和替换脚本的按钮设置, 例如, 你可以这样设置二级按钮:
 
   ```typescript
-  eventOnButton("前往地点" () => {
-    replaceScriptButtons(getScriptId(), [{name: '学校', visible: true}, {name: '商店', visible: true}])
-  })
+  eventOnButton('前往地点', () => {
+    replaceScriptButtons(getScriptId(), [
+      { name: '学校', visible: true },
+      { name: '商店', visible: true },
+    ]);
+  });
   ```
 
 - 新增 `eventEmitAndWait` 用于在非异步函数中监听并等待事件.
