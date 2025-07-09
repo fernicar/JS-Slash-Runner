@@ -1,4 +1,4 @@
-import { destroyIframe } from '@/component/message_iframe';
+import { destroyIframe } from '@/component/message_iframe/render_message';
 import { ScriptData } from '@/component/script_repository/data';
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import {
@@ -37,11 +37,15 @@ class ScriptExecutor {
 
       const htmlContent = this.createScriptHtml(script);
 
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+
       const $iframe = $('<iframe>', {
         style: 'display: none;',
         id: `tavern-helper-script-${script.name}`,
-        srcdoc: htmlContent,
+        src: blobUrl,
         'script-id': script.id,
+        'data-blob-url': blobUrl,
       });
 
       $iframe.on('load', () => {
@@ -83,6 +87,7 @@ class ScriptExecutor {
     return `
       <html>
       <head>
+        <base href="${window.location.origin}/">
         ${third_party}
         <script>
           (function ($) {

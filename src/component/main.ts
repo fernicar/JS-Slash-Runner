@@ -3,16 +3,20 @@ import { destroyMacroOnExtension, initializeMacroOnExtension, renderAllMacros } 
 import {
   addCodeToggleButtonsToAllMessages,
   addRenderingHideStyleSettings,
-  addRenderingOptimizeSettings,
-  partialRenderEvents,
   removeRenderingHideStyleSettings,
-  removeRenderingOptimizeSettings,
+} from '@/component/message_iframe/render_hide_style';
+import {
+  partialRenderEvents,
   renderAllIframes,
   renderMessageAfterDelete,
   renderPartialIframes,
   tampermonkey_script,
   viewport_adjust_script,
-} from '@/component/message_iframe';
+} from '@/component/message_iframe/render_message';
+import {
+  addRenderingOptimizeSettings,
+  removeRenderingOptimizeSettings,
+} from '@/component/message_iframe/render_optimize';
 import { destroyCharacterLevelOnExtension, initializeCharacterLevelOnExtension } from '@/component/script_iframe';
 import {
   buildScriptRepositoryOnExtension,
@@ -26,12 +30,13 @@ import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
 
+const handleChatLoaded = async () => {
+  await renderAllIframes();
+  addCodeToggleButtonsToAllMessages();
+};
+
 const handleChatChanged = async () => {
   renderAllMacros();
-  await renderAllIframes();
-  if (getSettingValue('render.rendering_optimize')) {
-    addCodeToggleButtonsToAllMessages();
-  }
 };
 
 const handlePartialRender = (mesId: string) => {
@@ -43,7 +48,7 @@ const handleMessageDeleted = (mesId: string) => {
   const mesIdNumber = parseInt(mesId, 10);
   clearTempVariables();
   renderMessageAfterDelete(mesIdNumber);
-  if (getSettingValue('render.rendering_optimize')) {
+  if (getSettingValue('render.render_hide_style')) {
     addCodeToggleButtonsToAllMessages();
   }
 };
@@ -97,6 +102,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     window.addEventListener('message', handleIframe);
 
     eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
+    eventSource.on('chatLoaded', handleChatLoaded);
 
     partialRenderEvents.forEach(eventType => {
       eventSource.on(eventType, handlePartialRender);
@@ -133,7 +139,7 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
     window.removeEventListener('message', handleIframe);
 
     eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
-
+    eventSource.removeListener('chatLoaded', handleChatLoaded);
     partialRenderEvents.forEach(eventType => {
       eventSource.removeListener(eventType, handlePartialRender);
     });

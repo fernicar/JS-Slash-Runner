@@ -75,11 +75,11 @@
             <div id="update-extension" class="TavernHelper-button">更新</div>
           </div>
           <div class="major-divider-container">
-            <div class="major-divider-text"><i class="fa-solid fa-tools margin-r5"></i>编写工具</div>
+            <div class="major-divider-text"><i class="fa-solid fa-tools margin-r5"></i>开发工具</div>
             <div class="major-divider-line"></div>
           </div>
           <div class="extension-content-item box-container collapsible flexFlowColumn" style="align-items: flex-start">
-            <div id="extension-listener-header" class="flex-container spaceBetween alignItemsCenter width100p" style="flex: 0.9;">
+            <div id="extension-listener-header" class="flex-container spaceBetween alignItemsCenter width100p" style="flex: 0.9; flex-wrap: nowrap;">
               <div class="flex flexFlowColumn">
                 <div class="settings-title-text">实时监听</div>
                 <div class="settings-title-description">连接 VSCode / Cursor ，将代码修改实时同步到酒馆</div>
@@ -96,6 +96,18 @@
               </div>
             </div>
             <div id="extension-reference" class="flex-container collapsible-content width100p"></div>
+          </div>
+          <div class="extension-content-item box-container">
+            <div class="flex flexFlowColumn">
+              <div class="settings-title-text">调试模式</div>
+              <div class="settings-title-description">开启调试模式，将在控制台输出更多信息</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="debug-mode-toggle" class="toggle-input" checked />
+              <label for="debug-mode-toggle" class="toggle-label">
+                <span class="toggle-handle"></span>
+              </label>
+            </div>
           </div>
           <div class="major-divider-container">
             <div class="major-divider-text"><i class="fa-solid fa-shapes margin-r5"></i>扩展信息</div>
