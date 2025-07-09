@@ -1,5 +1,3 @@
-import { findChar } from '@/compatibility';
-
 import {
   characters,
   chat_metadata,
@@ -14,7 +12,7 @@ import {
 } from '@sillytavern/script';
 // @ts-ignore
 import { selected_group } from '@sillytavern/scripts/group-chats';
-import { ensureImageFormatSupported, getCharaFilename } from '@sillytavern/scripts/utils';
+import { ensureImageFormatSupported, findChar, getCharaFilename } from '@sillytavern/scripts/utils';
 import {
   createNewWorldInfo,
   deleteWorldInfo,
