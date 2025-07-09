@@ -5,6 +5,8 @@ import third_party from '@/third_party.html';
 import { event_types, eventSource } from '@sillytavern/script';
 import { RegexScriptData } from '@sillytavern/scripts/char-data';
 
+import log from 'loglevel';
+
 interface Script {
   name: string;
   code: string;
@@ -55,7 +57,7 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
 
   const load_promise = new Promise<void>(resolve => {
     iframe.onload = () => {
-      console.info(`[(deprecated)Script](${iframe.id}) 加载完毕`);
+      log.info(`[(deprecated)Script](${iframe.id}) 加载完毕`);
       resolve();
     };
   });
@@ -67,12 +69,12 @@ function makeScriptIframe(script: Script): { iframe: HTMLIFrameElement; load_pro
 
 function destroy(): void {
   if (script_map.size !== 0) {
-    console.log(`[(deprecated)Script] 清理全局脚本...`);
+    log.info(`[(deprecated)Script] 清理全局脚本...`);
     script_map.forEach((iframe, _) => {
       iframe.remove();
     });
     script_map.clear();
-    console.log(`[(deprecated)Script] 全局脚本清理完成!`);
+    log.info(`[(deprecated)Script] 全局脚本清理完成!`);
   }
 }
 
@@ -81,7 +83,7 @@ async function initialize(): Promise<void> {
     destroy();
 
     const scripts = loadScripts();
-    console.info(`[(deprecated)Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
+    log.info(`[(deprecated)Script] 加载全局脚本: ${JSON.stringify(scripts.map(script => script.name))}`);
 
     const load_promises: Promise<void>[] = [];
 
@@ -93,7 +95,7 @@ async function initialize(): Promise<void> {
 
     await Promise.allSettled(load_promises);
   } catch (error) {
-    console.error('[(deprecated)Script] 全局脚本加载失败:', error);
+    log.error('[(deprecated)Script] 全局脚本加载失败:', error);
     throw error;
   }
 }
