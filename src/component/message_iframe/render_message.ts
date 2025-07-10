@@ -399,10 +399,10 @@ function adjustIframeHeight(iframe: HTMLIFrameElement) {
 
   const doc = $iframe[0].contentWindow.document;
 
-  const bodyHeight = doc.body.scrollHeight;
-  const htmlHeight = doc.documentElement.scrollHeight;
+  const bodyHeight = doc.body.offsetHeight;
+  const htmlHeight = doc.documentElement.offsetHeight;
 
-  const newHeight = Math.max(bodyHeight, htmlHeight);
+  const newHeight = Math.min(bodyHeight, htmlHeight);
   const currentHeight = parseFloat($iframe.css('height')) || 0;
 
   if (Math.abs(currentHeight - newHeight) > 5) {
