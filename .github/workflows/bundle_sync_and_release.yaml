@@ -69,7 +69,7 @@ jobs:
         with:
           include: 'manifest.json'
           find: '(?<="version": ").*(?=")'
-          replace: ${{ github.ref_type == 'tag' && manual_tag.outputs.result || steps.autotag.outputs.new-tag }}
+          replace: ${{ github.ref_type == 'tag' && steps.manual_tag.outputs.result || steps.autotag.outputs.new-tag }}
           regex: true
 
       # commit
