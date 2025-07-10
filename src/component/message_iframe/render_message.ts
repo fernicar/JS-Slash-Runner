@@ -144,7 +144,7 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
             <head>
               <style>
               ${needsVhHandling ? `:root{--viewport-height:${window.innerHeight}px;}` : ``}
-              html,body{margin:0;padding:0;overflow:hidden!important;max-width:100%!important;max-height:9999px!important;box-sizing:border-box}
+              html,body{margin:0;padding:0;overflow:hidden!important;max-width:100%!important;box-sizing:border-box}
               .user_avatar,.user-avatar{background-image:url('${getUserAvatarPath()}')}
               .char_avatar,.char-avatar{background-image:url('${getCharAvatarPath()}')}
               </style>
