@@ -43,7 +43,7 @@ jobs:
         working-directory: public/scripts/extensions/third-party/JS-Slash-Runner
 
       # tag if `[release]` is in the commit message
-      - id: should_tag
+      - id: should_autotag
         shell: bash
         run: |
           if [[ $(git log -n 1 --pretty=format:"%s") == *"[release]"* ]]; then
@@ -51,18 +51,25 @@ jobs:
           else
             echo "result=false" >> "$GITHUB_OUTPUT"
           fi
-      - if: ${{ github.ref_type == 'tag' || steps.should_tag.outputs.result == 'true' }}
+      - if: ${{ github.ref_type != 'tag' && steps.should_autotag.outputs.result == 'true' }}
         id: autotag
         uses: phish108/autotag-action@v1.1.64
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           dry-run: true
-      - if: ${{ github.ref_type == 'tag' || steps.should_tag.outputs.result == 'true' }}
+      - if: ${{ github.ref_type == 'tag' }}
+        id: manual_tag
+        env:
+          VALUE: ${{ github.ref }}
+        run: |
+          export TAG=${VALUE##refs/tags/}
+          echo result=$TAG >> "$GITHUB_OUTPUT"
+      - if: ${{ github.ref_type == 'tag' || steps.should_autotag.outputs.result == 'true' }}
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           include: 'manifest.json'
           find: '(?<="version": ").*(?=")'
-          replace: ${{ github.ref_type == 'tag' && steps.autotag.outputs.tag || steps.autotag.outputs.new-tag }}
+          replace: ${{ github.ref_type == 'tag' && manual_tag.outputs.result || steps.autotag.outputs.new-tag }}
           regex: true
 
       # commit
@@ -72,7 +79,7 @@ jobs:
           default_author: github_actions
           message: '[bot] Bundle'
           cwd: public/scripts/extensions/third-party/JS-Slash-Runner
-          tag: ${{ steps.should_tag.outputs.result == 'true' && steps.autotag.outputs.new-tag || '' }}
+          tag: ${{ steps.should_autotag.outputs.result == 'true' && steps.autotag.outputs.new-tag || '' }}
 
   sync:
     needs: bundle
