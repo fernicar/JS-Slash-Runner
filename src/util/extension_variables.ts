@@ -12,7 +12,7 @@ export const charsPath = '/characters/';
 export const getUserAvatarPath = () => `./User Avatars/${user_avatar}`;
 export const getCharAvatarPath = () => {
   //@ts-ignore
-  const thumbnailPath = getThumbnailUrl('avatar', characters[this_chid].avatar);
+  const thumbnailPath = getThumbnailUrl('avatar', characters[this_chid]?.avatar || characters[this_chid]?.name || '');
   const targetAvatarImg = thumbnailPath.substring(thumbnailPath.lastIndexOf('=') + 1);
   return charsPath + targetAvatarImg;
 };
