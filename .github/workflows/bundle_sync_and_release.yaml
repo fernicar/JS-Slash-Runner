@@ -43,19 +43,29 @@ jobs:
         working-directory: public/scripts/extensions/third-party/JS-Slash-Runner
 
       # tag if `[release]` is in the commit message
-      - id: should_autotag
+      - id: autotag_check
         shell: bash
         run: |
-          if [[ $(git log -n 1 --pretty=format:"%s") == *"[release]"* ]]; then
-            echo "result=true" >> "$GITHUB_OUTPUT"
+          message=$(git log -n 1 --pretty=format:"%s")
+          if [[ $message == *"[release]"* || $message == *"[release patch]"* ]]; then
+            echo "should_tag=true" >> "$GITHUB_OUTPUT"
+            echo "bump=patch" >> "$GITHUB_OUTPUT"
+          elif [[ $message == *"[release minor]"* ]]; then
+            echo "should_tag=true" >> "$GITHUB_OUTPUT"
+            echo "bump=minor" >> "$GITHUB_OUTPUT"
+          elif [[ $message == *"[release major]"* ]]; then
+            echo "should_tag=true" >> "$GITHUB_OUTPUT"
+            echo "bump=major" >> "$GITHUB_OUTPUT"
           else
-            echo "result=false" >> "$GITHUB_OUTPUT"
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            echo "bump=" >> "$GITHUB_OUTPUT"
           fi
-      - if: ${{ github.ref_type != 'tag' && steps.should_autotag.outputs.result == 'true' }}
+      - if: ${{ github.ref_type != 'tag' && steps.autotag_check.outputs.should_tag == 'true' }}
         id: autotag
         uses: phish108/autotag-action@v1.1.64
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          bump: ${{ steps.autotag_check.outputs.bump }}
           dry-run: true
       - if: ${{ github.ref_type == 'tag' }}
         id: manual_tag
@@ -64,7 +74,7 @@ jobs:
         run: |
           export TAG=${VALUE##refs/tags/}
           echo result=$TAG >> "$GITHUB_OUTPUT"
-      - if: ${{ github.ref_type == 'tag' || steps.should_autotag.outputs.result == 'true' }}
+      - if: ${{ github.ref_type == 'tag' || steps.autotag_check.outputs.should_tag == 'true' }}
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           include: 'manifest.json'
@@ -79,7 +89,7 @@ jobs:
           default_author: github_actions
           message: '[bot] Bundle'
           cwd: public/scripts/extensions/third-party/JS-Slash-Runner
-          tag: ${{ steps.should_autotag.outputs.result == 'true' && steps.autotag.outputs.new-tag || '' }}
+          tag: ${{ steps.autotag_check.outputs.should_tag == 'true' && steps.autotag.outputs.new-tag || '' }}
 
   sync:
     needs: bundle
