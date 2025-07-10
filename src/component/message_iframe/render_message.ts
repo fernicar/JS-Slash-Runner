@@ -142,7 +142,6 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
         const srcdocContent = `
             <html>
             <head>
-              <base href="${window.location.origin}/">
               <style>
               ${needsVhHandling ? `:root{--viewport-height:${window.innerHeight}px;}` : ``}
               html,body{margin:0;padding:0;overflow:hidden!important;max-width:100%!important;max-height:9999px!important;box-sizing:border-box}
@@ -165,13 +164,9 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
             </html>
           `;
 
-        const blob = new Blob([srcdocContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        $iframe.attr('src', url);
+        $iframe.attr('srcdoc', srcdocContent);
 
         $iframe.on('load', function () {
-          URL.revokeObjectURL(url);
-
           observeIframeContent(this);
 
           $wrapper = $(this).parent();
@@ -670,13 +665,6 @@ export function destroyIframe(iframe: HTMLIFrameElement): Promise<void> {
           eventSource.removeListener('message_iframe_render_ended', iframeId as any);
           eventSource.removeListener('message_iframe_render_started', iframeId as any);
         }
-
-        const currentSrc = $iframe.attr('src');
-        if (currentSrc && currentSrc.startsWith('blob:')) {
-          URL.revokeObjectURL(currentSrc);
-        }
-
-        $iframe.attr('src', 'about:blank');
       } catch (e) {
         log.debug('[Render] 清空iframe内容时出错:', e);
       }
