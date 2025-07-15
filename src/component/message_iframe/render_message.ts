@@ -49,13 +49,11 @@ async function renderMessagesInIframes(mode = RENDER_MODES.FULL, specificMesId: 
 
   for (const messageId of messagesToCancelIds) {
     const message = context.chat[messageId];
-    const $iframes = $(`[id^="message-iframe-${messageId}-"]`);
+    const $iframes = $(`[id^="message-iframe-${messageId}-"]`) as JQuery<HTMLIFrameElement>;
     if ($iframes.length > 0) {
-      await Promise.all(
-        $iframes.toArray().map(async iframe => {
-          await destroyIframe(iframe as HTMLIFrameElement);
-        }),
-      );
+      $iframes.each(function () {
+        destroyIframe(this);
+      });
       updateMessageBlock(messageId, message);
     }
     if (getSettingValue('render.render_hide_style')) {
@@ -604,93 +602,31 @@ export async function renderPartialIframes(mesId: number) {
  * 销毁iframe
  * @param iframe iframe元素
  */
-export function destroyIframe(iframe: HTMLIFrameElement): Promise<void> {
-  return new Promise(resolve => {
-    const $iframe = $(iframe);
+export function destroyIframe(iframe: HTMLIFrameElement): void {
+  const $iframe = $(iframe);
+  if (!$iframe.length) {
+    return;
+  }
 
-    if (!$iframe.length) {
-      resolve();
-      return;
-    }
-
-    const iframeId = $iframe.attr('id');
-
-    $iframe.off();
-
-    try {
-      if ($iframe[0].contentWindow) {
-        const iframeDoc = $iframe[0].contentWindow.document;
-        if (iframeDoc) {
-          $(iframeDoc).find('*').off();
-          $(iframeDoc).off();
-        }
-      }
-    } catch (e) {
-      log.debug('[Render] 清理iframe内部事件时出错:', e);
-    }
-
-    try {
-      const $mediaElements = $iframe.contents().find('audio, video');
-      $mediaElements.each(function () {
-        if (this instanceof HTMLMediaElement) {
-          this.pause();
-          this.src = '';
-          this.load();
-          $(this).off();
-        }
-      });
-    } catch (e) {
-      log.debug('[Render] 清理媒体元素时出错:', e);
-    }
-
-    if ($iframe[0].contentWindow && 'stop' in $iframe[0].contentWindow) {
-      $iframe[0].contentWindow.stop();
-    }
-
-    // 如果有ResizeObserver实例和已观察元素的记录
-    if (window._sharedResizeObserver && window._observedElements) {
-      for (const [element, data] of window._observedElements.entries()) {
-        if (data.iframe === iframe) {
-          window._sharedResizeObserver.unobserve(element);
-          window._observedElements.delete(element);
-          break;
-        }
+  // 如果有ResizeObserver实例和已观察元素的记录
+  if (window._sharedResizeObserver && window._observedElements) {
+    for (const [element, data] of window._observedElements.entries()) {
+      if (data.iframe === iframe) {
+        window._sharedResizeObserver.unobserve(element);
+        window._observedElements.delete(element);
+        break;
       }
     }
+  }
 
-    // 清空iframe内容
-    if ($iframe[0].contentWindow) {
-      try {
-        if (iframeId && typeof eventSource.removeListener === 'function') {
-          eventSource.removeListener('message_iframe_render_ended', iframeId as any);
-          eventSource.removeListener('message_iframe_render_started', iframeId as any);
-        }
-      } catch (e) {
-        log.debug('[Render] 清空iframe内容时出错:', e);
-      }
-    }
+  // 从DOM中移除
+  $iframe.remove();
 
-    // 从DOM中移除
-    $iframe.remove();
-
-    // 移除jQuery数据缓存
-    try {
-      $iframe.removeData();
-    } catch (e) {
-      log.debug('[Render] 移除jQuery数据缓存时出错:', e);
-    }
-
-    if (window._observedElements?.size === 0 && window._sharedResizeObserver) {
-      window._sharedResizeObserver.disconnect();
-      window._sharedResizeObserver = undefined;
-      log.info('[Render] 所有iframe已移除，停止观察');
-    }
-
-    // 确保所有清理操作都完成后再resolve
-    setTimeout(() => {
-      resolve();
-    }, 0);
-  });
+  if (window._observedElements?.size === 0 && window._sharedResizeObserver) {
+    window._sharedResizeObserver.disconnect();
+    window._sharedResizeObserver = undefined;
+    log.info('[Render] 所有iframe已移除，停止观察');
+  }
 }
 
 /**
@@ -698,37 +634,10 @@ export function destroyIframe(iframe: HTMLIFrameElement): Promise<void> {
  * @returns {Promise<void>}
  */
 export async function clearAllIframes(): Promise<void> {
-  const $iframes = $('iframe[id^="message-iframe"]');
-  await Promise.all(
-    $iframes.toArray().map(async iframe => {
-      await destroyIframe(iframe as HTMLIFrameElement);
-    }),
-  );
-
-  // 清理相关的事件监听器
-  try {
-    if (typeof eventSource.removeListener === 'function') {
-      eventSource.removeListener('message_iframe_render_started', null as any);
-      eventSource.removeListener('message_iframe_render_ended', null as any);
-    }
-  } catch (e) {
-    log.debug('[Render] 清理事件监听器时出错:', e);
-  }
-
-  // 尝试主动触发垃圾回收
-  try {
-    let arr = [];
-    for (let i = 0; i < 10; i++) {
-      arr.push(new Array(1000000).fill(1));
-    }
-    arr = null as any;
-
-    if (window.gc) {
-      window.gc();
-    }
-  } catch (e) {
-    log.debug('尝试触发垃圾回收时出错:', e);
-  }
+  const $iframes = $('iframe[id^="message-iframe"]') as JQuery<HTMLIFrameElement>;
+  $iframes.each(function () {
+    destroyIframe(this);
+  });
 }
 
 /**
@@ -741,16 +650,12 @@ export function setupIframeRemovalListener(): MutationObserver {
       if (mutation.removedNodes.length) {
         mutation.removedNodes.forEach(node => {
           if (node instanceof HTMLIFrameElement) {
-            destroyIframe(node).catch(err => {
-              log.error('[Render] 清理iframe时出错:', err);
-            });
+            destroyIframe(node);
           } else if (node instanceof HTMLElement) {
             const iframes = node.querySelectorAll('iframe');
             if (iframes.length) {
               iframes.forEach(iframe => {
-                destroyIframe(iframe).catch(err => {
-                  log.error('[Render] 清理iframe时出错:', err);
-                });
+                destroyIframe(iframe);
               });
             }
           }
@@ -767,7 +672,7 @@ export function setupIframeRemovalListener(): MutationObserver {
  * 删除消息后重新渲染
  * @param mesId 消息ID
  */
-export async function renderMessageAfterDelete(mesId: number) {
+export function renderMessageAfterDelete(mesId: number) {
   const context = getContext();
   const processDepth = parseInt($('#render-depth').val() as string, 10);
   const totalMessages = context.chat.length;
@@ -795,7 +700,7 @@ export async function renderMessageAfterDelete(mesId: number) {
     if (!hasCodeBlock && !iframe) {
       return;
     }
-    await destroyIframe(iframe as HTMLIFrameElement);
+    destroyIframe(iframe as HTMLIFrameElement);
     updateMessageBlock(maxRemainId, message);
     renderPartialIframes(maxRemainId);
   } else {
@@ -812,7 +717,7 @@ export async function renderMessageAfterDelete(mesId: number) {
       if (!hasCodeBlock && !iframe) {
         continue;
       }
-      await destroyIframe(iframe as HTMLIFrameElement);
+      destroyIframe(iframe as HTMLIFrameElement);
       updateMessageBlock(i, message);
       renderPartialIframes(i);
     }

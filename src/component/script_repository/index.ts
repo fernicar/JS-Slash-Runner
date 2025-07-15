@@ -86,11 +86,11 @@ export class ScriptRepositoryApp {
    */
   private registerEvents(): void {
     load_events.forEach(eventType => {
-      eventSource.on(eventType, this.refreshCharacterRepository.bind(this));
+      eventSource.makeFirst(eventType, this.refreshCharacterRepository.bind(this));
     });
 
     delete_events.forEach(eventType => {
-      eventSource.on(eventType, (character: any) => purgeEmbeddedScripts({ character }));
+      eventSource.makeFirst(eventType, (character: any) => purgeEmbeddedScripts({ character }));
     });
   }
 

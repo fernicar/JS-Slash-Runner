@@ -69,7 +69,7 @@ class ScriptExecutor {
     )[0] as IFrameElement;
 
     if (iframeElement) {
-      await destroyIframe(iframeElement);
+      destroyIframe(iframeElement);
       log.info(`[ScriptManager] 禁用${typeName}脚本["${script.name}"]`);
     }
   }
