@@ -152,6 +152,11 @@ async function initDebugMode() {
         log.setLevel('warn');
       }
     });
+  if (debugEnabled) {
+    log.enableAll();
+  } else {
+    log.setLevel('warn');
+  }
 }
 
 /**
