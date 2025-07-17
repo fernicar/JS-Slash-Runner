@@ -66,6 +66,15 @@ export function injectLoadingStyles() {
 }
 
 /**
+ * 同步前端渲染相关UI（按钮和文本）
+ * @param enable 是否启用渲染
+ */
+function syncRenderToggleUI(enable: boolean) {
+  $('#render-enable-toggle').prop('checked', enable);
+  $('#tavern-helper-render-text').text(enable ? '关闭前端渲染' : '开启前端渲染');
+}
+
+/**
  * 添加前端渲染快速按钮
  */
 function addRenderQuickButton() {
@@ -78,9 +87,7 @@ function addRenderQuickButton() {
   $('#extensionsMenu').append(buttonHtml);
   $('#tavern-helper-render-container').on('click', async function () {
     const isRenderEnabled = getSettingValue('render.render_enabled') ?? defaultIframeSettings.render_enabled;
-    $('#tavern-helper-render-text').text(!isRenderEnabled ? '关闭前端渲染' : '开启前端渲染');
     await handleRenderEnableToggle(!isRenderEnabled, true);
-    $('#render-enable-toggle').prop('checked', isRenderEnabled);
   });
 }
 
@@ -163,6 +170,8 @@ export async function onDepthInput(value: string) {
  * @param userInput 是否由用户手动触发
  */
 export async function handleRenderEnableToggle(enable: boolean, userInput: boolean = true) {
+  syncRenderToggleUI(enable);
+
   if (userInput) {
     saveSettingValue('render.render_enabled', enable);
   }
