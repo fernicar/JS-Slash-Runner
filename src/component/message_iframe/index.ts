@@ -76,8 +76,8 @@ function addRenderQuickButton() {
   </div>`);
   buttonHtml.css('display', 'flex');
   $('#extensionsMenu').append(buttonHtml);
-  const isRenderEnabled = getSettingValue('render.render_enabled') ?? defaultIframeSettings.render_enabled;
   $('#tavern-helper-render-container').on('click', async function () {
+    const isRenderEnabled = getSettingValue('render.render_enabled') ?? defaultIframeSettings.render_enabled;
     $('#tavern-helper-render-text').text(!isRenderEnabled ? '关闭前端渲染' : '开启前端渲染');
     await handleRenderEnableToggle(!isRenderEnabled, true);
     $('#render-enable-toggle').prop('checked', isRenderEnabled);
