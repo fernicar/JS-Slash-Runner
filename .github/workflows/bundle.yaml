@@ -96,13 +96,3 @@ jobs:
         run: |
           git tag ${{ github.ref_type == 'tag' && steps.manual_tag.outputs.result || steps.autotag.outputs.new-tag }}
           git push --tags
-
-  sync:
-    needs: bundle
-    runs-on: ubuntu-latest
-    steps:
-      - uses: keninkujovic/gitlab-sync@2.0.0
-        with:
-          gitlab_url: https://gitlab.com/novi028/JS-Slash-Runner.git
-          username: novi028
-          gitlab_pat: ${{ secrets.GITLAB_PAT }}
