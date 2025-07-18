@@ -1,7 +1,5 @@
 import {
-  bindQrEnabledChangeListener,
   checkQrEnabledStatusAndAddButton,
-  unbindQrEnabledChangeListener,
 } from '@/component/script_repository/button';
 import { purgeEmbeddedScripts, ScriptData } from '@/component/script_repository/data';
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
@@ -62,7 +60,6 @@ export class ScriptRepositoryApp {
       ScriptManager.destroyInstance();
       UIController.destroyInstance();
       ScriptData.destroyInstance();
-      unbindQrEnabledChangeListener();
     }
   }
 
@@ -105,7 +102,7 @@ export class ScriptRepositoryApp {
         }
         this.sendFormObserver!.debounceTimer = setTimeout(() => {
           this.handleSendFormChange();
-        }, 250);
+        }, 500);
       }
     }) as ExtendedMutationObserver;
 
@@ -140,7 +137,6 @@ export class ScriptRepositoryApp {
 
     try {
       checkQrEnabledStatusAndAddButton();
-      bindQrEnabledChangeListener();
     } catch (error) {
       log.error('[ScriptManager] 处理send_form变化时出错:', error);
     }

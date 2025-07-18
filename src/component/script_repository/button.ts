@@ -251,36 +251,6 @@ function _setButtonLogic() {
 }
 
 /**
- * qr启用或者禁用时重新添加按钮
- */
-export function bindQrEnabledChangeListener() {
-  $(`#qr--isEnabled`).on('change', () => {
-    isQrEnabled = $('#qr--isEnabled').prop('checked');
-    checkQrEnabledStatusAndAddButton();
-    log.info('[script_manager] 创建按钮');
-  });
-
-  $('#qr--isCombined').on('change', () => {
-    isCombined = $('#qr--isCombined').prop('checked');
-    checkQrEnabledStatusAndAddButton();
-    log.info('[script_manager] 创建按钮');
-  });
-
-  $('#qr--global-setListAdd, #qr--chat-setListAdd, .qr--del').on('click', () => {
-    checkQrEnabledStatusAndAddButton();
-    log.info('[script_manager] 创建按钮');
-  });
-}
-
-/**
- * 解绑 qr--isEnabled 元素的 change 事件监听器
- */
-export function unbindQrEnabledChangeListener() {
-  $(`#qr--isEnabled, #qr--isCombined`).off('change');
-  $(`#qr--global-setListAdd, #qr--chat-setListAdd, .qr--del`).off('click');
-}
-
-/**
  * 根据qr--isEnabled状态处理容器
  */
 function checkQrEnabledStatus() {
@@ -336,5 +306,4 @@ export function checkQrEnabledStatusAndAddButton() {
 export function initScriptButton() {
   checkQrEnabledStatus();
   checkQrCombinedStatus();
-  bindQrEnabledChangeListener();
 }
