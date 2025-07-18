@@ -46,6 +46,11 @@ export const DEFAULT_SCRIPT_CONFIGS: Record<string, ScriptConfig> = {
     content: 'https://fastly.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/自动开启角色卡局部正则/index.js',
     info: 'https://fastly.jsdelivr.net/gh/StageDog/tavern_resource/src/酒馆助手/自动开启角色卡局部正则/README.md',
   },
+  查看提示词发送情况: {
+    name: '查看提示词发送情况',
+    content: 'https://fastly.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆助手/查看提示词发送情况/index.js',
+    info: 'https://fastly.jsdelivr.net/gh/StageDog/tavern_resource/src/酒馆助手/查看提示词发送情况/README.md',
+  },
 };
 
 function loadScriptContent(content: string): string {
