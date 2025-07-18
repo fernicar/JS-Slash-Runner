@@ -1,6 +1,4 @@
-import {
-  checkQrEnabledStatusAndAddButton,
-} from '@/component/script_repository/button';
+import { checkQrEnabledStatusAndAddButton } from '@/component/script_repository/button';
 import { purgeEmbeddedScripts, ScriptData } from '@/component/script_repository/data';
 import { scriptEvents, ScriptRepositoryEventType } from '@/component/script_repository/events';
 import { ScriptManager } from '@/component/script_repository/script_controller';
@@ -31,6 +29,7 @@ export class ScriptRepositoryApp {
   private uiManager: UIController;
   private initialized: boolean = false;
   private sendFormObserver: ExtendedMutationObserver | null = null;
+  private isUpdatingButtons: boolean = false;
 
   private constructor() {
     this.scriptManager = ScriptManager.getInstance();
@@ -68,6 +67,10 @@ export class ScriptRepositoryApp {
    */
   private setupSendFormObserver(): void {
     this.sendFormObserver = new MutationObserver(mutations => {
+      if (this.isUpdatingButtons) {
+        return;
+      }
+
       let shouldUpdateButtons = false;
 
       mutations.forEach(mutation => {
@@ -75,9 +78,10 @@ export class ScriptRepositoryApp {
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as Element;
-              if (
-                element.id === 'qr--bar'
-              ) {
+              if (element.id === 'qr--bar' && element.children.length > 0) {
+                shouldUpdateButtons = true;
+              }
+              if (element.classList?.contains('qr--button') || element.classList?.contains('qr--buttons')) {
                 shouldUpdateButtons = true;
               }
             }
@@ -86,13 +90,18 @@ export class ScriptRepositoryApp {
           mutation.removedNodes.forEach(node => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as Element;
-              if (
-                element.classList?.contains('qr--buttons')
-              ) {
+              if (element.classList?.contains('qr--buttons') || element.id === 'qr--bar') {
                 shouldUpdateButtons = true;
               }
             }
           });
+        }
+
+        if (mutation.type === 'attributes' && mutation.target instanceof Element) {
+          const element = mutation.target as Element;
+          if (element.id === 'qr--isEnabled' || element.id === 'qr--isCombined') {
+            shouldUpdateButtons = true;
+          }
         }
       });
 
@@ -102,7 +111,7 @@ export class ScriptRepositoryApp {
         }
         this.sendFormObserver!.debounceTimer = setTimeout(() => {
           this.handleSendFormChange();
-        }, 500);
+        }, 250);
       }
     }) as ExtendedMutationObserver;
 
@@ -118,7 +127,8 @@ export class ScriptRepositoryApp {
       this.sendFormObserver.observe(sendForm, {
         childList: true,
         subtree: true,
-        attributes: false,
+        attributes: true,
+        attributeFilter: ['checked', 'disabled'],
       });
     } else if (!sendForm) {
       setTimeout(() => {
@@ -131,14 +141,19 @@ export class ScriptRepositoryApp {
    * 处理send_form变化
    */
   private handleSendFormChange(): void {
-    if (!this.initialized) {
+    if (!this.initialized || this.isUpdatingButtons) {
       return;
     }
 
     try {
+      this.isUpdatingButtons = true;
       checkQrEnabledStatusAndAddButton();
     } catch (error) {
       log.error('[ScriptManager] 处理send_form变化时出错:', error);
+    } finally {
+      setTimeout(() => {
+        this.isUpdatingButtons = false;
+      }, 100);
     }
   }
 
@@ -267,8 +282,13 @@ export class ScriptRepositoryApp {
     try {
       if (this.sendFormObserver) {
         this.sendFormObserver.disconnect();
+        if (this.sendFormObserver.debounceTimer) {
+          clearTimeout(this.sendFormObserver.debounceTimer);
+        }
         this.sendFormObserver = null;
       }
+
+      this.isUpdatingButtons = false;
 
       load_events.forEach(eventType => {
         eventSource.removeListener(eventType, this.refreshCharacterRepository.bind(this));

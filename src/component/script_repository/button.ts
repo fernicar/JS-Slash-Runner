@@ -57,6 +57,7 @@ export class ButtonFactory {
 
 export class ButtonManager {
   private buttons: Button[] = [];
+  private isUpdating: boolean = false;
 
   /**
    * 将按钮从旧容器迁移到新容器
@@ -98,38 +99,50 @@ export class ButtonManager {
     isGlobalEnabled: boolean,
     isCharacterEnabled: boolean,
   ): void {
-    this.clearButtons();
-
-    const hasGlobalVisibleButtons =
-      isGlobalEnabled &&
-      globalScripts.some(
-        script =>
-          script.enabled &&
-          script.buttons &&
-          script.buttons.length > 0 &&
-          script.buttons.some(button => button.visible),
-      );
-
-    const hasCharacterVisibleButtons =
-      isCharacterEnabled &&
-      characterScripts.some(
-        script =>
-          script.enabled &&
-          script.buttons &&
-          script.buttons.length > 0 &&
-          script.buttons.some(button => button.visible),
-      );
-
-    if (!hasGlobalVisibleButtons && !hasCharacterVisibleButtons) {
+    if (this.isUpdating) {
       return;
     }
 
-    if (isGlobalEnabled && hasGlobalVisibleButtons) {
-      this.addScriptButtons(globalScripts);
-    }
+    this.isUpdating = true;
 
-    if (isCharacterEnabled && hasCharacterVisibleButtons) {
-      this.addScriptButtons(characterScripts);
+    try {
+      this.clearButtons();
+
+      const hasGlobalVisibleButtons =
+        isGlobalEnabled &&
+        globalScripts.some(
+          script =>
+            script.enabled &&
+            script.buttons &&
+            script.buttons.length > 0 &&
+            script.buttons.some(button => button.visible),
+        );
+
+      const hasCharacterVisibleButtons =
+        isCharacterEnabled &&
+        characterScripts.some(
+          script =>
+            script.enabled &&
+            script.buttons &&
+            script.buttons.length > 0 &&
+            script.buttons.some(button => button.visible),
+        );
+
+      if (!hasGlobalVisibleButtons && !hasCharacterVisibleButtons) {
+        return;
+      }
+
+      if (isGlobalEnabled && hasGlobalVisibleButtons) {
+        this.addScriptButtons(globalScripts);
+      }
+
+      if (isCharacterEnabled && hasCharacterVisibleButtons) {
+        this.addScriptButtons(characterScripts);
+      }
+    } finally {
+      setTimeout(() => {
+        this.isUpdating = false;
+      }, 100);
     }
   }
 
@@ -224,13 +237,19 @@ export class ButtonManager {
   }
 
   /**
-   * 清除所有按钮
+   * 清理所有按钮
    */
   clearButtons(): void {
-    this.buttons.forEach(btn => btn.remove());
+    this.buttons.forEach(button => button.remove());
     this.buttons = [];
+  }
 
-    $('.th-button').remove();
+  /**
+   * 清理资源并重置状态
+   */
+  cleanup(): void {
+    this.clearButtons();
+    this.isUpdating = false;
   }
 }
 
@@ -257,18 +276,21 @@ function checkQrEnabledStatus() {
   const qrEnabledElement = $('#qr--isEnabled');
   isQrEnabled = qrEnabledElement.length > 0 ? qrEnabledElement.prop('checked') : false;
 
-  const qrBarLength = $('#send_form #qr--bar').length;
   const sendForm = $('#send_form');
-
   if (sendForm.length === 0) {
     return;
   }
 
+  const qrBarLength = $('#send_form #qr--bar').length;
+
   if (qrBarLength === 0) {
-    sendForm.append('<div class="flex-container flexGap5" id="qr--bar"></div>');
-    log.info('[ScriptManager] 创建qr--bar容器（qr未启用或不存在）');
+    if (!sendForm.find('#qr--bar').length) {
+      sendForm.append('<div class="flex-container flexGap5" id="qr--bar"></div>');
+      log.info('[ScriptManager] 创建qr--bar容器（qr未启用或不存在）');
+    }
   } else if (qrBarLength > 1) {
     $('#send_form #qr--bar').not(':first').remove();
+    log.info('[ScriptManager] 发现多个qr--bar容器，已清理');
   }
 }
 
@@ -284,8 +306,10 @@ function checkQrCombinedStatus() {
     if ($qrBar.length > 0 && isCombined) {
       const isThButtonExist = $qrBar.find('.qr--buttons.qr--color').length > 0;
       if (!isThButtonExist) {
-        $qrBar.append('<div class="qr--buttons qr--color"></div>');
-        log.info('[ScriptManager] 创建combined按钮容器');
+        if (!$qrBar.find('.qr--buttons.qr--color').length) {
+          $qrBar.append('<div class="qr--buttons qr--color"></div>');
+          log.info('[ScriptManager] 创建combined按钮容器');
+        }
       }
     }
   }
