@@ -2014,8 +2014,8 @@ const SillyTavern: {
   readonly sendGenerationRequest: (type: string, data: object) => Promise<void>;
   readonly stopGeneration: () => boolean;
   readonly tokenizers: any;
-  readonly getTextTokens: (tokenizer_type: number, string: string) => Promise<void>;
-  readonly getTokenCountAsync: (string: string, padding?: number | undefined) => Promise<void>;
+  readonly getTextTokens: (tokenizer_type: number, string: string) => Promise<number>;
+  readonly getTokenCountAsync: (string: string, padding?: number | undefined) => Promise<number>;
   readonly extensionPrompts: any;
   readonly setExtensionPrompt: (
     key: string,
