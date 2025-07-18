@@ -15,7 +15,6 @@ concurrency:
 
 jobs:
   sync:
-    needs: bundle
     runs-on: ubuntu-latest
     steps:
       - uses: keninkujovic/gitlab-sync@2.0.0
