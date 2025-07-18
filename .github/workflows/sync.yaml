@@ -1,8 +1,6 @@
 name: sync
 
 on:
-  pull_request:
-  push:
   workflow_run:
     workflows:
       - bundle
