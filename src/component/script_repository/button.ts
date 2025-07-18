@@ -173,10 +173,26 @@ export class ButtonManager {
 
     containerHtml += '</div>';
 
+    const $sendForm = $('#send_form');
+    const $qrBar = $sendForm.find('#qr--bar');
+
+    if ($qrBar.length === 0) {
+      log.warn('[ScriptManager] qr--bar容器不存在，无法添加按钮');
+      return;
+    }
+
     if (isCombined) {
-      $('#send_form #qr--bar .qr--buttons').first().append(containerHtml);
+      const $combinedContainer = $qrBar.find('.qr--buttons.qr--color').first();
+      if ($combinedContainer.length > 0) {
+        $combinedContainer.append(containerHtml);
+        log.info(`[ScriptManager] 按钮添加到combined容器: ${scriptId}`);
+      } else {
+        $qrBar.append(containerHtml);
+        log.info(`[ScriptManager] 按钮添加到qr--bar（无combined容器）: ${scriptId}`);
+      }
     } else {
-      $('#send_form #qr--bar').first().append(containerHtml);
+      $qrBar.append(containerHtml);
+      log.info(`[ScriptManager] 按钮添加到qr--bar: ${scriptId}`);
     }
 
     buttons.forEach(button => button.bindEvents());
@@ -268,14 +284,21 @@ export function unbindQrEnabledChangeListener() {
  * 根据qr--isEnabled状态处理容器
  */
 function checkQrEnabledStatus() {
-  isQrEnabled = $('#qr--isEnabled').prop('checked');
+  const qrEnabledElement = $('#qr--isEnabled');
+  isQrEnabled = qrEnabledElement.length > 0 ? qrEnabledElement.prop('checked') : false;
+
   const qrBarLength = $('#send_form #qr--bar').length;
-  if (!isQrEnabled) {
-    if (qrBarLength === 0) {
-      $('#send_form').append('<div class="flex-container flexGap5" id="qr--bar"></div>');
-    } else {
-      $('#send_form #qr--bar').not(':first').remove();
-    }
+  const sendForm = $('#send_form');
+
+  if (sendForm.length === 0) {
+    return;
+  }
+
+  if (qrBarLength === 0) {
+    sendForm.append('<div class="flex-container flexGap5" id="qr--bar"></div>');
+    log.info('[ScriptManager] 创建qr--bar容器（qr未启用或不存在）');
+  } else if (qrBarLength > 1) {
+    $('#send_form #qr--bar').not(':first').remove();
   }
 }
 
@@ -283,13 +306,16 @@ function checkQrEnabledStatus() {
  * 检查qr--isCombined状态
  */
 function checkQrCombinedStatus() {
-  isCombined = $('#qr--isCombined').prop('checked');
+  const qrCombinedElement = $('#qr--isCombined');
+  isCombined = qrCombinedElement.length > 0 ? qrCombinedElement.prop('checked') : false;
+
   if (!isQrEnabled) {
-    if (isCombined) {
-      const $qrBar = $('#send_form #qr--bar');
-      const isThButtonExist = $qrBar.find('.th--buttons').length > 0;
+    const $qrBar = $('#send_form #qr--bar');
+    if ($qrBar.length > 0 && isCombined) {
+      const isThButtonExist = $qrBar.find('.qr--buttons.qr--color').length > 0;
       if (!isThButtonExist) {
-        $qrBar.append('<div class="qr--buttons th--buttons"></div>');
+        $qrBar.append('<div class="qr--buttons qr--color"></div>');
+        log.info('[ScriptManager] 创建combined按钮容器');
       }
     }
   }

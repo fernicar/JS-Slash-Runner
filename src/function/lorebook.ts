@@ -298,11 +298,11 @@ export function getCurrentCharPrimaryLorebook(): string | null {
 
 export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>): Promise<void> {
   // @ts-ignore
-  if (selected_group && !name) {
+  if (selected_group) {
     throw Error(`不要在群组中调用这个功能`);
   }
   // @ts-ignore
-  const filename = name ?? getCharaFilename(this_chid);
+  const filename = getCharaFilename(this_chid);
   if (!filename) {
     throw Error(`未打开任何角色卡`);
   }
@@ -393,7 +393,7 @@ export async function setChatLorebook(lorebook: string | null): Promise<void> {
     $('.chat_lorebook_button').removeClass('world_set');
   } else {
     if (!world_names.includes(lorebook)) {
-      throw new Error(`尝试为角色卡绑定聊天世界书, 当该世界书 '${lorebook}' 不存在`);
+      throw new Error(`尝试为角色卡绑定聊天世界书, 但该世界书 '${lorebook}' 不存在`);
     }
 
     _.set(chat_metadata, METADATA_KEY, lorebook);

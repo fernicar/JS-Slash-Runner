@@ -19,6 +19,10 @@ import log from 'loglevel';
 const load_events = [event_types.CHAT_CHANGED] as const;
 const delete_events = [event_types.CHARACTER_DELETED] as const;
 
+interface ExtendedMutationObserver extends MutationObserver {
+  debounceTimer?: NodeJS.Timeout;
+}
+
 /**
  * 脚本仓库应用 - 使用事件驱动架构
  * 负责整合ScriptManager和UIManager，提供统一的接口
@@ -28,12 +32,14 @@ export class ScriptRepositoryApp {
   private scriptManager: ScriptManager;
   private uiManager: UIController;
   private initialized: boolean = false;
+  private sendFormObserver: ExtendedMutationObserver | null = null;
 
   private constructor() {
     this.scriptManager = ScriptManager.getInstance();
     this.uiManager = UIController.getInstance();
 
     this.registerEvents();
+    this.setupSendFormObserver();
   }
 
   /**
@@ -57,6 +63,86 @@ export class ScriptRepositoryApp {
       UIController.destroyInstance();
       ScriptData.destroyInstance();
       unbindQrEnabledChangeListener();
+    }
+  }
+
+  /**
+   * 设置send_form的MutationObserver
+   */
+  private setupSendFormObserver(): void {
+    this.sendFormObserver = new MutationObserver(mutations => {
+      let shouldUpdateButtons = false;
+
+      mutations.forEach(mutation => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (
+                element.id === 'qr--bar'
+              ) {
+                shouldUpdateButtons = true;
+              }
+            }
+          });
+
+          mutation.removedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (
+                element.classList?.contains('qr--buttons')
+              ) {
+                shouldUpdateButtons = true;
+              }
+            }
+          });
+        }
+      });
+
+      if (shouldUpdateButtons) {
+        if (this.sendFormObserver?.debounceTimer) {
+          clearTimeout(this.sendFormObserver.debounceTimer);
+        }
+        this.sendFormObserver!.debounceTimer = setTimeout(() => {
+          this.handleSendFormChange();
+        }, 250);
+      }
+    }) as ExtendedMutationObserver;
+
+    this.startObservingSendForm();
+  }
+
+  /**
+   * 开始观察send_form
+   */
+  private startObservingSendForm(): void {
+    const sendForm = document.getElementById('send_form');
+    if (sendForm && this.sendFormObserver) {
+      this.sendFormObserver.observe(sendForm, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+      });
+    } else if (!sendForm) {
+      setTimeout(() => {
+        this.startObservingSendForm();
+      }, 1000);
+    }
+  }
+
+  /**
+   * 处理send_form变化
+   */
+  private handleSendFormChange(): void {
+    if (!this.initialized) {
+      return;
+    }
+
+    try {
+      checkQrEnabledStatusAndAddButton();
+      bindQrEnabledChangeListener();
+    } catch (error) {
+      log.error('[ScriptManager] 处理send_form变化时出错:', error);
     }
   }
 
@@ -172,8 +258,8 @@ export class ScriptRepositoryApp {
     }
 
     scriptEvents.emit(ScriptRepositoryEventType.UI_REFRESH, { action: 'refresh_charact_scripts' });
-    checkQrEnabledStatusAndAddButton();
-    bindQrEnabledChangeListener();
+
+    // 按钮相关的调用，由MutationObserver处理
 
     await this.scriptManager.runScriptsByType(characterScripts, ScriptType.CHARACTER);
   }
@@ -183,6 +269,11 @@ export class ScriptRepositoryApp {
    */
   public async cleanup(): Promise<void> {
     try {
+      if (this.sendFormObserver) {
+        this.sendFormObserver.disconnect();
+        this.sendFormObserver = null;
+      }
+
       load_events.forEach(eventType => {
         eventSource.removeListener(eventType, this.refreshCharacterRepository.bind(this));
       });
