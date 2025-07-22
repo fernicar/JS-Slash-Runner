@@ -144,6 +144,7 @@ const SillyTavern: {
   readonly showLoader: () => void;
   readonly hideLoader: () => Promise<any>;
   readonly mainApi: any;
+  /** extension_settings */
   readonly extensionSettings: Record<string, any>;
   readonly ModuleWorkerWrapper: Type;
   readonly getTokenizerModel: () => string;

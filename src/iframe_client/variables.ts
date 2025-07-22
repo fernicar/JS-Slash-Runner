@@ -1,3 +1,26 @@
+function getAllVariables(): Record<string, any> {
+  const is_message_iframe = getIframeName().startsWith('message-iframe');
+
+  let data = _.merge(
+    {},
+    SillyTavern.extensionSettings.variables.global,
+    SillyTavern.characters[SillyTavern.characterId]?.data?.extensions?.TavernHelper_characterScriptVariables,
+  );
+  if (!is_message_iframe) {
+    data = _.merge(data, TavernHelper.getVariables('script', getScriptId()));
+  }
+  data = _.merge(data, SillyTavern.chatMetadata.variables);
+  if (is_message_iframe) {
+    data = _.merge(
+      data,
+      ...SillyTavern.chat
+        .slice(0, getCurrentMessageId())
+        .map((chat_message: any) => chat_message?.variables?.[chat_message?.swipe_id ?? 0]),
+    );
+  }
+  return structuredClone(data);
+}
+
 //------------------------------------------------------------------------------------------------------------------------
 // 已被弃用的接口, 请尽量按照指示更新它们
 

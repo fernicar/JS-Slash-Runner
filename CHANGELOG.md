@@ -1,3 +1,25 @@
+## 3.2.11
+
+### ⏫功能
+
+- 新增 `getAllVariables()` 函数, 直接获取合并后的变量表. 简单来说, 它包含了前端界面/脚本一般会需要的变量表.
+
+  ```typescript
+  // 你可以直接写下面一行:
+  const variables = getAllVariables();
+  ```
+
+  ```typescript
+  // 而以前不熟悉代码的人可能出现这个问题
+
+  // 想获取当前消息楼层的 stat_data.好感度
+  const variables = _.get(getVariables({type: 'message', message_id: getCurrentMessageId()}), 'stat_data.好感度');
+
+  // 但是新的消息楼层并没有更新变量, 所以没有 stat_data.好感度
+  console.info(JSON.stringify(variables));
+  // >> null
+  ```
+
 ## 3.2.10
 
 ### 📚脚本库
