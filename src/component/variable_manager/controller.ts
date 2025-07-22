@@ -6,6 +6,7 @@ import { VariableManagerUtil } from '@/component/variable_manager/util';
 import { VariableView } from '@/component/variable_manager/view';
 
 import log from 'loglevel';
+import YAML from 'yaml';
 
 export class VariableController {
   /**
@@ -430,7 +431,7 @@ export class VariableController {
 
     if (currentMode === 'card') {
       const objectValue = this.cardFactory.getVariableFromCard(card);
-      card.find('.json-input').val(JSON.stringify(objectValue?.value, null, 2));
+      card.find('.yaml-input').val(YAML.stringify(objectValue?.value, null, 2));
     }
   }
 

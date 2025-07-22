@@ -139,6 +139,7 @@ const config = (_env: any, argv: any): webpack.Configuration => {
         hljs: 'hljs',
         lodash: '_',
         toastr: 'toastr',
+        yaml: ['script https://fastly.jsdelivr.net/gh/N0VI028/JS-Slash-Runner/lib/yaml.min.js', 'YAML'],
       },
       /^hljs$/i,
       /^(jquery|\$)$/i,

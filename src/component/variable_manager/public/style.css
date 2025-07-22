@@ -423,7 +423,7 @@ input.list-item-input {
   font-weight: bold;
 }
 
-/* 数字和JSON输入 */
+/* 数字和YAML输入 */
 .number-input {
   width: 100%;
   height: 30px;
@@ -432,7 +432,7 @@ input.list-item-input {
   font-size: var(--vm-font-small);
 }
 
-.json-input {
+.yaml-input {
   font-family: monospace;
   min-height: 30px;
   height: 80px;

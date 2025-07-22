@@ -18,6 +18,7 @@ import { callGenericPopup, POPUP_TYPE } from '@sillytavern/scripts/popup';
 import { download, getSortableDelay, showFontAwesomePicker, uuidv4 } from '@sillytavern/scripts/utils';
 
 import log from 'loglevel';
+import YAML from 'yaml';
 
 export class UIController {
   private static instance: UIController;
@@ -1178,7 +1179,7 @@ export class UIController {
    * @returns JQuery元素
    */
   private createVariableItem(key: string, value: any): JQuery<HTMLElement> {
-    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+    const valueStr = typeof value === 'string' ? value : YAML.stringify(value);
 
     const $variableItem = $(`
       <div class="variable-item flex-container flexFlowColumn width100p">
@@ -1193,7 +1194,7 @@ export class UIController {
         </div>
         <div class="flex flexFlowColumn" style="align-items: flex-start;">
           <div>值:</div>
-          <textarea class="text_pole variable-value" style="min-height: 12px;" rows="1" placeholder="变量值">${this.escapeHtml(
+          <textarea class="text_pole variable-value" style="min-height: 12px;" rows="1" placeholder="请以纯文本或YAML格式输入变量值">${this.escapeHtml(
             valueStr,
           )}</textarea>
         </div>
@@ -1219,7 +1220,7 @@ export class UIController {
       if (key && key.trim() !== '') {
         let value: any;
         try {
-          value = JSON.parse(valueStr);
+          value = YAML.parse(valueStr);
         } catch {
           value = valueStr;
         }

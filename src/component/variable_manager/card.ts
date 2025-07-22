@@ -4,6 +4,7 @@ import { VariableManagerUtil } from '@/component/variable_manager/util';
 import { getSortableDelay } from '@sillytavern/scripts/utils';
 
 import log from 'loglevel';
+import YAML from 'yaml';
 
 declare const toastr: any;
 
@@ -246,7 +247,7 @@ export class VariableCardFactory {
 
           const itemValue = $listItem.find('.variable-content-input').val() as string;
           try {
-            arrayItems.push(JSON.parse(itemValue));
+            arrayItems.push(YAML.parse(itemValue));
           } catch {
             arrayItems.push(itemValue);
           }
@@ -261,15 +262,15 @@ export class VariableCardFactory {
           return extracted;
         }
 
-        const jsonValue = card.find('.json-input').val() as string;
+        const yamlValue = card.find('.yaml-input').val() as string;
 
-        if (jsonValue && jsonValue.trim()) {
+        if (yamlValue && yamlValue.trim()) {
           try {
-            const parsed = JSON.parse(jsonValue);
+            const parsed = YAML.parse(yamlValue);
             return parsed;
           } catch (e) {
-            log.error('JSON解析错误:', e);
-            toastr.error('JSON解析错误');
+            log.error('YAML解析错误:', e);
+            toastr.error('YAML解析错误');
             return {};
           }
         } else {
@@ -363,7 +364,7 @@ export class VariableCardFactory {
    * @param parentCard 父级卡片
    */
   private saveNestedCardValue(parentCard: JQuery<HTMLElement>): void {
-    this.syncCardViewToJsonInput(parentCard);
+    this.syncCardViewToYamlInput(parentCard);
 
     const topLevelCard = this.findTopLevelCard(parentCard);
     if (topLevelCard) {
@@ -393,7 +394,7 @@ export class VariableCardFactory {
   private deleteNestedCardValue(parentCard: JQuery<HTMLElement>, nestedCard: JQuery<HTMLElement>): void {
     nestedCard.remove();
 
-    this.syncCardViewToJsonInput(parentCard);
+    this.syncCardViewToYamlInput(parentCard);
 
     const topLevelCard = this.findTopLevelCard(parentCard);
     if (topLevelCard) {
@@ -448,7 +449,7 @@ export class VariableCardFactory {
 
     const topLevelCard = this.findTopLevelCard($targetCard);
     if (topLevelCard && topLevelCard.is($targetCard)) {
-      this.syncCardViewToJsonInput($targetCard);
+      this.syncCardViewToYamlInput($targetCard);
     }
   }
 
@@ -479,14 +480,14 @@ export class VariableCardFactory {
       `);
     } else {
       card.find('.variable-card-content').append(`
-        <textarea class="json-input variable-content-input" placeholder="输入JSON对象" style="display: none;"></textarea>
+        <textarea class="yaml-input variable-content-input" placeholder="输入YAML对象" style="display: none;"></textarea>
             <div class="object-card-view">
               <div class="nested-cards-container"></div>
             </div>
       `);
 
       card.find('.variable-actions .save-btn').before(`
-        <div class="variable-action-btn toggle-view-btn" title="切换到JSON视图">
+        <div class="variable-action-btn toggle-view-btn" title="切换到YAML视图">
           <i class="fa-regular fa-list"></i>
         </div>
         <div class="variable-action-btn add-key-btn" title="添加键值对">
@@ -511,13 +512,13 @@ export class VariableCardFactory {
         $body.toggleClass('expanded');
       });
 
-      card.find('.json-input').val(JSON.stringify(variable.value, null, 2)).end().attr('data-view-mode', 'card');
+      card.find('.yaml-input').val(YAML.stringify(variable.value, null, 2)).end().attr('data-view-mode', 'card');
 
-      card.find('.json-input').on('blur change', () => {
+      card.find('.yaml-input').on('blur change', () => {
         const currentMode = card.attr('data-view-mode') || 'card';
 
         if (currentMode === 'card') {
-          this.syncJsonInputToCardView(card, showTypeDialogCallback);
+          this.syncYamlInputToCardView(card, showTypeDialogCallback);
         }
       });
 
@@ -525,10 +526,10 @@ export class VariableCardFactory {
         const $card = card;
         const currentMode = $card.attr('data-view-mode') || 'card';
 
-        const newMode = currentMode === 'json' ? 'card' : 'json';
+        const newMode = currentMode === 'yaml' ? 'card' : 'yaml';
         $card.attr('data-view-mode', newMode);
 
-        if (newMode === 'json') {
+        if (newMode === 'yaml') {
           $card
             .find('.toggle-view-btn i')
             .removeClass('fa-list')
@@ -537,21 +538,21 @@ export class VariableCardFactory {
             .attr('title', '切换到卡片视图');
           $card.find('.variable-action-btn.add-key-btn').hide();
 
-          $card.find('.json-input').show().end().find('.object-card-view').hide();
+          $card.find('.yaml-input').show().end().find('.object-card-view').hide();
 
-          this.syncCardViewToJsonInput($card);
+          this.syncCardViewToYamlInput($card);
         } else {
           $card
             .find('.toggle-view-btn i')
             .removeClass('fa-eye')
             .addClass('fa-list')
             .end()
-            .attr('title', '切换到JSON视图');
+            .attr('title', '切换到YAML视图');
           $card.find('.variable-action-btn.add-key-btn').show();
 
-          $card.find('.json-input').hide().end().find('.object-card-view').show();
+          $card.find('.yaml-input').hide().end().find('.object-card-view').show();
 
-          this.syncJsonInputToCardView($card, showTypeDialogCallback);
+          this.syncYamlInputToCardView($card, showTypeDialogCallback);
         }
       });
     }
@@ -565,27 +566,27 @@ export class VariableCardFactory {
   }
 
   /**
-   * 同步卡片视图到JSON输入框
+   * 同步卡片视图到YAML输入框
    * @param card 对象卡片
    */
-  private syncCardViewToJsonInput(card: JQuery<HTMLElement>): void {
+  private syncCardViewToYamlInput(card: JQuery<HTMLElement>): void {
     const objectValue = this.extractObjectFromNestedCards(card);
-    card.find('.json-input').val(JSON.stringify(objectValue, null, 2));
+    card.find('.yaml-input').val(YAML.stringify(objectValue, null, 2));
   }
 
   /**
-   * 同步JSON输入框到卡片视图
+   * 同步YAML输入框到卡片视图
    * @param card 对象卡片
    * @param showTypeDialogCallback 显示类型选择对话框的回调函数
    */
-  private syncJsonInputToCardView(
+  private syncYamlInputToCardView(
     card: JQuery<HTMLElement>,
     showTypeDialogCallback?: (callback: (dataType: VariableDataType) => void) => Promise<void>,
   ): void {
     try {
-      const jsonValue = card.find('.json-input').val() as string;
-      if (jsonValue && jsonValue.trim()) {
-        const objectValue = JSON.parse(jsonValue);
+      const yamlValue = card.find('.yaml-input').val() as string;
+      if (yamlValue && yamlValue.trim()) {
+        const objectValue = YAML.parse(yamlValue);
         const tempVariable: VariableItem = {
           id: card.attr('data-variable-id') || '',
           name: card.find('.variable-title').val() as string,
@@ -595,8 +596,8 @@ export class VariableCardFactory {
         this.renderObjectCardView(card, tempVariable, showTypeDialogCallback);
       }
     } catch (parseError) {
-      log.error('JSON解析错误:', parseError);
-      toastr.error('JSON格式错误，无法同步到卡片视图');
+      log.error('YAML解析错误:', parseError);
+      toastr.error('YAML格式错误，无法同步到卡片视图');
     }
   }
 
@@ -614,7 +615,7 @@ export class VariableCardFactory {
     listContainer.empty();
 
     items.forEach(item => {
-      const displayValue = typeof item === 'object' ? JSON.stringify(item) : String(item);
+      const displayValue = typeof item === 'object' ? YAML.stringify(item) : String(item);
       const listItem = $(`
         <div class="list-item">
           <span class="drag-handle">☰</span>
