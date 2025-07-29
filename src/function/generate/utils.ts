@@ -117,10 +117,10 @@ export function getPromptRole(role: number): 'system' | 'user' | 'assistant' {
 }
 
 /**
- * 检查提示词是否被过滤
- * @param promptId 提示词ID
- * @param config 配置对象
- * @returns 是否被过滤
+ * Check if the prompt is filtered
+ * @param promptId Prompt ID
+ * @param config Configuration object
+ * @returns Whether it is filtered
  */
 export function isPromptFiltered(promptId: string, config: { overrides?: any }): boolean {
   if (!config.overrides) {
@@ -131,34 +131,34 @@ export function isPromptFiltered(promptId: string, config: { overrides?: any }):
     return config.overrides.with_depth_entries === false;
   }
 
-  // 特殊处理 chat_history
+  // Special handling for chat_history
   if (promptId === 'chat_history') {
     const prompts = config.overrides.chat_history;
     return prompts !== undefined && prompts.length === 0;
   }
 
-  // 对于普通提示词，只有当它在 overrides 中存在且为空字符串时才被过滤
+  // For normal prompts, it is filtered only when it exists in overrides and is an empty string
   const override = config.overrides[promptId as keyof any];
   return override !== undefined && override === '';
 }
 
 /**
- * 添加临时用户消息
- * @param userContent 用户内容
+ * Add a temporary user message
+ * @param userContent User content
  */
 export function addTemporaryUserMessage(userContent: string): void {
   setExtensionPrompt('TEMP_USER_MESSAGE', userContent, extension_prompt_types.IN_PROMPT, 0, true, 1);
 }
 
 /**
- * 移除临时用户消息
+ * Remove the temporary user message
  */
 export function removeTemporaryUserMessage(): void {
   setExtensionPrompt('TEMP_USER_MESSAGE', '', extension_prompt_types.IN_PROMPT, 0, true, 1);
 }
 
 /**
- * 解除生成阻塞状态
+ * Unblock the generation state
  */
 export function unblockGeneration(): void {
   activateSendButtons();
@@ -168,8 +168,8 @@ export function unblockGeneration(): void {
 }
 
 /**
- * 清理注入提示词
- * @param prefixes 前缀数组
+ * Clear injection prompts
+ * @param prefixes Prefix array
  */
 export async function clearInjectionPrompts(prefixes: string[]): Promise<void> {
   const prompts: Record<string, any> = getContext().extensionPrompts;
@@ -181,10 +181,10 @@ export async function clearInjectionPrompts(prefixes: string[]): Promise<void> {
 }
 
 /**
- * 直接处理图片数组，转换为prompt格式
- * @param processedUserInput 处理后的用户输入
- * @param image 图片数组参数
- * @returns 包含文本和图片内容的数组格式
+ * Directly process the image array and convert it to prompt format
+ * @param processedUserInput Processed user input
+ * @param image Image array parameters
+ * @returns Array format containing text and image content
  */
 export async function processImageArrayDirectly(
   processedUserInput: string,
@@ -197,7 +197,7 @@ export async function processImageArrayDirectly(
       try {
         const processedImg = await convertFileToBase64(img);
         if (!processedImg) {
-          log.warn('[Generate:图片数组处理] 图片处理失败，跳过该图片');
+          log.warn('[Generate:Image Array Processing] Image processing failed, skipping this image');
           return null;
         }
         return {
@@ -205,7 +205,7 @@ export async function processImageArrayDirectly(
           image_url: { url: processedImg, detail: quality },
         };
       } catch (imgError) {
-        log.error('[Generate:图片数组处理] 单个图片处理失败:', imgError);
+        log.error('[Generate:Image Array Processing] Single image processing failed:', imgError);
         return null;
       }
     }),
@@ -217,17 +217,17 @@ export async function processImageArrayDirectly(
     text: processedUserInput,
   };
 
-  log.info('[Generate:图片数组处理] 成功处理', validImageContents.length, '张图片');
+  log.info('[Generate:Image Array Processing] Successfully processed', validImageContents.length, 'images');
   return [textContent, ...validImageContents];
 }
 
 /**
- * 设置图片数组处理逻辑（用于事件监听方式）
- * @param processedUserInput 处理后的用户输入
- * @param image 图片数组参数
- * @returns 包含带标识符的用户输入和Promise解析器的对象
+ * Set up image array processing logic (for event listening)
+ * @param processedUserInput Processed user input
+ * @param image Image array parameters
+ * @returns An object containing user input with a marker and a Promise resolver
  */
-export function setupImageArrayProcessing(
+export async function setupImageArrayProcessing(
   processedUserInput: string,
   image: (File | string)[],
 ): {
@@ -252,13 +252,13 @@ export function setupImageArrayProcessing(
   let isHandlerRegistered = true;
 
   const imageArrayHandler = async (eventData: { chat: { role: string; content: string | any[] }[] }) => {
-    log.debug('[Generate:图片数组处理] imageArrayHandler 被调用');
+    log.debug('[Generate:Image Array Processing] imageArrayHandler called');
 
     try {
-      // 添加超时保护
+      // Add timeout protection
       timeoutId = setTimeout(() => {
-        log.warn('[Generate:图片数组处理] 图片处理超时');
-        rejectImageProcessing(new Error('图片处理超时'));
+        log.warn('[Generate:Image Array Processing] Image processing timed out');
+        rejectImageProcessing(new Error('Image processing timed out'));
       }, 30000); 
 
       for (let i = eventData.chat.length - 1; i >= 0; i--) {
@@ -274,7 +274,7 @@ export function setupImageArrayProcessing(
                 try {
                   const processedImg = await convertFileToBase64(img);
                   if (!processedImg) {
-                    log.warn('[Generate:图片数组处理] 图片处理失败，跳过该图片');
+                    log.warn('[Generate:Image Array Processing] Image processing failed, skipping this image');
                     return null;
                   }
                   return {
@@ -282,7 +282,7 @@ export function setupImageArrayProcessing(
                     image_url: { url: processedImg, detail: quality },
                   };
                 } catch (imgError) {
-                  log.error('[Generate:图片数组处理] 单个图片处理失败:', imgError);
+                  log.error('[Generate:Image Array Processing] Single image processing failed:', imgError);
                   return null;
                 }
               }),
@@ -301,7 +301,7 @@ export function setupImageArrayProcessing(
               clearTimeout(timeoutId);
               timeoutId = null;
             }
-            log.info('[Generate:图片数组处理] 成功将', validImageContents.length, '张图片插入到用户消息中');
+            log.info('[Generate:Image Array Processing] Successfully inserted', validImageContents.length, 'images into user message');
             resolveImageProcessing();
             return;
           } catch (error) {
@@ -309,17 +309,17 @@ export function setupImageArrayProcessing(
               clearTimeout(timeoutId);
               timeoutId = null;
             }
-            log.error('[Generate:图片数组处理] 处理图片时出错:', error);
+            log.error('[Generate:Image Array Processing] Error processing images:', error);
             rejectImageProcessing(error);
             return;
           }
         }
       }
 
-      log.warn('[Generate:图片数组处理] 未找到包含图片标记的用户消息');
+      log.warn('[Generate:Image Array Processing] Could not find user message with image marker');
       resolveImageProcessing();
     } catch (error) {
-      log.error('[Generate:图片数组处理] imageArrayHandler 异常:', error);
+      log.error('[Generate:Image Array Processing] imageArrayHandler exception:', error);
       rejectImageProcessing(error);
     }
   };
@@ -335,9 +335,9 @@ export function setupImageArrayProcessing(
       try {
         eventSource.removeListener('chat_completion_prompt_ready', imageArrayHandler);
         isHandlerRegistered = false;
-        log.debug('[Generate:图片数组处理] 已清理事件监听器');
+        log.debug('[Generate:Image Array Processing] Cleaned up event listener');
       } catch (error) {
-        log.warn('[Generate:图片数组处理] 清理事件监听器时出错:', error);
+        log.warn('[Generate:Image Array Processing] Error cleaning up event listener:', error);
       }
     }
   };

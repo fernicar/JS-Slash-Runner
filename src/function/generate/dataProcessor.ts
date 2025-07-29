@@ -31,10 +31,10 @@ import {
 } from '@/function/generate/utils';
 
 /**
- * 准备并覆盖数据的核心函数
- * @param config 配置参数
- * @param processedUserInput 处理后的用户输入
- * @returns 包含角色信息、聊天上下文和世界信息的数据对象
+ * Prepare and override data
+ * @param config Configuration parameters
+ * @param processedUserInput Processed user input
+ * @returns Data object containing character information, chat context, and world information
  */
 export async function prepareAndOverrideData(
   config: Omit<detail.GenerateParams, 'user_input' | 'use_preset'>,
@@ -47,22 +47,22 @@ export async function prepareAndOverrideData(
     return value;
   };
 
-  // 1. 处理角色卡高级定义角色备注 - 仅在chat_history未被过滤时执行
+  // 1. Handle character card advanced definition character remarks - execute only when chat_history is not filtered
   if (!isPromptFiltered('chat_history', config)) {
     handleCharDepthPrompt();
   }
 
-  // 2. 设置作者注释 - 仅在chat_history未被过滤时执行
+  // 2. Set author's note - execute only when chat_history is not filtered
   if (!isPromptFiltered('chat_history', config) && !isPromptFiltered('author_note', config)) {
     setAuthorNotePrompt(config);
   }
 
-  // 3. 处理user角色描述 - 仅在chat_history和persona_description都未被过滤时执行
+  // 3. Handle user role description - execute only when both chat_history and persona_description are not filtered
   if (!isPromptFiltered('chat_history', config) && !isPromptFiltered('persona_description', config)) {
     setPersonaDescriptionExtensionPrompt();
   }
 
-  // 4. 获取角色卡基础字段
+  // 4. Get basic fields of character card
   const charDepthPrompt = baseChatReplace(
     // @ts-ignore
     characters[this_chid]?.data?.extensions?.depth_prompt?.prompt?.trim(),
@@ -85,7 +85,7 @@ export async function prepareAndOverrideData(
     jailbreak,
   } = getCharacterCardFields();
 
-  // 判断是否被过滤,如果被过滤返回空字符串,否则返回override的值或原始值
+  // Determine whether to filter, if filtered, return an empty string, otherwise return the override value or the original value
   const description = isPromptFiltered('char_description', config)
     ? ''
     : getOverrideContent('char_description') ?? rawDescription;
@@ -108,15 +108,15 @@ export async function prepareAndOverrideData(
   let oaiMessageExamples = [];
   oaiMessageExamples = setOpenAIMessageExamples(mesExamplesArray);
 
-  // 5. 获取偏置字符串
+  // 5. Get bias strings
   const { promptBias } = getBiasStrings(processedUserInput, 'quiet');
 
-  // 6. 处理自定义注入的提示词
+  // 6. Handle custom injected prompts
   if (config.inject) {
     await handleInjectedPrompts(config);
   }
 
-  // 7. 处理聊天记录
+  // 7. Handle chat history
   let oaiMessages = [];
   if (config.overrides?.chat_history) {
     oaiMessages = [...config.overrides.chat_history].reverse();
@@ -127,9 +127,9 @@ export async function prepareAndOverrideData(
     }
   }
 
-  // 添加临时消息用于激活世界书
+  // Add a temporary message to activate the world book
   addTemporaryUserMessage(processedUserInput);
-  // 8. 处理世界信息
+  // 8. Process world information
   const worldInfo = await processWorldInfo(oaiMessages as RolePrompt[], config, {
     description: rawDescription,
     personality: rawPersonality,
@@ -139,10 +139,10 @@ export async function prepareAndOverrideData(
     creatorNotes,
   });
 
-  // 移除临时消息
+  // Remove temporary messages
   removeTemporaryUserMessage();
 
-  // 9. 处理世界书消息示例
+  // 9. Process worldbook message examples
   mesExamplesArray = !isPromptFiltered('dialogue_examples', config)
     ? await processMessageExamples(mesExamplesArray, worldInfo.worldInfoExamples)
     : [];
@@ -166,7 +166,7 @@ export async function prepareAndOverrideData(
 }
 
 /**
- * 处理角色卡中的深度提示词
+ * Handle deep prompts in character cards
  */
 function handleCharDepthPrompt() {
   const depthPromptText =
@@ -190,7 +190,7 @@ function handleCharDepthPrompt() {
 }
 
 /**
- * 处理作者注释
+ * Handle author's note
  */
 function setAuthorNotePrompt(config: detail.GenerateParams) {
   const authorNoteOverride = config?.overrides?.author_note;
@@ -212,7 +212,7 @@ function setAuthorNotePrompt(config: detail.GenerateParams) {
 }
 
 /**
- * 用户角色描述提示词设置为提示词管理器之外的选项的情况
+ * The user role description prompt is set to an option outside the prompt manager
  */
 function setPersonaDescriptionExtensionPrompt() {
   const description = power_user.persona_description;
@@ -223,7 +223,7 @@ function setPersonaDescriptionExtensionPrompt() {
     return;
   }
 
-  //当user信息在作者注释前后 - 仅在作者注释未被过滤时执行
+  // When user information is before or after the author's note - execute only when the author's note is not filtered
   const promptPositions = [persona_description_positions.BOTTOM_AN, persona_description_positions.TOP_AN];
 
   if (promptPositions.includes(power_user.persona_description_position) && shouldWIAddPrompt) {
@@ -248,7 +248,7 @@ function setPersonaDescriptionExtensionPrompt() {
     );
   }
 
-  // user信息深度注入不依赖于作者注释的状态，直接应用
+  // User information deep injection does not depend on the state of the author's note, apply directly
   if (power_user.persona_description_position === persona_description_positions.AT_DEPTH) {
     setExtensionPrompt(
       INJECT_TAG,
@@ -262,7 +262,7 @@ function setPersonaDescriptionExtensionPrompt() {
 }
 
 /**
- * 处理注入的提示词
+ * Handle injected prompts
  */
 async function handleInjectedPrompts(promptConfig: Omit<detail.GenerateParams, 'user_input' | 'use_preset'>) {
   if (!promptConfig || !Array.isArray(promptConfig.inject)) return;
@@ -285,7 +285,7 @@ async function handleInjectedPrompts(promptConfig: Omit<detail.GenerateParams, '
       position: position_map[inject.position as keyof typeof position_map] ?? extension_prompt_types.IN_CHAT,
     };
 
-    // 设置用户自定义注入提示词
+    // Set user-defined injection prompts
     setExtensionPrompt(
       `INJECTION-${inject.depth}-${inject.role}`,
       validatedInject.content,
@@ -298,7 +298,7 @@ async function handleInjectedPrompts(promptConfig: Omit<detail.GenerateParams, '
 }
 
 /**
- * 处理聊天记录
+ * Process chat history
  */
 async function processChatHistory(chatHistory: any[]) {
   const coreChat = chatHistory.filter(x => !x.is_system);
@@ -323,7 +323,7 @@ async function processChatHistory(chatHistory: any[]) {
 }
 
 /**
- * 处理世界书
+ * Process world info
  */
 async function processWorldInfo(
   oaiMessages: RolePrompt[],
@@ -355,7 +355,7 @@ async function processWorldInfo(
     creatorNotes: characterInfo.creatorNotes,
   };
   const { worldInfoString, worldInfoBefore, worldInfoAfter, worldInfoExamples, worldInfoDepth } =
-    // globalScanData只在新的酒馆版本中存在
+    // globalScanData only exists in new versions of Tavern
     // @ts-ignore
     await getWorldInfoPrompt(chatForWI, this_max_context, false, globalScanData);
 
@@ -365,7 +365,7 @@ async function processWorldInfo(
     processWorldInfoDepth(worldInfoDepth);
   }
 
-  // 先检查是否被过滤，如果被过滤直接返回null
+  // First check if it is filtered, if so, return null directly
   const finalWorldInfoBefore = isPromptFiltered('world_info_before', config)
     ? null
     : config.overrides?.world_info_before !== undefined
@@ -388,7 +388,7 @@ async function processWorldInfo(
 }
 
 /**
- * 处理世界信息深度部分
+ * Process the depth part of world information
  */
 function processWorldInfoDepth(worldInfoDepth: any[]) {
   if (Array.isArray(worldInfoDepth)) {
@@ -407,10 +407,10 @@ function processWorldInfoDepth(worldInfoDepth: any[]) {
 }
 
 /**
- * 处理世界书中示例前后
+ * Process the before and after examples in the world book
  */
 async function processMessageExamples(mesExamplesArray: string[], worldInfoExamples: any[]): Promise<string[]> {
-  // 处理世界信息中的示例
+  // Process examples in world information
   for (const example of worldInfoExamples) {
     if (!example.content.length) continue;
 
