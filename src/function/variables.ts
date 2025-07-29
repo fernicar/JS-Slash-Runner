@@ -24,7 +24,7 @@ function getVariablesByType({ type = 'chat', message_id = 'latest', script_id }:
   switch (type) {
     case 'message': {
       if (message_id !== 'latest' && (message_id < -chat.length || message_id >= chat.length)) {
-        throw Error(`提供的 message_id(${message_id}) 超出了聊天消息楼层号范围`);
+        throw Error(`Provided message_id(${message_id}) is out of chat message range`);
       }
       message_id = message_id === 'latest' ? -1 : message_id;
       return getChatMessages(message_id)[0].data;
@@ -46,7 +46,7 @@ function getVariablesByType({ type = 'chat', message_id = 'latest', script_id }:
       return extension_settings.variables.global;
     case 'script':
       if (!script_id) {
-        throw Error('获取脚本变量失败, 未指定 script_id');
+        throw Error('Failed to get script variables, script_id not specified');
       }
       return ScriptManager.getInstance().getScriptVariables(script_id);
   }
@@ -59,17 +59,17 @@ export function getVariables({ type = 'chat', message_id = 'latest', script_id }
   const result = getVariablesByType({ type, message_id, script_id });
 
   log.info(
-    `获取${
+    `Get ${
       type === 'message'
-        ? `'${message_id}' 消息`
+        ? `'${message_id}' message`
         : type === 'chat'
-        ? '聊天'
+        ? 'chat'
         : type === 'character'
-        ? '角色'
+        ? 'character'
         : type === 'script'
-        ? `'${script_id}' 脚本`
-        : '全局'
-    }变量表:\n${JSON.stringify(result)}`,
+        ? `'${script_id}' script`
+        : 'global'
+    } variable table:\n${JSON.stringify(result)}`,
   );
   return structuredClone(result);
 }
@@ -81,7 +81,7 @@ export async function replaceVariables(
   switch (type) {
     case 'message':
       if (message_id !== 'latest' && (message_id < -chat.length || message_id >= chat.length)) {
-        throw Error(`提供的 message_id(${message_id}) 超出了聊天消息楼层号范围`);
+        throw Error(`Provided message_id(${message_id}) is out of chat message range`);
       }
       message_id = message_id === 'latest' ? chat.length - 1 : message_id < 0 ? chat.length + message_id : message_id;
       await setChatMessages([{ message_id, data: variables }], { refresh: 'none' });
@@ -92,7 +92,7 @@ export async function replaceVariables(
       break;
     case 'character':
       if (!this_chid) {
-        throw new Error('保存变量失败，当前角色为空');
+        throw new Error('Failed to save variables, current character is empty');
       }
       //@ts-ignore
       await writeExtensionField(this_chid, 'TavernHelper_characterScriptVariables', variables);
@@ -104,13 +104,13 @@ export async function replaceVariables(
       break;
     case 'script':
       if (!script_id) {
-        throw Error('保存变量失败, 未指定 script_id');
+        throw Error('Failed to save variables, script_id not specified');
       }
       {
         const script_manager = ScriptManager.getInstance();
         const script = script_manager.getScriptById(script_id);
         if (!script) {
-          throw Error(`'${script_id}' 脚本不存在`);
+          throw Error(`'${script_id}' script does not exist`);
         }
         const script_type = script_manager['scriptData'].getScriptType(script);
         await script_manager.updateScriptVariables(script_id, variables, script_type);
@@ -119,17 +119,17 @@ export async function replaceVariables(
   }
 
   log.info(
-    `将${
+    `Replacing ${
       type === 'message'
-        ? `'${message_id}' 消息`
+        ? `'${message_id}' message`
         : type === 'chat'
-        ? '聊天'
+        ? 'chat'
         : type === 'character'
-        ? '角色'
+        ? 'character'
         : type === 'script'
-        ? `'${script_id}' 脚本`
-        : '全局'
-    }变量表替换为:\n${JSON.stringify(variables)}`,
+        ? `'${script_id}' script`
+        : 'global'
+    } variable table with:\n${JSON.stringify(variables)}`,
   );
 }
 
@@ -144,17 +144,17 @@ export async function updateVariablesWith(
   let variables = getVariables({ type, message_id, script_id });
   variables = await updater(variables);
   log.info(
-    `对${
+    `Updating ${
       type === 'message'
-        ? `'${message_id}' 消息`
+        ? `'${message_id}' message`
         : type === 'chat'
-        ? '聊天'
+        ? 'chat'
         : type === 'character'
-        ? '角色'
+        ? 'character'
         : type === 'script'
-        ? `'${script_id}' 脚本`
-        : '全局'
-    }变量表进行更新`,
+        ? `'${script_id}' script`
+        : 'global'
+    } variable table`,
   );
   await replaceVariables(variables, { type, message_id, script_id });
   return variables;

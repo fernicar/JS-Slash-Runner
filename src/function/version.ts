@@ -7,7 +7,7 @@ import {
 export async function getTavernHelperVersion(): Promise<string> {
   const currentVersion = await getCurrentVersion(VERSION_FILE_PATH);
   if (typeof currentVersion !== 'string') {
-    throw new Error('获取的版本号无效');
+    throw new Error('Invalid version number obtained');
   }
   return currentVersion;
 }

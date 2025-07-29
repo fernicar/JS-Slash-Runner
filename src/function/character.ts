@@ -18,7 +18,7 @@ export class Character {
       const currentChar = characters[this_chid];
       if (currentChar) {
         name = currentChar.avatar;
-        // 确保allowAvatar为true，以便可以通过avatar准确查找角色
+        // Ensure allowAvatar is true to accurately find characters by avatar
         allowAvatar = true;
       }
     }
@@ -28,7 +28,7 @@ export class Character {
 
     const filteredCharacters = characters;
 
-    // 如果有确定的角色头像id提供，则返回该角色
+    // If a specific character avatar id is provided, return that character
     if (allowAvatar && name) {
       const characterByAvatar = filteredCharacters.find(char => char.avatar === name);
       if (characterByAvatar) {
@@ -36,14 +36,14 @@ export class Character {
       }
     }
 
-    // 查找所有匹配的角色
+    // Find all matching characters
     const matchingCharacters = name ? filteredCharacters.filter(matches) : filteredCharacters;
     if (matchingCharacters.length > 1) {
-      log.warn(`找到多个符合条件的角色，返回导入时间最早的角色: ${name}`);
+      log.warn(`Found multiple matching characters, returning the one with the earliest import time: ${name}`);
     }
 
     if (matchingCharacters.length === 0) {
-      throw new Error(`提供的名称或头像ID为: ${name}，未找到符合条件的角色`);
+      throw new Error(`No matching character found for the provided name or avatar ID: ${name}`);
     }
 
     return matchingCharacters[0];
@@ -79,10 +79,10 @@ export class Character {
       .reverse();
 
     const chat_promise = chat_list.map(async ({ file_name }) => {
-      // 从文件名中提取角色名称（破折号前的部分）
+      // Extract character name from the filename (the part before the dash)
       const ch_name = isGroupChat ? '' : file_name.split(' - ')[0];
 
-      // 使用Character.find方法查找角色，获取头像
+      // Use Character.find to find the character and get the avatar
       let characterData = null;
       let avatar_url = '';
 
@@ -182,10 +182,10 @@ export function getCharData(name?: string, allowAvatar: boolean = true): v1CharD
     if (!characterData) return null;
 
     const character = new Character(characterData);
-    log.info(`获取角色卡数据成功, 角色: ${name || '未知'}`);
+    log.info(`Successfully retrieved character card data, Character: ${name || 'Unknown'}`);
     return character.getCardData();
   } catch (error) {
-    log.error(`获取角色卡数据失败, 角色: ${name || '未知'}`, error);
+    log.error(`Failed to retrieve character card data, Character: ${name || 'Unknown'}`, error);
     return null;
   }
 }
@@ -198,15 +198,15 @@ export function getCharAvatarPath(name?: string, allowAvatar: boolean = true): s
     const character = new Character(characterData);
     const avatarId = character.getAvatarId();
 
-    // 使用getThumbnailUrl获取缩略图URL，然后提取实际文件名
+    // Use getThumbnailUrl to get the thumbnail URL, then extract the actual filename
     const thumbnailPath = getThumbnailUrl('avatar', avatarId);
     const targetAvatarImg = thumbnailPath.substring(thumbnailPath.lastIndexOf('=') + 1);
 
-    // 假设charsPath在其他地方定义
-    log.info(`获取角色头像路径成功, 角色: ${name || '未知'}`);
+    // Assuming charsPath is defined elsewhere
+    log.info(`Successfully retrieved character avatar path, Character: ${name || 'Unknown'}`);
     return charsPath + targetAvatarImg;
   } catch (error) {
-    log.error(`获取角色头像路径失败, 角色: ${name || '未知'}`, error);
+    log.error(`Failed to retrieve character avatar path, Character: ${name || 'Unknown'}`, error);
     return null;
   }
 }
@@ -222,10 +222,10 @@ export async function getChatHistoryBrief(name?: string, allowAvatar: boolean = 
     if (index === -1) return null;
 
     const chats = await getPastCharacterChats(index);
-    log.info(`获取角色聊天历史摘要成功, 角色: ${name || '未知'}`);
+    log.info(`Successfully retrieved character chat history summary, Character: ${name || 'Unknown'}`);
     return chats;
   } catch (error) {
-    log.error(`获取角色聊天历史摘要失败, 角色: ${name || '未知'}`, error);
+    log.error(`Failed to retrieve character chat history summary, Character: ${name || 'Unknown'}`, error);
     return null;
   }
 }
@@ -236,10 +236,10 @@ export async function getChatHistoryDetail(
 ): Promise<Record<string, any> | null> {
   try {
     const result = await Character.getChatsFromFiles(data, isGroupChat);
-    log.info(`获取聊天文件详情成功`);
+    log.info(`Successfully retrieved chat file details`);
     return result;
   } catch (error) {
-    log.error(`获取聊天文件详情失败`, error);
+    log.error(`Failed to retrieve chat file details`, error);
     return null;
   }
 }

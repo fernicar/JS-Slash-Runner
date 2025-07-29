@@ -12,12 +12,12 @@ interface LorebookEntry {
   enabled: boolean;
   type: 'constant' | 'selective' | 'vectorized';
   position:
-    | 'before_character_definition' // 角色定义之前
-    | 'after_character_definition' // 角色定义之后
-    | 'before_example_messages' // 示例消息之前
-    | 'after_example_messages' // 示例消息之后
-    | 'before_author_note' // 作者注释之前
-    | 'after_author_note' // 作者注释之后
+    | 'before_character_definition' // Before character definition
+    | 'after_character_definition' // After character definition
+    | 'before_example_messages' // Before example messages
+    | 'after_example_messages' // After example messages
+    | 'before_author_note' // Before author's note
+    | 'after_author_note' // After author's note
     | 'at_depth_as_system' // @D⚙
     | 'at_depth_as_assistant' // @D👤
     | 'at_depth_as_user'; // @D🤖
@@ -25,11 +25,11 @@ interface LorebookEntry {
   order: number;
   probability: number;
 
-  /** @deprecated 请使用 `keys` 代替 */
+  /** @deprecated Please use `keys` instead */
   key: string[];
   keys: string[];
   logic: 'and_any' | 'and_all' | 'not_all' | 'not_any';
-  /** @deprecated 请使用 `filters` 代替 */
+  /** @deprecated Please use `filters` instead */
   filter: string[];
   filters: string[];
 
@@ -197,7 +197,7 @@ export async function getLorebookEntries(
   { filter = 'none' }: GetLorebookEntriesOption = {},
 ): Promise<LorebookEntry[]> {
   if (!world_names.includes(lorebook)) {
-    throw Error(`未能找到世界书 '${lorebook}'`);
+    throw Error(`Could not find worldbook '${lorebook}'`);
   }
 
   // @ts-ignore
@@ -218,7 +218,7 @@ export async function getLorebookEntries(
     );
   }
 
-  log.info(`获取世界书 '${lorebook}' 中的条目, 选项: ${JSON.stringify({ filter })}`);
+  log.info(`Getting entries from worldbook '${lorebook}', options: ${JSON.stringify({ filter })}`);
   return structuredClone(entries);
 }
 
@@ -346,7 +346,7 @@ function handleLorebookEntriesCollision(
 
 export async function replaceLorebookEntries(lorebook: string, entries: Partial<LorebookEntry>[]): Promise<void> {
   if (!world_names.includes(lorebook)) {
-    throw Error(`未能找到世界书 '${lorebook}'`);
+    throw Error(`Could not find worldbook '${lorebook}'`);
   }
 
   const data = {
@@ -360,7 +360,7 @@ export async function replaceLorebookEntries(lorebook: string, entries: Partial<
   await saveWorldInfo(lorebook, data);
   reloadEditorDebounced(lorebook);
 
-  log.info(`更新世界书 '${lorebook}' 中的条目`);
+  log.info(`Updating entries in worldbook '${lorebook}'`);
 }
 
 type LorebookEntriesUpdater =
@@ -371,7 +371,7 @@ export async function updateLorebookEntriesWith(
   lorebook: string,
   updater: LorebookEntriesUpdater,
 ): Promise<LorebookEntry[]> {
-  log.info(`对世界书 '${lorebook}' 中的条目进行更新`);
+  log.info(`Updating entries in worldbook '${lorebook}'`);
   await replaceLorebookEntries(lorebook, await updater(await getLorebookEntries(lorebook)));
   return getLorebookEntries(lorebook);
 }
@@ -406,7 +406,7 @@ export async function createLorebookEntries(
           return i;
         }
       }
-      throw Error(`无法找到可用的世界书条目 uid`);
+      throw Error(`Could not find an available worldbook entry uid`);
     };
 
     entries.forEach(entry => (entry.uid = get_free_uid()));
@@ -429,12 +429,12 @@ export async function deleteLorebookEntries(
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-/** @deprecated 请使用 `createLorebookEntries` 代替 */
+/** @deprecated Please use `createLorebookEntries` instead */
 export async function createLorebookEntry(lorebook: string, field_values: Partial<LorebookEntry>): Promise<number> {
   return (await createLorebookEntries(lorebook, [field_values])).new_uids[0];
 }
 
-/** @deprecated 请使用 `deleteLorebookEntries` 代替 */
+/** @deprecated Please use `deleteLorebookEntries` instead */
 export async function deleteLorebookEntry(lorebook: string, uid: number): Promise<boolean> {
   return (await deleteLorebookEntries(lorebook, [uid])).delete_occurred;
 }

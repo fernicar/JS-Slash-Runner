@@ -26,7 +26,7 @@ export function registerIframeVariableHandler() {
 
     if (message_id !== latest_message_id) {
       log.info(
-        `因为 ${message_id} 楼不是最新楼层 ${latest_message_id} 楼, 取消设置聊天变量. 原本要设置的变量:\n${JSON.stringify(
+        `Canceled setting chat variables because message ${message_id} is not the latest message ${latest_message_id}. Original variables to be set:\n${JSON.stringify(
           variables,
           undefined,
           2,
@@ -73,7 +73,7 @@ export function registerIframeVariableHandler() {
     chat_metadata.variables.tempVariables = tempVariables;
     saveMetadataDebounced();
 
-    log.info(`${getLogPrefix(event)}设置聊天变量, 要设置的变量:\n${JSON.stringify(variables, undefined, 2)} `);
+    log.info(`${getLogPrefix(event)}Setting chat variables, variables to be set:\n${JSON.stringify(variables, undefined, 2)} `);
   });
 }
 
