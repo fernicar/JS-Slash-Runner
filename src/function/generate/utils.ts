@@ -16,9 +16,9 @@ import { getBase64Async, isDataURL } from '@sillytavern/scripts/utils';
 import log from 'loglevel';
 
 /**
- * 将文件转换为base64
- * @param img 文件或图片url
- * @returns base64字符串
+ * Convert file to base64
+ * @param img File or image url
+ * @returns base64 string
  */
 export async function convertFileToBase64(img: File | string): Promise<string | undefined> {
   const isDataUrl = typeof img === 'string' && isDataURL(img);
@@ -35,16 +35,16 @@ export async function convertFileToBase64(img: File | string): Promise<string | 
         processedImg = await getBase64Async(img);
       }
     } catch (error) {
-      log.error('[Generate:图片数组处理] 图片处理失败:', error);
+      log.error('[Generate:Image Array Processing] Image processing failed:', error);
     }
   }
   return processedImg;
 }
 
 /**
- * 从响应数据中提取消息内容
- * @param data 响应数据
- * @returns 提取的消息字符串
+ * Extract message from response data
+ * @param data Response data
+ * @returns Extracted message string
  */
 export function extractMessageFromData(data: any): string {
   if (typeof data === 'string') {
@@ -62,9 +62,9 @@ export function extractMessageFromData(data: any): string {
 }
 
 /**
- * 处理对话示例格式
- * @param examplesStr 对话示例字符串
- * @returns 处理后的对话示例数组
+ * Parse dialogue examples
+ * @param examplesStr Dialogue example string
+ * @returns Processed dialogue example array
  */
 export function parseMesExamples(examplesStr: string): string[] {
   if (examplesStr.length === 0 || examplesStr === '<START>') {
@@ -84,9 +84,9 @@ export function parseMesExamples(examplesStr: string): string[] {
 }
 
 /**
- * 用户输入先正则处理
- * @param user_input 用户输入
- * @returns 处理后的用户输入
+ * Process user input
+ * @param user_input User input
+ * @returns Processed user input
  */
 export function processUserInput(user_input: string): string {
   if (user_input === '') {
@@ -99,9 +99,9 @@ export function processUserInput(user_input: string): string {
 }
 
 /**
- * 获取提示词角色类型
- * @param role 角色数字
- * @returns 角色字符串
+ * Get prompt role
+ * @param role Role number
+ * @returns Role string
  */
 export function getPromptRole(role: number): 'system' | 'user' | 'assistant' {
   switch (role) {

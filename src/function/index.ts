@@ -165,8 +165,8 @@ declare namespace globalThis {
 }
 
 /**
- * 初始化TavernHelper全局对象
- * 将各种功能函数暴露到全局作用域
+ * Initialize the TavernHelper global object
+ * Expose various functional functions to the global scope
  */
 export function initTavernHelperObject() {
   globalThis.TavernHelper = getTavernHelper();

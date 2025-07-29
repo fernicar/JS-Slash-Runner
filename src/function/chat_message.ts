@@ -79,13 +79,13 @@ export function getChatMessages(
   const range_demacroed = substituteParamsExtended(range.toString());
   const range_number = string_to_range(range_demacroed, 0, chat.length - 1);
   if (!range_number) {
-    throw Error(`提供的消息范围 range 无效: ${range}`);
+    throw Error(`Invalid message range provided: ${range}`);
   }
   if (!['all', 'system', 'assistant', 'user'].includes(role)) {
-    throw Error(`提供的 role 无效, 请提供 'all', 'system', 'assistant' 或 'user', 你提供的是: ${role}`);
+    throw Error(`Invalid role provided, please provide 'all', 'system', 'assistant' or 'user', you provided: ${role}`);
   }
   if (!['all', 'hidden', 'unhidden'].includes(hide_state)) {
-    throw Error(`提供的 hide_state 无效, 请提供 'all', 'hidden' 或 'unhidden', 你提供的是: ${hide_state}`);
+    throw Error(`Invalid hide_state provided, please provide 'all', 'hidden' or 'unhidden', you provided: ${hide_state}`);
   }
 
   const { start, end } = range_number;
@@ -107,18 +107,18 @@ export function getChatMessages(
   const process_message = (message_id: number): (ChatMessage | ChatMessageSwiped) | null => {
     const message = chat[message_id];
     if (!message) {
-      log.warn(`没找到第 ${message_id} 楼的消息`);
+      log.warn(`Could not find message at index ${message_id}`);
       return null;
     }
 
     const message_role = get_role(message);
     if (role !== 'all' && message_role !== role) {
-      log.debug(`筛去了第 ${message_id} 楼的消息因为它的身份不是 ${role}`);
+      log.debug(`Filtered out message at index ${message_id} because its role is not ${role}`);
       return null;
     }
 
     if (hide_state !== 'all' && (hide_state === 'hidden') !== message.is_system) {
-      log.debug(`筛去了第 ${message_id} 楼的消息因为它${hide_state === 'hidden' ? `` : `没`} 被隐藏`);
+      log.debug(`Filtered out message at index ${message_id} because it is ${hide_state === 'hidden' ? `` : `not`} hidden`);
       return null;
     }
 
@@ -162,7 +162,7 @@ export function getChatMessages(
     .filter(chat_message => chat_message !== null);
 
   log.info(
-    `获取${start == end ? `第 ${start} ` : ` ${start}-${end} `}楼的消息, 选项: ${JSON.stringify({
+    `Getting messages from index ${start == end ? `${start}` : `${start}-${end}`}, options: ${JSON.stringify({
       role,
       hide_state,
       include_swipes,
@@ -291,7 +291,7 @@ export async function setChatMessages(
     await Promise.all(chat_messages.map(message => render(message.message_id)));
   }
   log.info(
-    `修改第 '${chat_messages.map(message => message.message_id).join(', ')}' 楼的消息, 选项: ${JSON.stringify({
+    `Modified message at index '${chat_messages.map(message => message.message_id).join(', ')}', options: ${JSON.stringify({
       refresh,
     })}`,
   );
@@ -317,7 +317,7 @@ export async function createChatMessages(
   if (insert_at !== 'end') {
     insert_at = insert_at < 0 ? chat.length + insert_at : insert_at;
     if (insert_at < 0 || insert_at > chat.length) {
-      throw Error(`提供的 insert_at 无效, 请提供一个在 '0' 到 '${chat.length}' 之间的整数, 你提供的是: '${insert_at}'`);
+      throw Error(`Invalid insert_at provided, please provide an integer between '0' and '${chat.length}', you provided: '${insert_at}'`);
     }
   }
 
@@ -354,9 +354,7 @@ export async function createChatMessages(
     await reloadCurrentChat();
   }
   log.info(
-    `在${insert_at === 'end' ? '最后' : `第 ${insert_at} 楼前`}创建 ${
-      chat_messages.length
-    } 条消息, 选项: ${JSON.stringify({
+    `Created ${chat_messages.length} messages ${insert_at === 'end' ? 'at the end' : `before index ${insert_at}`}, options: ${JSON.stringify({
       insert_at,
       refresh,
     })}`,
@@ -379,7 +377,7 @@ export async function deleteChatMessages(
     await reloadCurrentChat();
   }
   log.info(
-    `删除第 '${message_ids.join(', ')}' 楼的消息, 选项: ${JSON.stringify({
+    `Deleted message at index '${message_ids.join(', ')}', options: ${JSON.stringify({
       refresh,
     })}`,
   );
@@ -402,14 +400,14 @@ export async function rotateChatMessages(
     await reloadCurrentChat();
   }
   log.info(
-    `旋转第 '[${begin}, ${middle}) [${middle}, ${end})' 楼的消息, 选项: ${JSON.stringify({
+    `Rotated messages from '[${begin}, ${middle})' and '[${middle}, ${end})', options: ${JSON.stringify({
       refresh,
     })}`,
   );
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-/** @deprecated 请使用 `setChatMessages` 代替 */
+/** @deprecated Please use `setChatMessages` instead */
 export async function setChatMessage(
   field_values: { message?: string; data?: Record<string, any> },
   message_id: number,
@@ -423,17 +421,17 @@ export async function setChatMessage(
 ): Promise<void> {
   field_values = typeof field_values === 'string' ? { message: field_values } : field_values;
   if (typeof swipe_id !== 'number' && swipe_id !== 'current') {
-    throw Error(`提供的 swipe_id 无效, 请提供 'current' 或序号, 你提供的是: ${swipe_id} `);
+    throw Error(`Invalid swipe_id provided, please provide 'current' or a number, you provided: ${swipe_id} `);
   }
   if (!['none', 'display_current', 'display_and_render_current', 'all'].includes(refresh)) {
     throw Error(
-      `提供的 refresh 无效, 请提供 'none', 'display_current', 'display_and_render_current' 或 'all', 你提供的是: ${refresh} `,
+      `Invalid refresh provided, please provide 'none', 'display_current', 'display_and_render_current' or 'all', you provided: ${refresh} `,
     );
   }
 
   const chat_message = chat.at(message_id);
   if (!chat_message) {
-    log.warn(`未找到第 ${message_id} 楼的消息`);
+    log.warn(`Could not find message at index ${message_id}`);
     return;
   }
 
@@ -442,7 +440,7 @@ export async function setChatMessage(
       return false;
     }
 
-    // swipe_id 对应的消息页存在
+    // swipe_id exists
     if (swipe_id == 0 || (chat_message.swipes && swipe_id < chat_message.swipes.length)) {
       return true;
     }
@@ -495,7 +493,7 @@ export async function setChatMessage(
     }
 
     if (should_update_swipe) {
-      // FIXME: 只有一条消息时, swipes-counter 不会正常显示; 此外还要考虑 swipes-counter 的 "Swipe # for All Messages" 选项
+      // FIXME: When there is only one message, swipes-counter will not be displayed normally; In addition, consider the "Swipe # for All Messages" option of swipes-counter
       mes_html.find('.swipes-counter').text(`${swipe_id_to_use_index + 1}\u200b/\u200b${chat_message.swipes.length}`);
     }
     if (refresh != 'none') {
@@ -524,9 +522,9 @@ export async function setChatMessage(
   }
 
   log.info(
-    `设置第 ${message_id} 楼消息, 选项: ${JSON.stringify({
+    `Setting message at index ${message_id}, options: ${JSON.stringify({
       swipe_id,
       refresh,
-    })}, 设置前使用的消息页: ${swipe_id_previous_index}, 设置的消息页: ${swipe_id_to_set_index}, 现在使用的消息页: ${swipe_id_to_use_index} `,
+    })}, swipe index before setting: ${swipe_id_previous_index}, swipe index to set: ${swipe_id_to_set_index}, current swipe index: ${swipe_id_to_use_index} `,
   );
 }

@@ -31,9 +31,9 @@ interface LorebookSettings {
 
   scan_depth: number;
   context_percentage: number;
-  budget_cap: number; // 0 表示禁用
+  budget_cap: number; // 0 means disabled
   min_activations: number;
-  max_depth: number; // 0 表示无限制
+  max_depth: number; // 0 means unlimited
   max_recursion_steps: number;
 
   insertion_strategy: 'evenly' | 'character_first' | 'global_first';
@@ -62,7 +62,7 @@ async function editCurrentCharacter(): Promise<boolean> {
   // @ts-ignore
   delete headers['Content-Type'];
 
-  // TODO: 这里的代码可以用来修改第一条消息!
+  // TODO: This code can be used to modify the first message!
   form_data.delete('alternate_greetings');
   // @ts-ignore
   const chid = $('.open_alternate_greetings').data('chid');
@@ -206,7 +206,7 @@ interface GetCharLorebooksOption {
 export function getLorebookSettings(): LorebookSettings {
   const lorebook_settings = toLorebookSettings(getWorldInfoSettings());
 
-  log.info(`获取世界书全局设置:\n${JSON.stringify(lorebook_settings)}`);
+  log.info(`Getting global lorebook settings:\n${JSON.stringify(lorebook_settings)}`);
   return structuredClone(lorebook_settings);
 }
 
@@ -214,31 +214,31 @@ export function setLorebookSettings(settings: Partial<LorebookSettings>): void {
   if (settings.selected_global_lorebooks) {
     const inexisting_lorebooks = settings.selected_global_lorebooks.filter(lorebook => !world_names.includes(lorebook));
     if (inexisting_lorebooks.length > 0) {
-      throw Error(`尝试修改要全局启用的世界书, 但未找到以下世界书: ${JSON.stringify(inexisting_lorebooks)}`);
+      throw Error(`Attempted to modify globally enabled worldbooks, but the following worldbooks were not found: ${JSON.stringify(inexisting_lorebooks)}`);
     }
   }
 
   assignPartialLorebookSettings(settings);
 
-  log.info(`修改世界书全局设置:\n${JSON.stringify(settings)}`);
+  log.info(`Modifying global lorebook settings:\n${JSON.stringify(settings)}`);
 }
 
 export function getLorebooks(): string[] {
-  log.info(`获取世界书列表: ${JSON.stringify(world_names)}`);
+  log.info(`Getting worldbook list: ${JSON.stringify(world_names)}`);
   return structuredClone(world_names);
 }
 
 export async function deleteLorebook(lorebook: string): Promise<boolean> {
   const success = await deleteWorldInfo(lorebook);
 
-  log.info(`移除世界书 '${lorebook}' ${success ? '成功' : '失败'}`);
+  log.info(`Removing worldbook '${lorebook}' ${success ? 'succeeded' : 'failed'}`);
   return success;
 }
 
 export async function createLorebook(lorebook: string): Promise<boolean> {
   const success = await createNewWorldInfo(lorebook, { interactive: false });
 
-  log.info(`新建世界书 '${lorebook}' ${success ? '成功' : '失败'}`);
+  log.info(`Creating new worldbook '${lorebook}' ${success ? 'succeeded' : 'failed'}`);
   return success;
 }
 
@@ -253,12 +253,12 @@ export function getCharLorebooks({
 }: GetCharLorebooksOption = {}): CharLorebooks {
   // @ts-ignore
   if (selected_group && !name) {
-    throw Error(`不要在群组中调用这个功能`);
+    throw Error(`Do not call this function in a group chat`);
   }
   // @ts-ignore
   const character = findChar({ name });
   if (!character) {
-    throw Error(`未找到名为 '${name}' 的角色卡`);
+    throw Error(`Could not find character card named '${name}'`);
   }
 
   const books: CharLorebooks = { primary: null, additional: [] };
@@ -288,7 +288,7 @@ export function getCharLorebooks({
     }
   }
 
-  log.info(`获取角色卡绑定的世界书, 选项: ${JSON.stringify({ name, type })}, 获取结果: ${JSON.stringify(books)}`);
+  log.info(`Getting worldbooks bound to character card, options: ${JSON.stringify({ name, type })}, result: ${JSON.stringify(books)}`);
   return structuredClone(books);
 }
 
@@ -299,12 +299,12 @@ export function getCurrentCharPrimaryLorebook(): string | null {
 export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>): Promise<void> {
   // @ts-ignore
   if (selected_group) {
-    throw Error(`不要在群组中调用这个功能`);
+    throw Error(`Do not call this function in a group chat`);
   }
   // @ts-ignore
   const filename = getCharaFilename(this_chid);
   if (!filename) {
-    throw Error(`未打开任何角色卡`);
+    throw Error(`No character card is open`);
   }
 
   const inexisting_lorebooks: string[] = [
@@ -312,7 +312,7 @@ export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>)
     ...(lorebooks.additional ? lorebooks.additional.filter(lorebook => !world_names.includes(lorebook)) : []),
   ];
   if (inexisting_lorebooks.length > 0) {
-    throw Error(`尝试修改 '${filename}' 绑定的世界书, 但未找到以下世界书: ${inexisting_lorebooks}`);
+    throw Error(`Attempted to modify worldbooks bound to '${filename}', but the following worldbooks were not found: ${inexisting_lorebooks}`);
   }
 
   if (lorebooks.primary !== undefined) {
@@ -337,7 +337,7 @@ export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>)
     }
 
     if (!(await editCurrentCharacter())) {
-      throw Error(`尝试为 '${filename}' 绑定主要世界书, 但在访问酒馆后端时出错`);
+      throw Error(`Attempted to bind primary worldbook for '${filename}', but an error occurred when accessing the Tavern backend`);
     }
 
     // @ts-ignore
@@ -367,16 +367,16 @@ export async function setCurrentCharLorebooks(lorebooks: Partial<CharLorebooks>)
   saveSettingsDebounced();
 
   log.info(
-    `修改角色卡绑定的世界书, 要修改的部分: ${JSON.stringify(lorebooks)}${
-      lorebooks.primary === undefined ? ', 主要世界书保持不变' : ''
-    }${lorebooks.additional === undefined ? ', 附加世界书保持不变' : ''}`,
+    `Modifying worldbooks bound to character card, parts to be modified: ${JSON.stringify(lorebooks)}${
+      lorebooks.primary === undefined ? ', primary worldbook remains unchanged' : ''
+    }${lorebooks.additional === undefined ? ', additional worldbooks remain unchanged' : ''}`,
   );
 }
 
 export async function getChatLorebook(): Promise<string | null> {
   const chat_id = getCurrentChatId();
   if (!chat_id) {
-    throw Error(`未打开任何聊天, 不可获取聊天世界书`);
+    throw Error(`No chat is open, cannot get chat worldbook`);
   }
 
   const existing_lorebook = _.get(chat_metadata, METADATA_KEY, '') as string;
@@ -393,7 +393,7 @@ export async function setChatLorebook(lorebook: string | null): Promise<void> {
     $('.chat_lorebook_button').removeClass('world_set');
   } else {
     if (!world_names.includes(lorebook)) {
-      throw new Error(`尝试为角色卡绑定聊天世界书, 但该世界书 '${lorebook}' 不存在`);
+      throw new Error(`Attempted to bind chat worldbook for character card, but the worldbook '${lorebook}' does not exist`);
     }
 
     _.set(chat_metadata, METADATA_KEY, lorebook);
@@ -411,7 +411,7 @@ export async function getOrCreateChatLorebook(lorebook?: string): Promise<string
   const new_lorebook = (() => {
     if (lorebook) {
       if (world_names.includes(lorebook)) {
-        throw new Error(`尝试创建聊天世界书, 但该名称 '${lorebook}' 已存在`);
+        throw new Error(`Attempted to create chat worldbook, but the name '${lorebook}' already exists`);
       }
       return lorebook;
     }

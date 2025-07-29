@@ -135,21 +135,21 @@ function fromTavernRegex(tavern_regex: TavernRegex): RegexScriptData {
 export function isCharacterTavernRegexesEnabled(): boolean {
   const result = isCharacterTavernRegexEnabled();
 
-  log.info(`查询到局部正则${result ? '被启用' : '被禁用'}`);
+  log.info(`Local regex is ${result ? 'enabled' : 'disabled'}`);
   return result;
 }
 
 interface GetTavernRegexesOption {
-  scope?: 'all' | 'global' | 'character'; // 按所在区域筛选正则
-  enable_state?: 'all' | 'enabled' | 'disabled'; // 按是否被开启筛选正则
+  scope?: 'all' | 'global' | 'character'; // Filter regex by scope
+  enable_state?: 'all' | 'enabled' | 'disabled'; // Filter regex by enabled state
 }
 
 export function getTavernRegexes({ scope = 'all', enable_state = 'all' }: GetTavernRegexesOption = {}): TavernRegex[] {
   if (!['all', 'enabled', 'disabled'].includes(enable_state)) {
-    throw Error(`提供的 enable_state 无效, 请提供 'all', 'enabled' 或 'disabled', 你提供的是: ${enable_state}`);
+    throw Error(`Invalid enable_state provided, please provide 'all', 'enabled' or 'disabled', you provided: ${enable_state}`);
   }
   if (!['all', 'global', 'character'].includes(scope)) {
-    throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${scope}`);
+    throw Error(`Invalid scope provided, please provide 'all', 'global' or 'character', you provided: ${scope}`);
   }
 
   let regexes: TavernRegex[] = [];
@@ -167,7 +167,7 @@ export function getTavernRegexes({ scope = 'all', enable_state = 'all' }: GetTav
 }
 
 interface ReplaceTavernRegexesOption {
-  scope?: 'all' | 'global' | 'character'; // 要替换的酒馆正则部分
+  scope?: 'all' | 'global' | 'character'; // The part of the tavern regex to be replaced
 }
 
 export async function replaceTavernRegexes(
@@ -175,13 +175,13 @@ export async function replaceTavernRegexes(
   { scope = 'all' }: ReplaceTavernRegexesOption,
 ): Promise<void> {
   if (!['all', 'global', 'character'].includes(scope)) {
-    throw Error(`提供的 scope 无效, 请提供 'all', 'global' 或 'character', 你提供的是: ${scope}`);
+    throw Error(`Invalid scope provided, please provide 'all', 'global' or 'character', you provided: ${scope}`);
   }
 
   // FIXME: `trimStrings` and `substituteRegex` are not considered
   const emptied_regexes = regexes.filter(regex => regex.script_name == '');
   if (emptied_regexes.length > 0) {
-    throw Error(`不能将酒馆正则的名称设置为空字符串:\n${JSON.stringify(emptied_regexes.map(regex => regex.id))}`);
+    throw Error(`The name of the tavern regex cannot be set to an empty string:\n${JSON.stringify(emptied_regexes.map(regex => regex.id))}`);
   }
   const [global_regexes, character_regexes] = _.partition(regexes, regex => regex.scope === 'global').map(paritioned =>
     paritioned.map(fromTavernRegex),
@@ -206,9 +206,9 @@ export async function replaceTavernRegexes(
   }
   await reloadCurrentChat();
 
-  log.info(`替换酒馆正则\
-${scope === 'all' || scope === 'global' ? `, 全局正则:\n${JSON.stringify(global_regexes)}` : ``}\
-${scope === 'all' || scope === 'character' ? `, 局部正则:\n${JSON.stringify(character_regexes)}` : ``}`);
+  log.info(`Replacing tavern regex\
+${scope === 'all' || scope === 'global' ? `, global regex:\n${JSON.stringify(global_regexes)}` : ``}\
+${scope === 'all' || scope === 'character' ? `, local regex:\n${JSON.stringify(character_regexes)}` : ``}`);
 }
 
 type TavernRegexUpdater =
@@ -221,7 +221,7 @@ export async function updateTavernRegexesWith(
 ): Promise<TavernRegex[]> {
   let regexes = getTavernRegexes({ scope });
   regexes = await updater(regexes);
-  log.info(`对${{ all: '全部', global: '全局', character: '局部' }[scope]}变量表进行更新`);
+  log.info(`Updating ${{ all: 'all', global: 'global', character: 'local' }[scope]} variable table`);
   await replaceTavernRegexes(regexes, { scope });
   return regexes;
 }

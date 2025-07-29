@@ -8,31 +8,31 @@ import { convertFileToBase64 } from '@/function/generate/utils';
 const dryRun = false;
 
 /**
- * 使用预设路径处理生成请求
- * @param baseData 基础数据
- * @param processedUserInput 处理后的用户输入
- * @param config 配置参数
- * @returns 生成数据
+ * Handle preset path
+ * @param baseData Base data
+ * @param processedUserInput Processed user input
+ * @param config Configuration parameters
+ * @returns Generation data
  */
 export async function handlePresetPath(
   baseData: any,
   processedUserInput: string,
   config: Omit<detail.GenerateParams, 'user_input' | 'use_preset'>,
 ) {
-  // prepareOpenAIMessages会从设置里读取场景因此临时覆盖
+  // prepareOpenAIMessages will read the scene from the settings, so temporarily override it
   let originalScenario = null;
 
   try {
     const scenarioOverride = config?.overrides?.scenario;
     // @ts-ignore
     if (scenarioOverride && characters && characters[this_chid]) {
-      // 保存原始场景
+      // Save the original scene
       // @ts-ignore
       originalScenario = characters[this_chid].scenario || null;
       // @ts-ignore
       characters[this_chid].scenario = scenarioOverride;
     }
-    // 添加user消息(一次性)
+    // Add user message (one-time)
     const userMessageTemp = {
       role: 'user',
       content: processedUserInput,
@@ -73,7 +73,7 @@ export async function handlePresetPath(
 
     return { prompt };
   } finally {
-    // 恢复原始场景
+    // Restore the original scene
     // @ts-ignore
     if (originalScenario !== null && characters && characters[this_chid]) {
       // @ts-ignore

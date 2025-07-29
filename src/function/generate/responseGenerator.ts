@@ -21,8 +21,8 @@ import { clearInjectionPrompts, extractMessageFromData, setupImageArrayProcessin
 const type = 'quiet';
 
 /**
- * 流式处理器类
- * 处理流式生成的响应数据
+ * Streaming processor class
+ * Handles streaming generated response data
  */
 class StreamingProcessor {
   public generator: () => AsyncGenerator<{ text: string }, void, void>;
@@ -43,10 +43,10 @@ class StreamingProcessor {
   }
 
   onProgressStreaming(text: string, isFinal: boolean) {
-    // 计算增量文本
+    // Calculate incremental text
     const newText = text.slice(this.messageBuffer.length);
     this.messageBuffer = text;
-    // 兼容旧版本
+    // Compatible with old versions
     // @ts-ignore
     let processedText = cleanUpMessage(newText, false, false, !isFinal, this.stoppingStrings);
 
@@ -62,7 +62,7 @@ class StreamingProcessor {
     eventSource.emit('js_stream_token_received_incrementally', processedText);
 
     if (isFinal) {
-      // 兼容旧版本
+      // Compatible with old versions
       // @ts-ignore
       const fullText = cleanUpMessage(text, false, false, false, this.stoppingStrings);
       eventSource.emit('js_generation_ended', fullText);
@@ -126,13 +126,13 @@ class StreamingProcessor {
 }
 
 /**
- * 处理非流式响应
- * @param response API响应对象
- * @returns 提取的消息文本
+ * Handle non-streaming responses
+ * @param response API response object
+ * @returns Extracted message text
  */
 async function handleResponse(response: any) {
   if (!response) {
-    throw Error(`未得到响应`);
+    throw Error(`No response received`);
   }
   if (response.error) {
     if (response?.response) {
@@ -148,12 +148,12 @@ async function handleResponse(response: any) {
 }
 
 /**
- * 生成响应
- * @param generate_data 生成数据
- * @param useStream 是否使用流式传输
- * @param imageProcessingSetup 图片数组处理设置，包含Promise和解析器
- * @param abortController 中止控制器
- * @returns 生成的响应文本
+ * Generate response
+ * @param generate_data Generation data
+ * @param useStream Whether to use streaming
+ * @param imageProcessingSetup Image array processing settings, including Promise and parser
+ * @param abortController Abort controller
+ * @returns Generated response text
  */
 export async function generateResponse(
   generate_data: any,
@@ -165,15 +165,15 @@ export async function generateResponse(
   try {
     deactivateSendButtons();
 
-    // 如果有图片处理，等待图片处理完成
+    // If there is image processing, wait for the image processing to complete
     if (imageProcessingSetup) {
       try {
         await imageProcessingSetup.imageProcessingPromise;
-        log.debug('[Generate:图片数组处理] 图片处理已完成，继续生成流程');
+        log.debug('[Generate:Image Array Processing] Image processing completed, continue generation process');
       } catch (imageError: any) {
-        log.error('[Generate:图片数组处理] 图片处理失败:', imageError);
-        // 图片处理失败不应该阻止整个生成流程，但需要记录错误
-        throw new Error(`图片处理失败: ${imageError?.message || '未知错误'}`);
+        log.error('[Generate:Image Array Processing] Image processing failed:', imageError);
+        // Image processing failure should not block the entire generation process, but an error needs to be recorded
+        throw new Error(`Image processing failed: ${imageError?.message || 'Unknown error'}`);
       }
     }
 
@@ -197,7 +197,7 @@ export async function generateResponse(
       result = await handleResponse(response);
     }
   } catch (error) {
-    // 如果有图片处理设置但生成失败，确保拒绝Promise
+    // If there is an image processing setting but the generation fails, make sure to reject the Promise
     if (imageProcessingSetup) {
       imageProcessingSetup.rejectImageProcessing(error);
     }
