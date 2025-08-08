@@ -1,71 +1,71 @@
 # Tavern-Helper
 
 > [!Warning]
-> 执行自定义JavaScript代码，可能会带来安全风险：
+> Executing custom JavaScript code can bring security risks:
 >
-> - 恶意脚本可能会窃取你的API密钥、聊天记录等敏感信息；修改或破坏你的SillyTavern设置
-> - 某些脚本可能会执行危险操作，如发送未经授权的请求
+> - Malicious scripts may steal your sensitive information such as API keys, chat records, etc.; modify or damage your SillyTavern settings
+> - Some scripts may perform dangerous operations, such as sending unauthorized requests
 >
-> 请在执行任何脚本前：
+> Please do the following before executing any script:
 >
-> 1. 仔细检查脚本内容，确保其来源可信
-> 2. 理解脚本的功能和可能的影响
-> 3. 如有疑问，请勿执行来源不明的脚本
+> 1. Carefully check the script content to ensure its source is trustworthy
+> 2. Understand the function and possible impact of the script
+> 3. If in doubt, do not execute scripts from unknown sources
 >
-> 我们不为第三方脚本造成的任何损失负责。
+> We are not responsible for any losses caused by third-party scripts.
 
-此扩展允许你在 SillyTavern 中运行外部 JavaScript 代码。
+This extension allows you to run external JavaScript code in SillyTavern.
 
-由于 SillyTavern 默认不支持直接执行 JavaScript 代码，这个扩展通过使用 iframe 来隔离和执行脚本，从而让你在某些受限的上下文中运行外部脚本。
+Since SillyTavern does not support direct execution of JavaScript code by default, this extension allows you to run external scripts in certain restricted contexts by using iframes to isolate and execute scripts.
 
-## 文档
+## Documentation
 
-- [文档](https://n0vi028.github.io/JS-Slash-Runner-Doc/)
+- [Documentation](https://n0vi028.github.io/JS-Slash-Runner-Doc/)
 
-## 参与贡献提示
+## Contribution Tips
 
-### 项目结构
+### Project Structure
 
-基于酒馆 UI 插件的项目结构要求, 本项目直接打包源代码在 `dist/` 文件夹中并随仓库上传, 而这会让开发时经常出现分支冲突.
+Based on the project structure requirements of the Tavern UI plugin, this project directly packages the source code in the `dist/` folder and uploads it with the repository, which will often cause branch conflicts during development.
 
-为了解决这一点, 仓库在 `.gitattribute` 中设置了对于 `dist/` 文件夹中的冲突总是使用当前版本. 这不会有什么问题: 在上传后, ci 会将 `dist/` 文件夹重新打包成最新版本, 因而你上传的 `dist/` 文件夹内容如何无关紧要.
+To solve this, the repository sets the conflict in the `dist/` folder to always use the current version in `.gitattribute`. This will not be a problem: after uploading, the ci will repackage the `dist/` folder into the latest version, so it doesn't matter what the content of the `dist/` folder you upload is.
 
-为了启用这个功能, 请执行一次以下命令:
+To enable this function, please execute the following command once:
 
 ```bash
 git config --global merge.ours.driver true
 ```
 
-### 手动编译
+### Manual Compilation
 
-你可以参考 [参与前端插件开发的 VSCode 环境配置](https://sillytavern-stage-girls-dog.readthedocs.io/tool_and_experience/js_slash_runner/index.html) 来得到 VSCode 上更详细的配置和使用教程.
+You can refer to [VSCode Environment Configuration for Front-end Plug-in Development](https://sillytavern-stage-girls-dog.readthedocs.io/tool_and_experience/js_slash_runner/index.html) for more detailed configuration and usage tutorials on VSCode.
 
-你需要先安装有 node 22+ 和 pnpm. 如果已经安装有 node 22+, 则 pnpm 可以按以下步骤安装:
+You need to have node 22+ and pnpm installed first. If you have already installed node 22+, you can install pnpm as follows:
 
 ```bash
 npm install -g pnpm
 ```
 
-然后, 用 pnpm 安装本项目的所有依赖:
+Then, use pnpm to install all the dependencies of this project:
 
 ```bash
 pnpm install
 ```
 
-之后你就可以对本项目进行编译:
+Then you can compile this project:
 
 ```bash
 pnpm build
 ```
 
-或者, 你可以用 `pnpm watch` 来持续监听代码变动. 这样只需刷新酒馆网页, 酒馆就会使用最新的插件代码.
+Alternatively, you can use `pnpm watch` to continuously monitor code changes. In this way, you only need to refresh the tavern page, and the tavern will use the latest plug-in code.
 
-## 许可证
+## License
 
 - [Aladdin](LICENSE)
 
-## 参考
+## Reference
 
-[【SillyTavern / ST酒馆】html代码注入器](https://greasyfork.org/zh-CN/scripts/503174-sillytavern-st%E9%85%92%E9%A6%86-html%E4%BB%A3%E7%A0%81%E6%B3%A8%E5%85%A5%E5%99%A8)
+[【SillyTavern / ST Tavern】html code injector](https://greasyfork.org/zh-CN/scripts/503174-sillytavern-st%E9%85%92%E9%A6%86-html%E4%BB%A3%E7%A0%81%E6%B3%A8%E5%85%A5%E5%99%A8)
 
-[Dynamic Audio](https://github.com/SillyTavern/Extension-Audio)
+[Dynamic Audio](httpshttps://github.com/SillyTavern/Extension-Audio)

@@ -17,7 +17,7 @@ let abortController = new AbortController();
 let currentImageProcessingSetup: ReturnType<typeof setupImageArrayProcessing> | undefined = undefined;
 
 /**
- * 清理图片处理相关的监听器和Promise
+ * Clean up image processing related listeners and Promises
  */
 function cleanupImageProcessing(): void {
   if (currentImageProcessingSetup) {
@@ -26,17 +26,17 @@ function cleanupImageProcessing(): void {
       
       currentImageProcessingSetup.rejectImageProcessing(new Error('Generation stopped by user'));
       
-      log.info('[Generate:停止] 已清理图片处理相关逻辑');
+      log.info('[Generate:Stop] Cleaned up image processing related logic');
     } catch (error) {
-      log.warn('[Generate:停止] 清理图片处理时出错:', error);
+      log.warn('[Generate:Stop] Error cleaning up image processing:', error);
     }
     currentImageProcessingSetup = undefined;
   }
 }
 
 /**
- * 从Overrides转换为detail.OverrideConfig
- * @param overrides 覆盖配置
+ * Convert from Overrides to detail.OverrideConfig
+ * @param overrides Override configuration
  * @returns detail.OverrideConfig
  */
 export function fromOverrides(overrides: Overrides): detail.OverrideConfig {
@@ -56,8 +56,8 @@ export function fromOverrides(overrides: Overrides): detail.OverrideConfig {
 }
 
 /**
- * 从InjectionPrompt转换为InjectionPrompt
- * @param inject 注入提示词
+ * Convert from InjectionPrompt to InjectionPrompt
+ * @param inject Injection prompt
  * @returns InjectionPrompt
  */
 export function fromInjectionPrompt(inject: InjectionPrompt): InjectionPrompt {
@@ -77,8 +77,8 @@ export function fromInjectionPrompt(inject: InjectionPrompt): InjectionPrompt {
 }
 
 /**
- * 从GenerateConfig转换为detail.GenerateParams
- * @param config 生成配置
+ * Convert from GenerateConfig to detail.GenerateParams
+ * @param config Generation configuration
  * @returns detail.GenerateParams
  */
 export function fromGenerateConfig(config: GenerateConfig): detail.GenerateParams {
@@ -94,8 +94,8 @@ export function fromGenerateConfig(config: GenerateConfig): detail.GenerateParam
 }
 
 /**
- * 从GenerateRawConfig转换为detail.GenerateParams
- * @param config 原始生成配置
+ * Convert from GenerateRawConfig to detail.GenerateParams
+ * @param config Raw generation configuration
  * @returns detail.GenerateParams
  */
 export function fromGenerateRawConfig(config: GenerateRawConfig): detail.GenerateParams {
@@ -112,17 +112,17 @@ export function fromGenerateRawConfig(config: GenerateRawConfig): detail.Generat
 }
 
 /**
- * 生成AI响应的核心函数
- * @param config 生成配置参数
- * @param config.user_input 用户输入文本
- * @param config.use_preset 是否使用预设
- * @param config.image 图片参数，可以是单个图片(File|string)或图片数组(File|string)[]
- * @param config.overrides 覆盖配置
- * @param config.max_chat_history 最大聊天历史数量
- * @param config.inject 注入的提示词
- * @param config.order 提示词顺序
- * @param config.stream 是否启用流式传输
- * @returns Promise<string> 生成的响应文本
+ * The core function for generating AI responses
+ * @param config Generation configuration parameters
+ * @param config.user_input User input text
+ * @param config.use_preset Whether to use presets
+ * @param config.image Image parameters, can be a single image (File|string) or an array of images (File|string)[]
+ * @param config.overrides Override configuration
+ * @param config.max_chat_history Maximum number of chat history
+ * @param config.inject Injected prompts
+ * @param config.order Prompt order
+ * @param config.stream Whether to enable streaming
+ * @returns Promise<string> Generated response text
  */
 async function iframeGenerate({
   user_input = '',
@@ -136,13 +136,13 @@ async function iframeGenerate({
 }: detail.GenerateParams = {}): Promise<string> {
   abortController = new AbortController();
 
-  // 1. 处理用户输入和图片（正则，宏，图片数组）
+  // 1. Process user input and images (regex, macros, image arrays)
   const inputResult = await processUserInputWithImages(user_input, use_preset, image);
   const { processedUserInput, imageProcessingSetup, processedImageArray } = inputResult;
   
   currentImageProcessingSetup = imageProcessingSetup;
 
-  // 2. 准备过滤后的基础数据
+  // 2. Prepare filtered base data
   const baseData = await prepareAndOverrideData(
     {
       overrides,
@@ -153,7 +153,7 @@ async function iframeGenerate({
     processedUserInput,
   );
 
-  // 3. 根据 use_preset 分流处理
+  // 3. Handle based on use_preset
   const generate_data = use_preset
     ? await handlePresetPath(baseData, processedUserInput, {
         image,
@@ -176,8 +176,8 @@ async function iframeGenerate({
       );
 
   try {
-    // 4. 根据 stream 参数决定生成方式
-    log.info('[Generate:发送提示词]', generate_data);
+    // 4. Decide the generation method based on the stream parameter
+    log.info('[Generate:Sending prompt]', generate_data);
     const result = await generateResponse(generate_data, stream, imageProcessingSetup, abortController);
     
     currentImageProcessingSetup = undefined;
@@ -205,7 +205,7 @@ export async function generateRaw(config: GenerateRawConfig) {
 }
 
 /**
- * 点击停止按钮时的逻辑
+ * Logic when the stop button is clicked
  */
 $(document).on('click', '#mes_stop', function () {
   const wasStopped = stopGeneration();
