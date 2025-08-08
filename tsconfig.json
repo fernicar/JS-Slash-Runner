@@ -10,6 +10,7 @@
       "jqueryui",
       "lodash",
       "toastr",
+      "type-fest",
     ],
     "paths": {
       "@sillytavern/*": [

@@ -42,7 +42,7 @@
 #extension-info {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 15px;
   position: relative;
   width: 100%;
   background-color: var(--grey5020a);

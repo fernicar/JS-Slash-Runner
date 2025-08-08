@@ -1,3 +1,72 @@
+## 3.3.2
+
+### ⏫功能
+
+- 更换了内置脚本库等的网络链接 (从 `fastly.jsdelivr.net` 更换为 `testingcf.jsdelivr.net`), 让国内更容易访问
+- 为前端和脚本默认置入了 [`zod` 库](https://zod.dev/basics). 通过这个库, 你可以更方便地解析 ai 输出的数据, 并对不符的数据进行**中文报错**. 如果已经配置了[编写模板](https://n0vi028.github.io/JS-Slash-Runner-Doc/guide/基本用法/如何正确使用酒馆助手.html)请下载新的模板.
+
+  ```typescript
+  // 定义一个手机消息数据类型
+  type PhoneMessage = z.infer<typeof PhoneMessage>;
+  const PhoneMessage = z.object({
+    name: z.string()       // `name` 是一个字符串
+           .catch('络络'),  // 如果 ai 错误输出了数字之类的, 用 '络络'
+
+    content: z.string()
+              .default('络络'),  // 如果 ai 忘了输出 `content`, 用 '你好',
+
+    reply_count: z.number().min(1),  // 至少有一条回复
+
+    time: z.iso.time(),
+  });
+
+  const data = JSON.parse(/*假设你从 ai 回复中提取出了一条手机消息*/);
+  const phone_message = PhoneMessage.parse(message);
+  console.info(data);
+  // >> { name: '络络', content: '你好', reply_count: 1, time: '06:15' }
+  // 如果解析失败, 将会报错
+  // >> 无效输入: 期望 string，实际接收 undefined
+  ```
+
+  之后会用这个库修改酒馆助手的 `@types` 文件夹, 允许你检查酒馆助手的如 `ChatMessage` 等数据类型.
+
+## 3.3.1
+
+### ⏫功能
+
+- `{{get_message_variable::}}` 等宏将字符串变量替换为文本时, 将不会用引号包裹内容. 例如 `{{get_message_variable::世界.时间阶段}}` 将不会替换为 `"早上"` 而是 `早上`
+
+### 🐛修复
+
+- `loadPreset` 不能正常使用的问题
+
+## 3.3.0
+
+### ⏫功能
+
+- 更新了一套操控预设的函数, 现在你可以**比酒馆接口更简单地**通过脚本操控酒馆的预设了! 具体函数请自行参考文档 (未完成) 或[类型文件 (可以直接发给 ai)](https://github.com/N0VI028/JS-Slash-Runner/blob/main/%40types/function/preset.d.ts), 如果已经配置了[编写模板](https://n0vi028.github.io/JS-Slash-Runner-Doc/guide/基本用法/如何正确使用酒馆助手.html)请`pnpm add -D type-fest`并下载新的`@types`文件夹!
+
+  ```typescript
+  // 为酒馆正在使用的预设开启流式传输
+  await setPreset('in_use', { settings: { should_stream: true } });
+  ```
+
+  ```typescript
+  // 将 '预设A' 的条目按顺序复制到 '预设B' 开头
+  const preset_a = getPreset('预设A');
+  const preset_b = getPreset('预设B');
+  preset_b.prompts = [...preset_a.prompts, ...preset_b.prompts];
+  await replacePreset('预设B', preset_b);
+  ```
+
+  ```typescript
+  // 将 '预设A' 的条目顺序反过来
+  await updatePresetWith('预设A', preset => {
+    preset.prompts = preset.prompts.reverse();
+    return preset;
+  });
+  ```
+
 ## 3.2.13
 
 ### ⏫功能
@@ -9,6 +78,12 @@
   const message = getChatMessages(-1)[0];
   const result = formatAsTavernRegexedString(message.message, 'ai_output', 'display', { depth: 0 });
   ```
+
+### 📚脚本库
+
+**内置库:**
+
+- 新增 `世界书强制自定义排序` 脚本. 很多作者会使用自定义排序来写世界书, 因为他们将能自己拖动改变世界书条目顺序: 按功能分类条目、把允许玩家自定义的条目放在最上面……**所以请使用自定义排序.**
 
 ### 🐛修复
 

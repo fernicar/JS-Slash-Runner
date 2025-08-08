@@ -1,4 +1,5 @@
 import { registerMacroLike } from '@/component/macrolike';
+import { builtin } from '@/function/builtin';
 import {
   Character,
   getCharAvatarPath,
@@ -40,6 +41,23 @@ import {
   setLorebookEntries,
   updateLorebookEntriesWith,
 } from '@/function/lorebook_entry';
+import {
+  createOrReplacePreset,
+  createPreset,
+  default_preset,
+  deletePreset,
+  getLoadedPresetName,
+  getPreset,
+  getPresetNames,
+  isPresetNormalPrompt,
+  isPresetPlaceholderPrompt,
+  isPresetSystemPrompt,
+  loadPreset,
+  renamePreset,
+  replacePreset,
+  setPreset,
+  updatePresetWith,
+} from '@/function/preset';
 import { getScriptButtons, replaceScriptButtons } from '@/function/script_repository';
 import { triggerSlash } from '@/function/slash';
 import {
@@ -60,7 +78,6 @@ import {
 } from '@/function/variables';
 import { getTavernHelperVersion, updateTavernHelper } from '@/function/version';
 import { audioEnable, audioImport, audioMode, audioPlay, audioSelect } from '@/slash_command/audio';
-import { builtin } from './builtin';
 
 function getTavernHelper() {
   return {
@@ -120,6 +137,23 @@ function getTavernHelper() {
     getChatLorebook,
     setChatLorebook,
     getOrCreateChatLorebook,
+
+    // preset
+    isPresetNormalPrompt,
+    isPresetSystemPrompt,
+    isPresetPlaceholderPrompt,
+    default_preset,
+    getPresetNames,
+    getLoadedPresetName,
+    loadPreset,
+    createPreset,
+    createOrReplacePreset,
+    deletePreset,
+    renamePreset,
+    getPreset,
+    replacePreset,
+    updatePresetWith,
+    setPreset,
 
     // macrolike
     registerMacroLike,

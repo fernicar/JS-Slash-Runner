@@ -24,8 +24,6 @@ import {
 } from '@/component/script_repository/index';
 import { initializeToastr } from '@/component/toastr';
 import { iframe_client } from '@/iframe_client/index';
-import { handleIframe } from '@/iframe_server/index';
-import { checkVariablesEvents, clearTempVariables, shouldUpdateVariables } from '@/iframe_server/variables';
 import { script_url } from '@/script_url';
 import { getSettingValue, saveSettingValue } from '@/util/extension_variables';
 import { eventSource, event_types, reloadCurrentChat, saveSettingsDebounced, this_chid } from '@sillytavern/script';
@@ -46,16 +44,10 @@ const handlePartialRender = (mesId: string) => {
 
 const handleMessageDeleted = (mesId: string) => {
   const mesIdNumber = parseInt(mesId, 10);
-  clearTempVariables();
   renderMessageAfterDelete(mesIdNumber);
   if (getSettingValue('render.render_hide_style')) {
     addCodeToggleButtonsToAllMessages();
   }
-};
-
-const handleVariableUpdated = (mesId: string) => {
-  const mesIdNumber = parseInt(mesId, 10);
-  shouldUpdateVariables(mesIdNumber);
 };
 
 /**
@@ -99,8 +91,6 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
       addRenderingHideStyleSettings();
     }
 
-    window.addEventListener('message', handleIframe);
-
     eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
     eventSource.on('chatLoaded', handleChatLoaded);
 
@@ -108,9 +98,6 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
       eventSource.on(eventType, handlePartialRender);
     });
 
-    checkVariablesEvents.forEach(eventType => {
-      eventSource.on(eventType, handleVariableUpdated);
-    });
     eventSource.on(event_types.MESSAGE_DELETED, handleMessageDeleted);
     if (userAction && this_chid !== undefined) {
       await reloadCurrentChat();
@@ -136,15 +123,10 @@ async function handleExtensionToggle(userAction: boolean = true, enable: boolean
       removeRenderingHideStyleSettings();
     }
 
-    window.removeEventListener('message', handleIframe);
-
     eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
     eventSource.removeListener('chatLoaded', handleChatLoaded);
     partialRenderEvents.forEach(eventType => {
       eventSource.removeListener(eventType, handlePartialRender);
-    });
-    checkVariablesEvents.forEach(eventType => {
-      eventSource.removeListener(eventType, handleVariableUpdated);
     });
     eventSource.removeListener(event_types.MESSAGE_DELETED, handleMessageDeleted);
     if (userAction && this_chid !== undefined) {

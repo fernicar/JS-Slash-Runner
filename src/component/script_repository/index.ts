@@ -111,7 +111,7 @@ export class ScriptRepositoryApp {
         }
         this.sendFormObserver!.debounceTimer = setTimeout(() => {
           this.handleSendFormChange();
-        }, 250);
+        }, 500);
       }
     }) as ExtendedMutationObserver;
 

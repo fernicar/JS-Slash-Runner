@@ -345,6 +345,16 @@ export async function updateTavernHelper() {
     }
     return true;
   }
+  const comfirm_reinstall = await callGenericPopup(
+    `更新失败: ${(await update_response.text()) || update_response.statusText}
+  是否尝试通过卸载重装来更新?
+  (可能因为网络问题而只卸载了没能重装, 请先复制 \`https://gitlab.com/novi028/JS-Slash-Runner\`)
+  `,
+    POPUP_TYPE.CONFIRM,
+  );
+  if (!comfirm_reinstall) {
+    return;
+  }
 
   const reinstall_response = await reinstall_extension(extensionName, global);
   if (!reinstall_response.ok) {

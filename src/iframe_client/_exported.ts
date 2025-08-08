@@ -11,7 +11,9 @@ for (const key in TavernHelper) {
 }
 
 const toastr = (window.parent as unknown as { toastr: any }).toastr;
-
 const log = (window.parent as unknown as { log: any }).log;
+const YAML = (window.parent as unknown as { YAML: any }).YAML;
+const z = (window.parent as unknown as { z: any }).z;
+z.config(z.locales.zhCN());
 
 const EjsTemplate = (window.parent as unknown as { EjsTemplate: Record<string, any> }).EjsTemplate;

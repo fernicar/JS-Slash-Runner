@@ -59,6 +59,23 @@ interface Window {
     // macrolike
     readonly registerMacroLike: typeof registerMacroLike;
 
+    // preset
+    readonly isPresetNormalPrompt: typeof isPresetNormalPrompt;
+    readonly isPresetSystemPrompt: typeof isPresetSystemPrompt;
+    readonly isPresetPlaceholderPrompt: typeof isPresetPlaceholderPrompt;
+    readonly default_preset: typeof default_preset;
+    readonly getPresetNames: typeof getPresetNames;
+    readonly getLoadedPresetName: typeof getLoadedPresetName;
+    readonly loadPreset: typeof loadPreset;
+    readonly createPreset: typeof createPreset;
+    readonly createOrReplacePreset: typeof createOrReplacePreset;
+    readonly deletePreset: typeof deletePreset;
+    readonly renamePreset: typeof renamePreset;
+    readonly getPreset: typeof getPreset;
+    readonly replacePreset: typeof replacePreset;
+    readonly updatePresetWith: typeof updatePresetWith;
+    readonly setPreset: typeof setPreset;
+
     // script_repository
     readonly getScriptButtons: typeof getScriptButtons;
     readonly replaceScriptButtons: typeof replaceScriptButtons;

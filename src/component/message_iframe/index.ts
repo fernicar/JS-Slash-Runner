@@ -23,6 +23,7 @@ export const defaultIframeSettings = {
   tampermonkey_compatibility: false,
   render_depth: 0,
   render_optimize: false,
+  render_hide_style: false,
 };
 
 /**

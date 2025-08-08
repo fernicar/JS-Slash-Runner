@@ -11,19 +11,21 @@ interface Context {
   role?: 'user' | 'assistant' | 'system';
 }
 
-const macros: MacroLike[] = [
+export const macros: MacroLike[] = [
   {
     regex: /\{\{get_global_variable::(.*?)\}\}/gi,
     replace: (_context: Context, _substring: string, path: string) => {
       const variables = extension_settings.variables.global;
-      return JSON.stringify(_.get(variables, path, null));
+      const value = _.get(variables, path, null);
+      return typeof value === 'string' ? value : JSON.stringify(value);
     },
   },
   {
     regex: /\{\{get_chat_variable::(.*?)\}\}/gi,
     replace: (_context: Context, _substring: string, path: string) => {
       const variables = (chat_metadata as { variables: Object }).variables;
-      return JSON.stringify(_.get(variables, path, null));
+      const value = _.get(variables, path, null);
+      return typeof value === 'string' ? value : JSON.stringify(value);
     },
   },
   {
@@ -33,7 +35,8 @@ const macros: MacroLike[] = [
         (context.message_id !== undefined ? chat.slice(0, context.message_id + 1) : chat)
           .map(chat_message => _.get(chat_message, ['variables', chat_message.swipe_id ?? 0]))
           .findLast(data => data !== undefined) ?? {};
-      return JSON.stringify(_.get(variables, path, null));
+      const value = _.get(variables, path, null);
+      return typeof value === 'string' ? value : JSON.stringify(value);
     },
   },
 ];

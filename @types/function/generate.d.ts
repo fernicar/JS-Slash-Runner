@@ -8,7 +8,7 @@ interface GenerateConfig {
    * - Base64 字符串：图片的 base64 编码
    * - URL 字符串：图片的在线地址
    */
-  image?: File | string;
+  image?: File | string | (File | string)[];
 
   /**
    * 是否启用流式传输; 默认为 `false`.
@@ -49,7 +49,7 @@ interface GenerateRawConfig {
    * - Base64 字符串：图片的 base64 编码
    * - URL 字符串：图片的在线地址
    */
-  image?: File | string;
+  image?: File | string | (File | string)[];
 
   /**
    * 是否启用流式传输; 默认为 `false`.
@@ -86,7 +86,7 @@ interface GenerateRawConfig {
 interface RolePrompt {
   role: 'system' | 'assistant' | 'user';
   content: string;
-  image?: File | string;
+  image?: File | string | (File | string)[];
 }
 
 interface InjectionPrompt {

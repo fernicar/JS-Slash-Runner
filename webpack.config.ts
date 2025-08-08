@@ -140,6 +140,7 @@ const config = (_env: any, argv: any): webpack.Configuration => {
         lodash: '_',
         toastr: 'toastr',
         yaml: ['script https://fastly.jsdelivr.net/gh/N0VI028/JS-Slash-Runner/lib/yaml.min.js', 'YAML'],
+        zod: ['module-import https://testingcf.jsdelivr.net/npm/zod/+esm', 'z'],
       },
       /^hljs$/i,
       /^(jquery|\$)$/i,

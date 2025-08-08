@@ -92,6 +92,7 @@ type LorebookEntriesUpdater =
 /**
  * 用 `updater` 函数更新世界书 `lorebook`
  *
+ * @param lorebook 世界书名称
  * @param updater 用于更新世界书的函数. 它应该接收世界书条目作为参数, 并返回更新后的世界书条目.
  *
  * @returns 更新后的世界书条目

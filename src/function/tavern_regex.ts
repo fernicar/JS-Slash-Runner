@@ -1,4 +1,13 @@
-import { characters, reloadCurrentChat, saveChatConditional, saveSettings, this_chid } from '@sillytavern/script';
+import { macros } from '@/component/macrolike';
+import {
+  characters,
+  chat,
+  reloadCurrentChat,
+  saveChatConditional,
+  saveSettings,
+  substituteParams,
+  this_chid,
+} from '@sillytavern/script';
 import { RegexScriptData } from '@sillytavern/scripts/char-data';
 import { extension_settings, writeExtensionField } from '@sillytavern/scripts/extensions';
 import { getRegexedString, regex_placement } from '@sillytavern/scripts/extensions/regex/engine';
@@ -16,15 +25,17 @@ export function formatAsTavernRegexedString(
   destination: 'display' | 'prompt',
   { depth, character_name }: FormatAsTavernRegexedStringOption = {},
 ) {
-  return getRegexedString(
+  let result = getRegexedString(
     text,
-    {
-      user_input: regex_placement.USER_INPUT,
-      ai_output: regex_placement.AI_OUTPUT,
-      slash_command: regex_placement.SLASH_COMMAND,
-      world_info: regex_placement.WORLD_INFO,
-      reasoning: regex_placement.REASONING,
-    }[source],
+    (
+      {
+        user_input: regex_placement.USER_INPUT,
+        ai_output: regex_placement.AI_OUTPUT,
+        slash_command: regex_placement.SLASH_COMMAND,
+        world_info: regex_placement.WORLD_INFO,
+        reasoning: regex_placement.REASONING,
+      } as const
+    )[source],
     {
       characterOverride: character_name,
       isMarkdown: destination === 'display',
@@ -32,6 +43,28 @@ export function formatAsTavernRegexedString(
       depth,
     },
   );
+  result = substituteParams(result, undefined, character_name, undefined, undefined);
+  macros.forEach(macro => {
+    result = result.replace(macro.regex, (substring, ...args) =>
+      macro.replace(
+        {
+          role: (
+            {
+              user_input: 'user',
+              ai_output: 'assistant',
+              slash_command: 'system',
+              world_info: 'system',
+              reasoning: 'system',
+            } as const
+          )[source],
+          message_id: depth !== undefined ? chat.length - depth - 1 : undefined,
+        },
+        substring,
+        ...args,
+      ),
+    );
+  });
+  return result;
 }
 
 interface TavernRegex {
